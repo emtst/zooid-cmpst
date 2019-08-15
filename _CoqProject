@@ -1,0 +1,7 @@
+-Q theories/ MPST
+-arg -w
+-arg none
+theories/Atom.v
+theories/AtomScopes.v
+theories/Env.v
+theories/Syntax.v
