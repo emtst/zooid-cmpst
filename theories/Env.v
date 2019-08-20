@@ -40,8 +40,6 @@ Module Type ENV (En : ENTRY).
   Parameter in_domP : forall (x : En.K) (E : env),
       reflect (exists v : En.V, look x E = Some v) (x \in dom E).
 
-  (* Parameter look_add a T D : def (add a T D) -> look a (add a T D) = Some T. *)
-
   Parameter look_add : forall (a : En.K) (T : En.V) (D : env),
       def (add a T D) -> look a (add a T D) = Some T.
 
@@ -55,30 +53,13 @@ Module Type ENV (En : ENTRY).
   | look_none : look x D = None -> look_spec x D false.
 
   Parameter domP : forall (x : En.K) (D : env), look_spec x D (x \in dom D).
-  Parameter env_eq_look' :
-    forall (k : En.K) (D : env) (D' : env),
-      def D -> D == D' -> look k D == look k D'.
-  Parameter env_eq_look :
-    forall (k : En.K) (D D': env),
-      def D -> D == D' -> look k D = look k D'.
-  Parameter env_eq_def :
-    forall (D D': env), def D -> D == D' -> def D'.
-  (* TODO this lemma (eq_hd) should also be a parameter, but somehow it fails *)
-  Parameter eq_hd :
-    forall (k : En.K) (t t' : En.V) (D D' : env_eqType),
-      def (add k t D) -> add k t D == add k t' D' -> t = t'.
   Parameter singleton_def : forall (k : En.K) (v : En.V), def (add k v empty).
   Parameter in_dom_def : forall (a' : En.K) (D : env), a' \in dom D -> def D.
   Parameter dom_add :
     forall (k : En.K) (v : En.V) (E : env),
       def (add k v E) -> dom (add k v E) =i predU (pred1 k) (mem (dom E)).
-  Parameter add_in_dom :
-    forall (x : En.K) (t : En.V) (E : env), def (add x t E) <-> x \in dom (add x t E).
   Parameter rem_add_id :
     forall (k' : En.K) (v' : En.V) (D : env), def (add k' v' D) -> D = rem k' (add k' v' D).
-  Parameter eq_rem : forall (k : En.K) (D D' : env), D = D' -> rem k D = rem k D'.
-  Parameter eq_add :
-    forall (k : En.K) (t : En.V) (D D' : env), def (add k t D) -> add k t D = add k t D' -> D = D'.
   Parameter rem_add :
     forall (k k' : En.K) (v : En.V) (D : env), k != k' -> rem k' (add k v D) = add k v (rem k' D).
   Parameter add_rem_id :
@@ -168,6 +149,17 @@ Module Env (En : ENTRY) : ENV En.
     + apply: look_none.
   Qed.
 
+  Lemma singleton_def k v : def (add k v empty). (* stays *)
+  Proof.
+    by rewrite/def/add.
+  Qed.
+
+  Lemma in_dom_def a' D: a' \in dom D -> def D. (* stays *)
+  Proof.
+    unfold dom.
+    case (def D)=>//.
+  Qed.
+
   (* Properties of defined environments *)
   Lemma look_add a T D: def (add a T D) -> look a (add a T D) = Some T.
   Admitted.
@@ -175,81 +167,15 @@ Module Env (En : ENTRY) : ENV En.
   Lemma look_add_deep a a' T D: a != a' -> def (add a T D) -> look a' (add a T D) == look a' D.
   Admitted.
 
-  Lemma env_eq_look' k D D':
-    def D -> D == D' -> look k D == look k D'.
-  Proof.
-    by move=>Hdef/eqP=>->.
-  Qed.
-
-  Lemma env_eq_look k D D':
-    def D -> D == D' -> look k D = look k D'.
-  Proof.
-    by move=>Hdef/eqP=>->.
-  Qed.
-
-  Lemma env_eq_def (D D' : env_eqType):
-    def D -> D == D' -> def D'.
-  Proof.
-    move=>Hdef.
-    rewrite eq_sym.
-    by move/eqP=>->.
-  Qed.
-
-  Lemma eq_hd k t t' (D D' : env_eqType):
-    def (add k t D) -> add k t D == add k t' D' -> t = t'.
-  Proof.
-    move=>Hdef Heq.
-    have Hdef':= env_eq_def Hdef Heq. (* this is not as pretty as it should be *)
-    move:Heq.
-    move/env_eq_look.
-    move=>/(_ k Hdef).
-    by (repeat rewrite look_add) ; first congruence ; try easy.
-  Qed.
-
-  Lemma singleton_def k v : def (add k v nil).
-  Proof.
-    by rewrite/def/add.
-  Qed.
-
-  Lemma in_dom_def a' D: a' \in dom D -> def D.
-  Proof.
-    unfold dom.
-    case (def D)=>//.
-  Qed.
 
   Lemma dom_add k v (E : env) : def (add k v E) ->
                                 dom (add k v E) =i predU (pred1 k) (mem (dom E)).
   Admitted.
 
-  (* this proof may be missing the point, it should be simpler *)
-  Theorem add_in_dom x t E: def(add x t E) <-> x \in dom (add x t E).
-  Proof.
-    split.
-    {
-      move=>H.
-      rewrite dom_add.
-      - pose (x\in (pred1 x)).
-        rewrite/in_mem;simpl.
-        by apply: predU1l.
-      - easy.
-    }
-    by apply in_dom_def.
-  Qed.
 
   Lemma rem_add_id k' v' D : def (add k' v' D) -> D = rem k' (add k' v' D).
   Admitted.
 
-  Lemma eq_rem k D D' :
-    D = D' -> rem k D = rem k D'.
-  Proof. by move=>->. Qed.
-
-  Lemma eq_add k t D D' :
-    def (add k t D) ->
-    add k t D = add k t D' -> D = D'.
-  Proof.
-    move=> Def Eq; have Def':def (add k t D') by rewrite -Eq.
-    move: Eq => /(eq_rem k); rewrite -!rem_add_id //.
-  Qed.
 
   Lemma rem_add k k' v D : k != k' -> rem k' (add k v D) = add k v (rem k' D).
   Admitted.
@@ -339,3 +265,72 @@ Module Env (En : ENTRY) : ENV En.
 
   (* TODO: continue importing lemmas from OldEnv.v from CONTINUE HERE and on *)
 End Env.
+
+(* some representation independent lemmas for environments *)
+Module Lemata (En : ENTRY) (Env : ENV En).
+  Canonical env_eqMixin := EqMixin Env.eq_envP.
+  Canonical env_eqType := Eval hnf in EqType Env.env Env.env_eqMixin.
+
+  Import Env.
+
+
+  Lemma env_eq_look' k D D':
+    def D -> D == D' -> look k D == look k D'.
+  Proof.
+    by move=>Hdef/eqP=>->.
+  Qed.
+
+  Lemma env_eq_look k D D':
+    def D -> D == D' -> look k D = look k D'.
+  Proof.
+    by move=>Hdef/eqP=>->.
+  Qed.
+
+  Lemma env_eq_def (D D' : env_eqType):
+    def D -> D == D' -> def D'.
+  Proof.
+    move=>Hdef.
+    rewrite eq_sym.
+    by move/eqP=>->.
+  Qed.
+
+  Lemma eq_hd k t t' (D D' : env_eqType):
+    def (Env.add k t D) -> add k t D == add k t' D' -> t = t'.
+  Proof.
+    move=>Hdef Heq.
+    have Hdef':= env_eq_def Hdef Heq. (* this is not as pretty as it should be *)
+    move:Heq.
+    move/env_eq_look.
+    move=>/(_ k Hdef).
+    by (repeat rewrite look_add) ; first congruence ; try easy.
+  Qed.
+
+  Theorem add_in_dom x t E: def(add x t E) <-> x \in dom (add x t E).
+  Proof.
+    split.
+    {
+      move=>H.
+      rewrite dom_add.
+      - pose (x\in (pred1 x)).
+        rewrite/in_mem;simpl.
+        by apply: predU1l.
+      - easy.
+    }
+    by apply in_dom_def.
+  Qed.
+
+
+  (* this lemma is a bit silly, not just a bit *)
+  Lemma eq_rem k D D' :
+    D = D' -> rem k D = rem k D'.
+  Proof. by move=>->. Qed.
+
+  Lemma eq_add k t D D' :
+    def (add k t D) ->
+    add k t D = add k t D' -> D = D'.
+  Proof.
+    move=> Def Eq; have Def':def (add k t D') by rewrite -Eq.
+    move: Eq => /(eq_rem k); rewrite -!rem_add_id //.
+  Qed.
+
+End Lemata.

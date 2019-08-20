@@ -32,5 +32,6 @@ Module TpEntry : ENTRY.
 End TpEntry.
 
 Module TpEnv := Env TpEntry.
+Module TpLemmata := Lemata TpEntry TpEnv.
 
-Check TpEnv.def.
+Check TpLemmata.eq_hd.
