@@ -26,7 +26,7 @@ Qed.
 Canonical tp_eqMixin := EqMixin eq_tpP.
 Canonical tp_eqType := Eval hnf in EqType tp tp_eqMixin.
 
-Module TpEntry.
+Module TpEntry : ENTRY.
   Definition K := atom_eqType.
   Definition V := tp_eqType.
 End TpEntry.

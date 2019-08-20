@@ -5,6 +5,8 @@ Unset Printing Implicit Defensive.
 
 Require Import MPST.Atom.
 
+(* Set Printing All. *)
+
 Module Type ENTRY.
 
   Parameter K : eqType.
@@ -62,9 +64,9 @@ Module Type ENV (En : ENTRY).
   Parameter env_eq_def :
     forall (D D': env), def D -> D == D' -> def D'.
   (* TODO this lemma (eq_hd) should also be a parameter, but somehow it fails *)
-  (* Parameter eq_hd : *)
-  (*   forall (k : En.K) (t t' : En.V) (D D' : env_eqType), *)
-  (*     def (add k t D) -> add k t D == add k t' D' -> t = t'. *)
+  Parameter eq_hd :
+    forall (k : En.K) (t t' : En.V) (D D' : env_eqType),
+      def (add k t D) -> add k t D == add k t' D' -> t = t'.
   Parameter singleton_def : forall (k : En.K) (v : En.V), def (add k v empty).
   Parameter in_dom_def : forall (a' : En.K) (D : env), a' \in dom D -> def D.
   Parameter dom_add :
@@ -130,7 +132,7 @@ Module Env (En : ENTRY) : ENV En.
     map (fun en => if x == fst en then (x, t) else en) E.
 
   (* update or insert *)
-  Definition add_upd x t (E : env) :=
+  Definition add_upd x t (E : env) : env:=
     if x \in (map fst E) then upd x t E else (x , t) :: E.
 
   Fixpoint look x (E : env) : option En.V :=
@@ -140,11 +142,11 @@ Module Env (En : ENTRY) : ENV En.
     end
     .
 
-  Definition add x t E := add_upd x t E.
+  Definition add x t (E : env) : env := add_upd x t E.
 
-  Definition rem x (E : env) := filter (fun en => x != fst en) E.
+  Definition rem x (E : env) : env := filter (fun en => x != fst en) E.
 
-  Definition dom (E : env) := if def E then map fst E else [::].
+  Definition dom (E : env)  : seq En.K := if def E then map fst E else [::].
 
   Definition dom_pred (E : env) : pred En.K := mem (dom E).
 
@@ -192,21 +194,17 @@ Module Env (En : ENTRY) : ENV En.
     rewrite eq_sym.
     by move/eqP=>->.
   Qed.
-  Check env_eq_def.
 
   Lemma eq_hd k t t' (D D' : env_eqType):
     def (add k t D) -> add k t D == add k t' D' -> t = t'.
-  (* Proof. *)
-  (*   move=>Hdef Heq. *)
-  (*   have Hdef':= env_eq_def Hdef Heq. (* this is not as pretty as it should be *) *)
-  (*   move:Heq. *)
-  (*   move/env_eq_look. *)
-  (*   move=>Hs. *)
-  (*   have HH := Hs k Hdef. *)
-  (*   move:HH. *)
-  (*   by (repeat rewrite look_add) ; first congruence ; try easy. *)
-  (* Qed. *)
-  Admitted. (* this proof does not depend on the inductive D so it should be factorable *)
+  Proof.
+    move=>Hdef Heq.
+    have Hdef':= env_eq_def Hdef Heq. (* this is not as pretty as it should be *)
+    move:Heq.
+    move/env_eq_look.
+    move=>/(_ k Hdef).
+    by (repeat rewrite look_add) ; first congruence ; try easy.
+  Qed.
 
   Lemma singleton_def k v : def (add k v nil).
   Proof.
