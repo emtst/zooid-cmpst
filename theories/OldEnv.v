@@ -595,8 +595,6 @@ Section Environment.
     elim D ; by [].
   Qed.
 
-  (* CONTINUE HERE *)
-
   Definition isin a (D : env) : bool :=
     if look a D is Some _ then true else false.
 
@@ -680,6 +678,8 @@ Section Environment.
       (* by rewrite indom. *) (* this fails because c is not really there *)
     Abort.
   End Indom.
+  (* CONTINUE HERE *)
+
 
   Lemma def_add k t E:
     def (add k t E) <-> k \notin dom E /\ def E.
@@ -1009,6 +1009,8 @@ Section Environment.
     rewrite /look /union; case: D1=>// f1; case: D2=>//f2; case: ifP=>///=_.
     by rewrite fnd_fcat.
   Qed.
+
+  (* CONTINUE HERE *)
 
   Lemma in_dom_subst x c c' D :
     x \in dom (subst_env c c' D) ->
