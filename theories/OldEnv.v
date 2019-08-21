@@ -359,7 +359,7 @@ Section Environment.
   Lemma filter_preserves_def E p : def E -> def (filter_by_key p E).
   Abort. (* desired property, prove if actually needed *)
 
-  (* CONTINUE HERE *)
+
   Definition intersection (E1 E2 : env) : env :=
     if (E1, E2) is (Def f1, Def f2) then Def (intersect f1 f2) else Undef.
 
@@ -384,7 +384,6 @@ Section Environment.
   Notation "A --- B" := (difference A B)  (at level 80, right associativity). (* : env_scope. *)
   Notation "A /:\ B" := (intersection A B) (at level 80, right associativity). (* : env_scope. *)
   Notation "A \:/ B" := (union A B) (at level 80, right associativity). (* : env_scope. *)
-
 
   Lemma unionC : commutative union.
   Proof.
@@ -595,6 +594,8 @@ Section Environment.
   Proof.
     elim D ; by [].
   Qed.
+
+  (* CONTINUE HERE *)
 
   Definition isin a (D : env) : bool :=
     if look a D is Some _ then true else false.

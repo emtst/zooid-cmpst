@@ -86,12 +86,39 @@ Module Type ENV (En : ENTRY).
       def (add b t E) -> a \in dom E -> a \in dom (add b t E).
   Parameter filter_by_key : pred En.K -> env -> env.
 
-
-
   Parameter filter_by_key_nil : forall pr : pred En.K, filter_by_key pr empty == empty.
   Parameter partition_by_key : pred En.K -> env -> env * env.
   Parameter map_on_keys' : (En.K -> En.K) -> env -> env.
   Parameter map_on_keys : (En.K -> En.K) -> env -> env.
+
+  Parameter intersection : env -> env -> env.
+  Parameter difference : env -> env -> env.
+  Parameter disjoint : env -> env -> bool.
+  Parameter union : env -> env -> env.
+
+  Notation "A --- B" := (difference A B)  (at level 80, right associativity). (* : env_scope. *)
+  Notation "A /:\ B" := (intersection A B) (at level 80, right associativity). (* : env_scope. *)
+  Notation "A \:/ B" := (union A B) (at level 80, right associativity). (* : env_scope. *)
+
+  Parameter unionA : associative union.
+  Parameter disjointC : commutative disjoint.
+  Parameter union_empty : forall (D : env), D = (D \:/ empty).
+  Parameter disjoint_wkn : forall E1 E2 E3 : env, disjoint E1 (E2 \:/ E3) -> disjoint E1 E2.
+  Parameter disjoint_diff_inter : forall D D' : env, def D -> def D' -> disjoint (D---D') (D /:\ D').
+  Parameter union_def : forall E1 E2, def (E1 \:/ E2) -> def E1 /\ def E2.
+  Parameter disjoint_diff_comm : forall D D', def D -> def D' -> disjoint (D---D') (D' --- D).
+  Parameter diff_empty : forall A, def A -> (empty --- A) = empty.
+
+  Definition split (E1 E2 : env) : env * env * env := (E1 --- E2, E1 /:\ E2, E2 --- E1).
+  Parameter update_all_with : En.V -> env -> env.
+
+  Definition binds a T (D : env) : bool := (look a D) == Some T.
+  Parameter binds_add : forall a b T T' D,
+      binds a T D -> def (add b T' D) -> binds a T (add b T' D).
+  Parameter binds_next : forall x y S S' G,
+    y != x -> binds y S' (add x S G) -> binds y S' G.
+  Parameter binds_top_add : forall a T D,
+    def (add a T D) -> binds a T (add a T D).
 
 End ENV.
 
@@ -108,13 +135,18 @@ Module Env (En : ENTRY) : ENV En.
   Definition def (E : env) := uniq (map fst E).
   Definition undef E := negb(def E).
 
+  Definition dom (E : env)  : seq En.K := if def E then map fst E else [::].
+
+  Definition dom_pred (E : env) : pred En.K := mem (dom E).
+
+
   (* update if present *)
   Definition upd x t (E : env) :=
     map (fun en => if x == fst en then (x, t) else en) E.
 
   (* update or insert *)
   Definition add_upd x t (E : env) : env:=
-    if x \in (map fst E) then upd x t E else (x , t) :: E.
+    if x \in dom E then upd x t E else (x , t) :: E.
 
   Fixpoint look x (E : env) : option En.V :=
     match E with
@@ -126,10 +158,6 @@ Module Env (En : ENTRY) : ENV En.
   Definition add x t (E : env) : env := add_upd x t E.
 
   Definition rem x (E : env) : env := filter (fun en => x != fst en) E.
-
-  Definition dom (E : env)  : seq En.K := if def E then map fst E else [::].
-
-  Definition dom_pred (E : env) : pred En.K := mem (dom E).
 
   Lemma in_domP x E : reflect (exists v, look x E = Some v) (x \in dom E).
   Admitted.
@@ -263,7 +291,113 @@ Module Env (En : ENTRY) : ENV En.
   Lemma filter_preserves_def E p : def E -> def (filter_by_key p E).
   Abort. (* desired property, prove if actually needed *)
 
+  Definition intersection (E E' : env) : env :=
+    filter_by_key (fun k => k \in dom E') E.
+
+  Definition difference (E E' : env) : env :=
+    filter_by_key (fun k => k \notin dom E') E.
+
+  Definition disjoint (E E' : env) : bool :=
+    all (predC (fun x => x \in dom E)) (dom E').
+
+  Definition union (E E' : env) : env :=
+    E ++ E'.
+
+  Lemma disjoint_nil : disjoint empty empty.
+  Proof.
+    by [].
+  Qed.
+
+  Notation "A --- B" := (difference A B)  (at level 80, right associativity). (* : env_scope. *)
+  Notation "A /:\ B" := (intersection A B) (at level 80, right associativity). (* : env_scope. *)
+  Notation "A \:/ B" := (union A B) (at level 80, right associativity). (* : env_scope. *)
+
   (* TODO: continue importing lemmas from OldEnv.v from CONTINUE HERE and on *)
+  Lemma unionC : commutative union.
+  Abort. (* this lemma does not hold anymore *)
+
+  Lemma union_undef E E' E'': (E \:/ E') = E'' -> undef E' -> undef (E \:/ E').
+  Abort. (* adapted from the old lemma, but it's not clear we need this lemma *)
+
+  Lemma unionA : associative union.
+  Admitted.
+
+  Lemma disjointC : commutative disjoint.
+  Admitted.
+
+  Lemma union_empty D : D = (D \:/ empty).
+  Proof.
+    elim D=>// f ; rewrite/union=>/=.
+    rewrite/empty=>// l H.
+    by rewrite cats0.
+  Qed.
+
+  Lemma disjoint_union_def E1 E2:
+    disjoint E1 E2 = def(E1 \:/ E2).
+  Abort. (* does not hold anymore (needs E1 and E2 to be defined) *)
+
+  Lemma disjoint_wkn E1 E2 E3: disjoint E1 (E2 \:/ E3) -> disjoint E1 E2.
+  Admitted.
+
+  Lemma disjoint_diff_inter D D' :
+    def D -> def D' -> disjoint (D---D') (D /:\ D').
+  Admitted.
+
+  Lemma union_def E1 E2: def (E1 \:/ E2) -> def E1 /\ def E2.
+  Admitted.
+
+  Lemma disjoint_union_3 E1 E2 E3:
+    disjoint E1 E2 /\ disjoint E2 E3 /\ disjoint E1 E3 <-> def(E1 \:/ E2 \:/ E3).
+  Abort. (* no longer the case as the -> direction fails *)
+
+  Lemma disjoint_diff_comm D D' :
+    def D -> def D' -> disjoint (D---D') (D' --- D).
+  Admitted.
+
+  Lemma diff_empty A: def A -> (empty --- A) = empty.
+    case: A => // f; rewrite/nil/difference/filter_by_key=>//.
+  Qed.
+
+  Definition split (E1 E2 : env) : env * env * env :=
+    (E1 --- E2, E1 /:\ E2, E2 --- E1).
+
+  Definition update_all_with (v : En.V) (E : env) : env :=
+    map (fun el => (fst el, v)) E.
+
+  Definition binds a T (D : env) : bool :=
+    (look a D) == Some T.
+
+  Lemma binds_add a b T T' D:
+    binds a T D -> def (add b T' D) ->
+    binds a T (add b T' D).
+  Admitted.
+
+  Lemma add_binds a b T T' D:
+    binds a T D -> a!=b -> def (add b T' D) -> binds a T (add b T' D).
+  Abort. (* this lemma is silly as from binds a T D -> def (add b T' D) we can show that a != b *)
+
+  Lemma binds_next x y S S' G:
+    y != x ->
+    binds y S' (add x S G) ->
+    binds y S' G.
+  Admitted.
+
+  Lemma binds_top_add a T D:
+    def (add a T D) ->
+    binds a T (add a T D).
+  Proof.
+    rewrite/add/add_upd.
+    case (a \in dom D).
+    admit. (* lemma about update *)
+    by rewrite/binds/look eq_refl.
+  Admitted.
+
+
+
+  Lemma binds_def a T D:
+    binds a T D -> def D.
+  Abort. (* no longer holds (binds finds the first if it is duplicated/undefined)*)
+
 End Env.
 
 (* some representation independent lemmas for environments *)
@@ -272,7 +406,6 @@ Module Lemata (En : ENTRY) (Env : ENV En).
   Canonical env_eqType := Eval hnf in EqType Env.env Env.env_eqMixin.
 
   Import Env.
-
 
   Lemma env_eq_look' k D D':
     def D -> D == D' -> look k D == look k D'.
@@ -331,6 +464,25 @@ Module Lemata (En : ENTRY) (Env : ENV En).
   Proof.
     move=> Def Eq; have Def':def (add k t D') by rewrite -Eq.
     move: Eq => /(eq_rem k); rewrite -!rem_add_id //.
+  Qed.
+
+  Theorem UniquenessBind a T T' D:
+    binds a T D -> binds a T' D -> T = T'.
+  Proof.
+    rewrite/binds.
+    move/eqP=>->/eqP.
+    congruence.
+  Qed.
+
+  Lemma binds_top_addE a T T' D:
+    def (add a T D) ->
+    binds a T (add a T' D) ->
+    T = T'.
+  Proof.
+    rewrite/binds.
+    move/(def_diff_value T')=>H.
+    rewrite look_add ; last by [].
+    by move/eqP;case.
   Qed.
 
 End Lemata.
