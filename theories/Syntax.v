@@ -35,3 +35,28 @@ Module TpEnv := Env TpEntry.
 Module TpLemmata := Lemata TpEntry TpEnv.
 
 Check TpLemmata.eq_hd.
+
+
+(* DC: tentative LN representation of global types *)
+
+(* Set of labels: FIXME - atoms? *)
+Definition lbl := nat.
+
+(* Set of participants : FIXME - atoms? *)
+Definition part:= nat.
+
+Inductive g_type : Set :=
+| g_end : g_type
+| g_fvar : atom -> g_type
+| g_bvar : nat -> g_type
+| g_rec : g_type -> g_type
+| g_msg : part -> part -> seq (lbl * tp * g_type) -> g_type.
+
+
+Inductive l_type : Set :=
+| l_end : l_type
+| l_fvar : atom -> l_type
+| l_bvar : nat -> l_type
+| l_rec : g_type -> l_type
+| l_send : part -> lbl -> tp -> l_type -> l_type
+| l_recv : part -> seq (lbl * tp * l_type) -> l_type.
