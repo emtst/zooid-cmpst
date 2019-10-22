@@ -5,3 +5,10 @@ theories/Atom.v
 theories/AtomScopes.v
 theories/Env.v
 theories/Syntax.v
+theories/mpst/Atom.v
+theories/mpst/Forall.v
+theories/mpst/LNVar.v
+theories/mpst/Role.v
+theories/mpst/Local.v
+theories/mpst/Global.v
+theories/mpst/Projection.v
