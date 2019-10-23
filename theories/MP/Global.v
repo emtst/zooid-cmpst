@@ -41,27 +41,24 @@ Section Syntax.
     end.
 
   Lemma gty_ind1 :
-    forall (P : g_ty -> Type),
+    forall (P : g_ty -> Prop),
       P g_end ->
       (forall v, P (g_var v)) ->
       (forall G, P G -> P (g_rec G)) ->
       (forall p G, P G -> P (g_msg p G)) ->
-      (forall p, P (g_brn p [::])) ->
-      (forall p l G K, P G ->
-                       P (g_brn p K) ->
-                       P (g_brn p ((l, G)::K))) ->
+      (forall p Gs, (forall lG, member lG Gs -> P lG.2) -> P (g_brn p Gs)) ->
       forall g : g_ty, P g.
   Proof.
-    move=> P P_end P_var P_rec P_msg P_brn_nil P_brn_cons g.
-    move: {-1} (depth_gty g) (leqnn (depth_gty g))=> dg leq; elim: dg g leq.
-    - by case.
-    - move=> n Ih; case=>///=.
-      + by move=> G Le; apply: P_rec; apply: Ih.
-      + by move=> p G Le; apply: P_msg; apply: Ih.
-      + move=> p; elim=>///= [[l G]] K Ihl; rewrite ltnS geq_max=>/andP-[dG dGs].
-        by apply: P_brn_cons; first (by apply: Ih); apply Ihl.
+    move=> P P_end P_var P_rec P_msg P_branch; fix Ih 1; case.
+    + by apply: P_end.
+    + by apply: P_var.
+    + by move=>G; apply: P_rec=>//.
+    + by move=>p G; apply: P_msg=>//.
+    + move=>p Gs; apply: P_branch; apply/forall_member; elim Gs.
+      - by [].
+      - move=> lG1 {Gs}Gs IhGs/=; split; first by apply Ih.
+        apply: IhGs.
   Qed.
-
 
   Fixpoint eq_g_ty a b :=
     match a, b with
@@ -126,15 +123,8 @@ Section Syntax.
       (forall p Gs, Forall (fun lG => P lG.2) Gs -> P (g_brn p Gs)) ->
       forall g : g_ty, P g.
   Proof.
-    move=> P P_end P_var P_rec P_msg P_branch; fix Ih 1; case.
-    + by apply: P_end.
-    + by apply: P_var.
-    + by move=>G; apply: P_rec=>//.
-    + by move=>p G; apply: P_msg=>//.
-    + move=>p Gs; apply: P_branch; elim Gs.
-      - by [].
-      - move=> lG1 {Gs}Gs IhGs/=; split; first by apply Ih.
-        apply: IhGs.
+    move=> P P_end P_var P_rec P_msg P_branch; elim/gty_ind1=>//.
+    by move=> p Gs /forall_member; apply: P_branch.
   Qed.
 
   Fixpoint g_open (d : nat) (G2 : g_ty) (G1 : g_ty) :=
