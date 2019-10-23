@@ -4,12 +4,12 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Require Import MPST.Atom.
-Require Import MPST.Role.
-Require Import MPST.Forall.
-Require Import MPST.LNVar.
-Require Import MPST.Global.
-Require Import MPST.Local.
+Require Import MPST.MP.Atom.
+Require Import MPST.MP.Role.
+Require Import MPST.MP.Forall.
+Require Import MPST.MP.LNVar.
+Require Import MPST.MP.Global.
+Require Import MPST.MP.Local.
 
 Section Project.
 
@@ -149,15 +149,17 @@ Section Project.
   Qed.
 
   Definition pproj_brn (p : g_prefix)
-             (r1 r2 : role) (K : seq (lbl * option s_ty)) :=
+             (r1 r2 : role) (S : option s_ty) (K : seq (lbl * option s_ty)) :=
     let: ((p, q), t) := p in
     if p == q
     then None
-    else if (p == r1) && (q == r2)
-         then ms_sel K
-         else if (p == r2) && (q == r1)
-              then ms_brn K
-              else merge_all K.
+    else if p == r1
+         then if q == r2 then ms_sel K
+              else merge_all K
+         else if p == r2
+              then if q == r1 then ms_brn K
+                   else merge_all K
+              else S.
 
   Lemma pproj_msg_swap pr p q L :
     p_proj (project_msg pr q L) p
@@ -299,16 +301,56 @@ Section Project.
       by case: (partial_proj S' t)=>// {S'}S'; case:ifP=>//.
   Qed.
 
+  Lemma pproj_lbrn f L t:
+    p_proj (ml_brn f L) t =
+    if f == t then ms_brn [seq (X.1, p_proj X.2 t) | X <- L]
+    else merge_all [seq (X.1, p_proj X.2 t) | X <- L].
+  Proof.
+    rewrite /ml_brn (fun_option (fun X => p_proj X t))/=.
+    move: {-1} (flat_alts L) (eq_refl (flat_alts L)) => LL.
+    case: LL=>[LL|]; first by move=>/flatalts_some->; rewrite -map_comp /comp/=.
+    case:ifP=> _//; rewrite /ms_brn.
+    - by rewrite flatalts_pproj=>/eqP->.
+    - move=>/flatalts_none-[/eqP->//|[l]].
+      rewrite /merge_all; case: L=>// a K/=.
+      case: a=>[l' [S|]]//.
+      rewrite in_cons xpair_eqE andbC/=.
+      case: (partial_proj S t)=>// {S}S.
+      elim: K=>// [[l'' [S'|]] K]// Ih.
+      rewrite in_cons xpair_eqE andbC/==>/Ih-{Ih}Ih.
+      by case: (partial_proj S' t)=>// {S'}S'; case:ifP=>//.
+  Qed.
+
+  (*
+  Lemma pproj_mergeall L t:
+    p_proj (merge_all L) t =
+    merge_all [seq (X.1, p_proj X.2 t) | X <- L].
+  Proof.
+    case: L=>[|[l [L|]] K]/=//.
+    elim: K=>/=; first (by rewrite eta_option).
+    move=> [l' [L'|]] K Ih/=; last (by case: (partial_proj L t)).
+    case: ifP=>[/eqP-[->{L'}]|].
+    - by rewrite Ih; case: (partial_proj L t)=>// L'; rewrite eq_refl.
+    - move=> L_L'; have: (partial_proj L t == partial_proj L' t) = false.
+      + move: L_L'; rewrite !(rwP negPf); apply: contra.
+        *)
+
+  (*
   Lemma pproj_brn_swap pr p q L :
     p_proj (project_brn pr q L) p
-    = pproj_brn pr q p [seq (X.1, p_proj X.2 p) | X <- L].
+    = pproj_brn pr q p (p_proj (merge_all L) p) [seq (X.1, p_proj X.2 p) | X <- L].
   Proof.
     case: pr=>[[f t] ty] /=.
     rewrite !(fun_if (fun X=> p_proj X p)).
-    case: ifP =>// f_neq_t; case: ifP=>/=//[f_eq_g|f_neq_g].
-    - rewrite pproj_sel; move: f_neq_t f_eq_g.
-      by case: ifP=>[//|Eq1 Eq2 /eqP<-]; rewrite andbC eq_sym Eq2.
+    case: ifP =>// f_neq_t/=.
+    rewrite pproj_sel pproj_lbrn.
+
+    case: ifP=>/=//[f_eq_g|f_neq_g].
+    - by rewrite pproj_sel; move: f_neq_t f_eq_g.
+    - rewrite pproj_lbrn; case: ifP=>[|]. first (by case: ifP).
+      rewrite andbC/=.
   Admitted.
+*)
 
   Lemma mdual_mrec Sp Sq : mdual (ms_rec Sp) (ms_rec Sq) = mdual Sp Sq.
   Proof. by case: Sp; case: Sq. Qed.
@@ -428,6 +470,7 @@ Section Project.
       by move: (dual_eq D1 D2) =>/eqP; rewrite eq_sym Neq.
   Qed.
 
+  (* Lemma is not correct, need some precondition! (e.g. all defined?) *)
   Lemma all_compat G p q :
     p != q ->
     mdual (p_proj (project G p) q) (p_proj (project G q) p).
@@ -458,18 +501,26 @@ Section Project.
       - by rewrite mdual_msend_recv.
       - move=>H; rewrite andbC; case: ifP=>//.
         by rewrite mdual_mrecv_send.
-    + move=> pr G Ih/=; rewrite !pproj_brn_swap.
-      rewrite -!map_comp /comp/=.
-      case: pr=>[[f t] ty]/=.
-      case: ifP=>//f_neq_t.
-      rewrite andbC; case: ifP=>[/andP-[/eqP->/eqP->]|]//.
-      - rewrite (negPf p_neq_q) /= mdual_msel_mbrn // all2_map/=.
+    + move=> [[f t] ty] G Ih /=.
+      rewrite !(fun_if(fun X=> p_proj X p)) !(fun_if(fun X=> p_proj X q))/=.
+      rewrite !pproj_sel !pproj_lbrn -!map_comp /comp/=.
+      do ! (case: ifP=>//).
+      - by move=>/eqP->; rewrite (negPf p_neq_q).
+      - by move=>_ /eqP-> _; rewrite eq_sym (negPf p_neq_q).
+      - move=> _ _ _ _.
+        rewrite mdual_msel_mbrn // all2_map/=.
         apply/forallP; last (by apply: Ih); move=>/=x; apply: idP.
-      - move=>H; rewrite andbC; case: ifP=>[_|].
-        * rewrite mdual_mbrn_msel // all2_map/=.
-          apply/forallP; last (by apply: Ih); move=>/=x; apply: idP.
-        * rewrite mdual_mergeall //. rewrite all2_map /=.
-          apply/forallP; last (by apply: Ih); move=>/=x; apply: idP.
-  Qed.
+      - by move=>_/eqP-> _; rewrite eq_sym (negPf p_neq_q).
+      - by move=> _/eqP-> _; rewrite eq_sym (negPf p_neq_q).
+      - move=>_ _ _ _. admit.
+      - move=> _ _ _ _.
+        rewrite mdual_mbrn_msel // all2_map/=.
+        apply/forallP; last (by apply: Ih); move=>/=x; apply: idP.
+      - by move=>/eqP->_; rewrite eq_sym; rewrite (negPf p_neq_q).
+      - move=>_ _ _ _. admit.
+      - move=>_ _ _ _. admit.
+      - move=>_ _ _ _. admit.
+      - move=>_ _ _ _. admit.
+  Admitted.
 
   Print Assumptions all_compat.

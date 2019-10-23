@@ -4,8 +4,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Require Import MPST.Atom.
-Require Import MPST.LNVar.
+Require Import MPST.MP.Atom.
+Require Import MPST.MP.LNVar.
 
 Module roleid := NewAtom def_atom.
 Notation role:=roleid.t.

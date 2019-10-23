@@ -4,7 +4,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Require Import MPST.Forall.
+Require Import MPST.MP.Forall.
 
 Definition maximum := foldr maxn 0.
 
