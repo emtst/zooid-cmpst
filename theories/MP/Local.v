@@ -576,7 +576,7 @@ Section Session.
     | l_var v => Some (s_var v)
     | l_rec L =>
       let: s := partial_proj L r in
-      if s == Some (sbv 0) then None else ms_rec s
+      if s == Some (sbv 0) then Some s_end else ms_rec s
     | l_recv p t L =>
       if p == r then ms_recv t (partial_proj L r) else partial_proj L r
     | l_send p t L =>

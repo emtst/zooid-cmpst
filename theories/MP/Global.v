@@ -31,6 +31,15 @@ Section Syntax.
     | g_brn p K => (maximum (map (fun x=> depth_gty x.2) K)).+1
     end.
 
+  Fixpoint participants G :=
+    match G with
+    | g_end
+    | g_var _ => [::]
+    | g_rec G => participants G
+    | g_msg ((p, q), _) G => p::q::participants G
+    | g_brn ((p, q), _) K => p::q::flatten [seq participants x.2 | x <- K]
+    end.
+
   Lemma gty_ind1 :
     forall (P : g_ty -> Type),
       P g_end ->
