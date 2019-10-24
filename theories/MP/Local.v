@@ -396,12 +396,12 @@ Section Session.
     forall (P : s_ty -> Prop),
       P s_end ->
       (forall v, P (s_var v)) ->
-      (forall G, P G -> P (s_rec G)) ->
-      (forall t G, P G -> P (s_send t G)) ->
-      (forall t G, P G -> P (s_recv t G)) ->
-      (forall K, Forall (fun lL => P lL.2) K -> P (s_brn K)) ->
-      (forall K, Forall (fun lL => P lL.2) K -> P (s_sel K)) ->
-      forall l : s_ty, P l.
+      (forall s, P s -> P (s_rec s)) ->
+      (forall t s, P s -> P (s_send t s)) ->
+      (forall t s, P s -> P (s_recv t s)) ->
+      (forall K, Forall (fun lS => P lS.2) K -> P (s_brn K)) ->
+      (forall K, Forall (fun lS => P lS.2) K -> P (s_sel K)) ->
+      forall s : s_ty, P s.
   Proof.
     move => P P_end P_var P_rec P_send P_recv P_brn P_sel.
     fix Ih 1; case=>[|v|L|t L|t L|K|K].
@@ -472,13 +472,13 @@ Section Session.
     forall (P : s_ty -> Prop),
       P s_end ->
       (forall v, P (s_var v)) ->
-      (forall L, (forall X (s : {fset atom}), X \notin s -> P (L ^ X)) ->
-                 P (s_rec L)) ->
-      (forall t L, P L -> P (s_send t L)) ->
-      (forall t L, P L -> P (s_recv t L)) ->
-      (forall K, (forall l L, (l, L) \in K -> P L) -> P (s_brn K)) ->
-      (forall K, (forall l L, (l, L) \in K -> P L) -> P (s_sel K)) ->
-      forall l : s_ty, P l.
+      (forall s, (forall X (A : {fset atom}), X \notin A -> P (s ^ X)) ->
+                 P (s_rec s)) ->
+      (forall t s, P s -> P (s_send t s)) ->
+      (forall t s, P s -> P (s_recv t s)) ->
+      (forall K, (forall l s, (l, s) \in K -> P s) -> P (s_brn K)) ->
+      (forall K, (forall l s, (l, s) \in K -> P s) -> P (s_sel K)) ->
+      forall s : s_ty, P s.
   Proof.
     move => P P_end P_var P_rec P_send P_recv P_brn P_sel L.
     move: {-1}(depth_sty L) (leqnn (depth_sty L))=> n; move: n L; elim.
@@ -589,27 +589,41 @@ Section Session.
       else merge_all [seq (X.1, partial_proj X.2 r) | X <- K]
     end.
 
-  Fixpoint dual (L1 L2 : s_ty) : bool :=
-    match L1, L2 with
-    | s_end, s_end => true
-    | s_var v1, s_var v2 => v1 == v2
-    | s_rec s1, s_rec s2 => dual s1 s2
-    | s_send t L1, s_recv t' L2 =>  (t == t') && dual L1 L2
-    | s_recv t L1, s_send t' L2 =>  (t == t') && dual L1 L2
-    | s_brn K1, s_sel K2 =>
-      (fix all_dual K1 K2 :=
-         match K1, K2 with
-         | [::], [::] => true
-         | h1 :: t1, h2 :: t2 => (h1.1 == h2.1) && dual h1.2 h2.2 && all_dual t1 t2
-         | _, _ => false
-         end) K1 K2
-    | s_sel K1, s_brn K2 =>
-      (fix all_dual K1 K2 :=
-         match K1, K2 with
-         | [::], [::] => true
-         | h1 :: t1, h2 :: t2 => (h1.1 == h2.1) && dual h1.2 h2.2 && all_dual t1 t2
-         | _, _ => false
-         end) K1 K2
-    | _, _ => false
+  Fixpoint dual (L : s_ty) : s_ty :=
+    match L with
+    | s_end => s_end
+    | s_var v => s_var v
+    | s_rec s => s_rec (dual s)
+    | s_send t L =>  s_recv t (dual L)
+    | s_recv t L =>  s_send t (dual L)
+    | s_brn K => s_sel [seq (x.1, dual x.2) | x <- K]
+    | s_sel K => s_brn [seq (x.1, dual x.2) | x <- K]
     end.
+
+  Lemma dualK s : dual (dual s) = s.
+  Proof.
+    elim/sty_ind: s=>[|v|s Ih|t s Ih| t s Ih|K Ih|K Ih]//; try (by rewrite /=Ih).
+    - rewrite /= -map_comp /comp/=.
+      by elim: K Ih=>[//|[l s] K Ihl /= [-> /Ihl-[->]]].
+    - rewrite /= -map_comp /comp/=.
+      by elim: K Ih=>[//|[l s] K Ihl /= [-> /Ihl-[->]]].
+  Qed.
+
+  Definition is_dual (s1 s2 : s_ty) : bool := s1 == dual s2.
+
+  Lemma isdual_sym (s1 s2 : s_ty) : is_dual s1 s2 -> is_dual s2 s1.
+  Proof. by move=>/eqP->; rewrite /is_dual dualK. Qed.
+
+  Lemma is_dual_var v : is_dual (s_var v) (s_var v).
+  Proof. by rewrite /is_dual/dual. Qed.
+
+  Lemma isdualC (s1 s2 : s_ty) : is_dual s1 s2 = is_dual s2 s1.
+  Proof.
+    move: {-1}(is_dual s1 s2) (eq_refl (is_dual s1 s2)) => D.
+    rewrite /is_dual; case: D=>[/eqP/eqP->|].
+    - by rewrite dualK eq_refl.
+    - move=>/eqP; rewrite (rwP negPf)=> H; apply/esym; move: H; apply: contraTF.
+      by rewrite negbK=>/eqP->; rewrite dualK.
+  Qed.
+
 End Session.

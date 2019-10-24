@@ -112,10 +112,13 @@ Section Project.
 
   Definition mdual l r :=
     match l, r with
-    | Some L, Some L' => dual L L'
+    | Some L, Some L' => is_dual L L'
     | None, None => true
     | _, _ => false
     end.
+
+  Lemma mdualC l r : mdual l r = mdual r l.
+  Proof. by case: l; case: r=>/=//l r; rewrite isdualC. Qed.
 
   Notation sbv n := (s_var (Rvar.bv n)).
 
@@ -335,33 +338,21 @@ Section Project.
     case: ifP=>[/eqP-[->{L'}] /Ih->{Ih}|//].
     by case: (partial_proj L t)=>// L'; rewrite eq_refl.
   Qed.
-  (*
-  Lemma pproj_brn_swap pr p q L :
-    p_proj (project_brn pr q L) p
-    = pproj_brn pr q p (p_proj (merge_all L) p) [seq (X.1, p_proj X.2 p) | X <- L].
-  Proof.
-    case: pr=>[[f t] ty] /=.
-    rewrite !(fun_if (fun X=> p_proj X p)).
-    case: ifP =>// f_neq_t/=.
-    rewrite pproj_sel pproj_lbrn.
-
-    case: ifP=>/=//[f_eq_g|f_neq_g].
-    - by rewrite pproj_sel; move: f_neq_t f_eq_g.
-    - rewrite pproj_lbrn; case: ifP=>[|]. first (by case: ifP).
-      rewrite andbC/=.
-  Admitted.
-*)
 
   Lemma mdual_mrec Sp Sq : mdual (ms_rec Sp) (ms_rec Sq) = mdual Sp Sq.
   Proof. by case: Sp; case: Sq. Qed.
 
   Lemma mdual_msend_recv Sp Sq ty :
     mdual (ms_send ty Sp) (ms_recv ty Sq) = mdual Sp Sq.
-  Proof. by case: Sp; case: Sq=>//Sp Sq/=; rewrite eq_refl. Qed.
+  Proof.
+    case: Sp; case: Sq=>//Sp Sq/=; rewrite /is_dual/=.
+    rewrite -[s_send _ _ == s_send _ _]/((ty == ty) && (Sq == dual Sp)).
+    by rewrite eq_refl.
+  Qed.
 
   Lemma mdual_mrecv_send Sp Sq ty :
     mdual (ms_recv ty Sp) (ms_send ty Sq) = mdual Sp Sq.
-  Proof. by case: Sp; case: Sq=>//Sp Sq/=; rewrite eq_refl. Qed.
+  Proof. by rewrite mdualC mdual_msend_recv mdualC. Qed.
 
   Lemma pproj_def mL p S :
     p_proj mL p == Some S ->
@@ -377,23 +368,19 @@ Section Project.
     elim: K K'=>[|[l Sl] K Ih];case=>[|[r Sr] K']/=//.
     case: Sl; case: Sr=>///=; try (by rewrite -andbA andbC).
     move=> Sl Sr /andP-[/andP-[/eqP<- SlSr] /Ih-{Ih}].
-    rewrite !option_comm/=.
-    case: (flatten K'); case: (flatten K)=>//{K K'} K K' /=->.
-    by rewrite eq_refl SlSr.
+    rewrite !option_comm /=.
+    case: (flatten K'); case: (flatten K)=>//{K K'} K K'; rewrite /=/is_dual/=.
+    by move: SlSr; rewrite/is_dual/==>/eqP<-; move=>/eqP-[<-].
   Qed.
 
   Lemma mdual_mbrn_msel K K' :
     all2 (fun x y => (x.1 == y.1) && mdual x.2 y.2) K K' ->
     mdual (ms_brn K) (ms_sel K').
   Proof.
-    rewrite /ms_sel /ms_brn; case: K; case: K'=>// lS K lS' K'.
-    rewrite !flatalts_cons; move: {lS K lS' K'} (lS :: K) (lS' :: K')=> K K'.
-    elim: K K'=>[|[l Sl] K Ih];case=>[|[r Sr] K']/=//.
-    case: Sl; case: Sr=>///=; try (by rewrite -andbA andbC).
-    move=> Sl Sr /andP-[/andP-[/eqP<- SlSr] /Ih-{Ih}].
-    rewrite !option_comm/=.
-    case: (flatten K'); case: (flatten K)=>//{K K'} K K' /=->.
-    by rewrite eq_refl SlSr.
+    move=> H; suff: all2 (fun x y => (x.1 == y.1) && mdual x.2 y.2) K' K
+             by move=>/mdual_msel_mbrn; rewrite mdualC.
+    elim: K' K H=>[|h t Ih]; case=>[|h' t']/=//; move=>/andP-[/andP-[/eqP<-]].
+    by rewrite mdualC=>-> /Ih->; rewrite eq_refl.
   Qed.
 
   Lemma all2_map A B C (P : B -> C -> bool) f g (L : seq A) :
@@ -402,69 +389,29 @@ Section Project.
   Proof. by elim: L => [|a L /=->]. Qed.
 
   Lemma dual_brn_sel K K1 :
-    dual (s_brn K) (s_sel K1)
-    = all2 (fun X Y => (X.1 == Y.1) && dual X.2 Y.2) K K1.
+    is_dual (s_brn K) (s_sel K1)
+    = all2 (fun X Y => (X.1 == Y.1) && is_dual X.2 Y.2) K K1.
   Proof.
-    elim: K K1=>// [[ll Ll] K Ih [|[lr Lr] K1]//].
-    by move: Ih =>/=-Ih; rewrite Ih.
+    rewrite /is_dual; elim: K K1;[case=>//|].
+    by move=>[ll Ll] K Ih [|[lr Lr] K1]/=//; move: Ih=>/(_ K1)<-.
   Qed.
 
   Lemma dual_sel_brn K K1 :
-    dual (s_sel K) (s_brn K1)
-    = all2 (fun X Y => (X.1 == Y.1) && dual X.2 Y.2) K K1.
+    is_dual (s_sel K) (s_brn K1)
+    = all2 (fun X Y => (X.1 == Y.1) && is_dual X.2 Y.2) K K1.
   Proof.
-    elim: K K1=>// [[ll Ll] K Ih [|[lr Lr] K1]//]/=.
-    by move: Ih =>/=-Ih; rewrite Ih.
+    rewrite /is_dual; elim: K K1;[case=>//|].
+    by move=>[ll Ll] K Ih [|[lr Lr] K1]/=//; move: Ih=>/(_ K1)<-.
   Qed.
 
   Lemma dual_eq A B C:
-    dual A B ->
-    dual A C ->
+    is_dual A B ->
+    is_dual A C ->
     B = C.
   Proof.
-    elim/sty_ind: A B C=>[|v|L Ih|t L Ih|t L Ih|K Ih|K Ih] B C;case: B;case: C=>//.
-    + move=> v0 v1; case: v; case: v0; case: v1=>//.
-      - by move=> v v0 v1/==>/eqP->/eqP->.
-      - by move=> v v0 v1/==>/eqP->/eqP->.
-    + by move=> S S0 /= P1 P2; rewrite (Ih _ _ P1 P2).
-    + move=> t0 L0 t1 L2 /= /andP-[/eqP-> P1] /andP-[/eqP-> P2].
-      by rewrite (Ih _ _ P1 P2).
-    + move=> t0 L0 t1 L2 /= /andP-[/eqP-> P1] /andP-[/eqP-> P2].
-      by rewrite (Ih _ _ P1 P2).
-    + move=> K0 K1; rewrite !dual_brn_sel.
-      elim: K K0 K1 Ih=>//.
-      * by move=> K0 K1 /=; case: K0; case: K1.
-      * move=>[l1 S1] K1 Ih1 K2 K3 /= [Ih21 Ih22].
-        case:K3;case:K2=>//[[l2 S2] K4 [l3 S3] K5 /=].
-        move=>/andP-[/andP-[/eqP<- D13 K15]] /andP-[/andP-[/eqP<- D12 K14]].
-        rewrite (Ih21 _ _ D13 D12).
-        by move: Ih1=>/(_ K4 K5 Ih22 K15 K14)-[->].
-    + move=> K0 K1; rewrite !dual_sel_brn.
-      elim: K K0 K1 Ih=>//.
-      * by move=> K0 K1 /=; case: K0; case: K1.
-      * move=>[l1 S1] K1 Ih1 K2 K3 /= [Ih21 Ih22].
-        case:K3;case:K2=>//[[l2 S2] K4 [l3 S3] K5 /=].
-        move=>/andP-[/andP-[/eqP<- D13 K15]] /andP-[/andP-[/eqP<- D12 K14]].
-        rewrite (Ih21 _ _ D13 D12).
-        by move: Ih1=>/(_ K4 K5 Ih22 K15 K14)-[->].
-  Qed.
-
-  Lemma dual_sym A B:
-    dual A B =
-    dual B A.
-  Proof.
-    elim/sty_ind: A B=>//[|v|L Ih|t L Ih|t L Ih|K Ih|K Ih] B;case: B=>//.
-    + by move=>v0/=; rewrite eq_sym.
-    + by move=> ty L'/=; rewrite eq_sym Ih.
-    + by move=> ty L'/=; rewrite eq_sym Ih.
-    + elim: K Ih=>[|[l L] K /= Ih1 [Ih21 H22]].
-      - move=> _; case=>//.
-      - case=>// [[l' L'] K'] /=.
-        by rewrite eq_sym Ih21 Ih1.
-    + elim: K Ih=>[|[l L] K /= Ih1 [Ih21 H22]].
-      - move=> _; case=>//.
-      - case=>// [[l' L'] K'] /=.
-        by rewrite eq_sym Ih21 Ih1.
+    rewrite /is_dual =>/eqP/(f_equal dual).
+    rewrite dualK=><- /eqP/(f_equal dual)->.
+    by rewrite dualK.
   Qed.
 
   Lemma mdual_mergeall K K' :
@@ -481,10 +428,9 @@ Section Project.
     move: D; case: ifP=>[/eqP-> D1 D2|].
     - by rewrite (dual_eq D1 D2) eq_refl; apply: Ih.
     - case: ifP=>[/eqP->|]//.
-      rewrite dual_sym [dual Lr _]dual_sym => Neq D1 D2.
+      rewrite isdualC [is_dual Lr _]isdualC => Neq D1 D2.
       by move: (dual_eq D1 D2) =>/eqP; rewrite eq_sym Neq.
   Qed.
-
 
   Definition WFp (p : role) G := is_def (project G p).
 
@@ -536,12 +482,13 @@ Section Project.
     mdual (p_proj (project G p) q) (p_proj (project G q) p).
   Proof.
     move=>p_neq_q; elim/gty_ind1:G=>[|v/=|G|pr G|[[f t] ty] G]///=.
+    + by rewrite is_dual_var.
     + rewrite (fun_if (fun X=>p_proj X p)) (fun_if (fun X=>p_proj X q)) !pproj_rec /=.
       move=> Ih /wf_rec-[/negPf--> Wfp2] /wf_rec-[/negPf--> Wfq2].
       move: (p_proj (project G p) q) (p_proj (project G q) p) (Ih Wfp2 Wfq2).
       move=>S1 S2 {Ih Wfp2 Wfq2 p_neq_q p q G}.
       do 2 (case: S1; case: S2=>// S1 S2/=).
-      by move=>/eqP->; case: ifP=>///=.
+      by move=>/eqP-[->]; case: ifP=>///=; rewrite /is_dual/dual.
     + rewrite !pproj_msg_swap.
       move: (p_proj (project G p) q) (p_proj (project G q) p) => Sp Sq Ih.
       case: pr=> [[f t] ty]/=; rewrite andbC; case: ifP=>//f_neq_t.
