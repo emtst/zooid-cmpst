@@ -20,7 +20,9 @@ Canonical rvar_eqType := Rvar.eqType.
 Module Lbl := NewAtom def_atom.
 Notation lbl := Lbl.t.
 
-Parameter mty : eqType.
-Parameter mty_lbl : mty -> seq lbl.
-Parameter lbl_mty : seq lbl -> mty.
-Parameter lbl_mty_iso : forall l t, (lbl_mty l == t) = (l == mty_lbl t).
+Definition mty := nat.
+(*
+ Parameter mty_lbl : mty -> seq lbl.
+ Parameter lbl_mty : seq lbl -> mty.
+ Parameter lbl_mty_iso : forall l t, (lbl_mty l == t) = (l == mty_lbl t).
+*)
