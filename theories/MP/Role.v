@@ -17,13 +17,10 @@ Module Rvar := MkLnVar avar.
 Notation rvar := Rvar.t.
 Canonical rvar_eqType := Rvar.eqType.
 
+Module Lbl := NewAtom def_atom.
+Notation lbl := Lbl.t.
 
 Parameter mty : eqType.
-Parameter lbl : choiceType.
-
-Notation role_set := {fset role}.
-Notation lbl_alt  := {fset lbl}.
-
-Parameter mty_lbl : mty -> lbl_alt.
-Parameter lbl_mty : lbl_alt -> mty.
+Parameter mty_lbl : mty -> seq lbl.
+Parameter lbl_mty : seq lbl -> mty.
 Parameter lbl_mty_iso : forall l t, (lbl_mty l == t) = (l == mty_lbl t).

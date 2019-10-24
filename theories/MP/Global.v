@@ -265,6 +265,10 @@ Section Syntax.
   Qed.
 End Syntax.
 
+Section Semantics.
+
+End Semantics.
+
 (*
 r0 -> r1. r1 -> r0. r1 -> r2. r2 -> r1
 C0 < C1
