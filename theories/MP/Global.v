@@ -352,6 +352,9 @@ Section Semantics.
            step_all a ((lb, G) :: K) ((lb, G) :: K')
   .
 
+  Scheme step_ind1 := Induction for step Sort Prop
+  with stepall_ind1 := Induction for step_all Sort Prop.
+
   CoInductive trace :=
   | tr_end : trace
   | tr_next : act -> trace -> trace.

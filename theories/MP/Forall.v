@@ -9,6 +9,13 @@ Fixpoint Forall A (P : A -> Prop) (l : seq A) :=
   | h :: t => P h /\ Forall P t
   end.
 
+Fixpoint Forall2 A (P : A -> A -> Prop) (l1 l2 : seq A) :=
+  match l1, l2 with
+  | [::], [::] => True
+  | h1 :: t1, h2 :: t2 => P h1 h2 /\ Forall2 P t1 t2
+  | _, _ => False
+  end.
+
 Lemma Fa_cat A (P : A -> Prop) (l1 l2 : seq A) :
   Forall P (l1 ++ l2) <-> Forall P l1 /\ Forall P l2.
 Proof.
