@@ -351,6 +351,19 @@ Section Semantics.
            step_all a K K' ->
            step_all a ((lb, G) :: K) ((lb, G) :: K')
   .
+
+  CoInductive trace :=
+  | tr_end : trace
+  | tr_next : act -> trace -> trace.
+
+  CoInductive g_lts : trace -> rg_ty -> rg_ty -> Prop :=
+  | eg_end : g_lts tr_end rg_end rg_end
+  | eg_trans a t G G' G'' :
+      step a G G' ->
+      g_lts t G' G'' ->
+      g_lts (tr_next a t) G G''
+  .
+
 End Semantics.
 
 (*
