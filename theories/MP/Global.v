@@ -267,6 +267,90 @@ End Syntax.
 
 Section Semantics.
 
+  (* Represents intermediate states in the execution *)
+  Inductive rg_ty :=
+  | rg_end
+  | rg_var (v : rvar)
+  | rg_rec (G : rg_ty)
+  | rg_msg (p : g_prefix) (G : rg_ty)
+  | rg_rcv (p : g_prefix) (G : rg_ty)
+  | rg_brn (p : g_prefix) (K : seq (lbl * rg_ty))
+  | rg_alt (l : lbl) (p : g_prefix) (G : rg_ty).
+
+  Fixpoint rg_open (d : nat) (G2 : rg_ty) (G1 : rg_ty) :=
+    match G1 with
+    | rg_end => G1
+    | rg_var v => Rvar.open rg_var d G2 v
+    | rg_rec G => rg_rec (rg_open d.+1 G2 G)
+    | rg_msg p G => rg_msg p (rg_open d G2 G)
+    | rg_rcv p G => rg_rcv p (rg_open d G2 G)
+    | rg_brn p Gs => rg_brn p [seq (lG.1, rg_open d G2 lG.2) | lG <- Gs]
+    | rg_alt l p G => rg_alt l p (rg_open d G2 G)
+    end.
+
+  Inductive act :=
+  | a_send (p : g_prefix)
+  | a_recv (p : g_prefix)
+  | a_sel (p : role) (q : role) (l : lbl)
+  | a_brn (p : role) (q : role) (l : lbl)
+  .
+
+  Definition subject a :=
+    match a with
+    | a_send p => p.1.1
+    | a_recv p => p.1.2
+    | a_sel p _ _ => p
+    | a_brn _ q _ => q
+    end.
+
+  Fixpoint lookup (E : eqType) A (p : E) (K : seq (E * A)) : option A :=
+    match K with
+    | [::] => None
+    | h :: t => if h.1 == p then Some h.2 else lookup p t
+    end.
+
+  Inductive step : act -> rg_ty -> rg_ty -> Prop :=
+  (* Basic rules *)
+  | st_msg p G :
+      step (a_send p) (rg_msg p G) (rg_rcv p G)
+  | st_rcv p G :
+      step (a_recv p) (rg_rcv p G) G
+  | st_brn (lb : lbl) (p : g_prefix) (K : seq (lbl * rg_ty)) G :
+      lookup lb K = Some G ->
+      step (a_sel p.1.1 p.1.2 lb) (rg_brn p K) (rg_alt lb p G)
+  | st_alt (lb : lbl) (p : g_prefix) G :
+      step (a_brn p.1.1 p.1.2 lb) (rg_alt lb p G) G
+
+  (* Asynchronous *)
+  | st_amsg a p G G' :
+      subject a \notin [:: p.1.1; p.1.2] ->
+      step a G G' ->
+      step a (rg_msg p G) (rg_msg p G')
+  | st_arcv a p G G' :
+      subject a != p.1.2 ->
+      step a G G' ->
+      step a (rg_rcv p G) (rg_rcv p G')
+  | st_abrn a p K K' :
+      subject a \notin [:: p.1.1; p.1.2] ->
+      step_all a K K' ->
+      step a (rg_brn p K) (rg_brn p K')
+  | st_aalt a lb p G G' :
+      subject a != p.1.2 ->
+      step a G G' ->
+      step a (rg_alt lb p G) (rg_alt lb p G')
+
+
+  (* Structural *)
+  | st_rec l G G' :
+      step l (rg_open 0 G (rg_rec G)) G' ->
+      step l (rg_rec G)               G'
+  with step_all : act -> seq (lbl * rg_ty) -> seq (lbl * rg_ty) -> Prop :=
+       | st_nil a : step_all a [::] [::]
+       | st_cons a G G' K K' lb :
+           step a G G' ->
+           step_all a K K' ->
+           step_all a ((lb, G) :: K) ((lb, G) :: K')
+  .
 End Semantics.
 
 (*
