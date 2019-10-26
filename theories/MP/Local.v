@@ -678,30 +678,30 @@ Section Semantics.
   Definition enqueue_msg (Q : MsgQ) p := enqueue Q (p.1, inr p.2) .
   Definition enqueue_lbl (Q : MsgQ) p q lb := enqueue Q ((p, q), lb) .
   (** lstep a Q P Q' P' is the 'step' relation <Q, P> ->^a <Q', P'> in Coq*)
-  Inductive lstep : act -> MsgQ -> PEnv -> MsgQ -> PEnv -> Prop :=
+  Inductive lstep : act -> MsgQ * PEnv -> MsgQ * PEnv -> Prop :=
   | ls_snd p P Q P' Q' :
       Some (inr p.2, Q') == dequeue Q p.1 ->
       Some P' == do_act (a_send p) P ->
-      lstep (a_send p) Q P Q' P'
+      lstep (a_send p) (Q, P) (Q', P')
   | ls_rcv p P Q P' Q' :
       Q' == enqueue_msg Q p ->
       Some P' == do_act (a_recv p) P ->
-      lstep (a_recv p) Q P Q' P'
+      lstep (a_recv p) (Q, P) (Q', P')
   | ls_sel p q lb P Q P' Q' :
       Some (inl lb, Q') == dequeue Q (p, q) ->
       Some P' == do_act (a_sel p q lb) P ->
-      lstep (a_sel p q lb) Q P Q' P'
+      lstep (a_sel p q lb) (Q, P) (Q', P')
   | ls_brn p q lb P Q P' Q' :
       Some (inl lb, Q') == dequeue Q (p, q) ->
       Some P' == do_act (a_sel p q lb) P ->
-      lstep (a_brn p q lb) Q P Q' P'
+      lstep (a_brn p q lb) (Q, P) (Q', P')
   .
 
-  CoInductive ltrace : trace -> MsgQ -> PEnv -> MsgQ -> PEnv -> Prop :=
-  | lt_end Q P : ltrace tr_end Q P Q P
-  | lt_next a t Q P Q' P' Q'' P'' :
-      lstep a Q P Q'' P'' ->
-      ltrace t Q'' P'' Q' P' ->
-      ltrace (tr_next a t) Q P Q' P'.
+  CoInductive l_lts : trace -> MsgQ * PEnv -> MsgQ * PEnv -> Prop :=
+  | lt_end P : l_lts tr_end P P
+  | lt_next a t P P' P'' :
+      lstep a P P'' ->
+      l_lts t P'' P' ->
+      l_lts (tr_next a t) P P'.
 
 End Semantics.

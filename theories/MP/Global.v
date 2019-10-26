@@ -277,6 +277,16 @@ Section Semantics.
   | rg_brn (p : g_prefix) (K : seq (lbl * rg_ty))
   | rg_alt (l : lbl) (p : g_prefix) (G : rg_ty).
 
+
+  Fixpoint init G :=
+    match G with
+    | g_end => rg_end
+    | g_var v => rg_var v
+    | g_rec G => rg_rec (init G)
+    | g_msg p G => rg_msg p (init G)
+    | g_brn p K => rg_brn p [seq (X.1, init X.2) | X <- K]
+    end.
+
   Fixpoint eq_rg_ty a b :=
     match a, b with
     | rg_end, rg_end => true

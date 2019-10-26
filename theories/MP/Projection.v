@@ -93,6 +93,18 @@ Section Project.
       project_brn p r KL
     end.
 
+  Fixpoint project_all (g : g_ty) (r : seq role) : option (seq (role * l_ty)) :=
+    match r with
+    | [::] => Some [::]
+    | h :: t => match project g h, project_all g t with
+                | Some L, Some E => Some ((h, L) :: E)
+                | _, _ => None
+                end
+    end.
+
+  Definition projection (g : g_ty) : option (seq (role * l_ty)) :=
+    project_all g (participants g).
+
   Lemma eta_option A (x : option A) :
     match x with
     | Some y => Some y
