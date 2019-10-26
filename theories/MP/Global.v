@@ -275,8 +275,19 @@ Section Semantics.
   | rg_msg (p : g_prefix) (G : rg_ty)
   | rg_rcv (p : g_prefix) (G : rg_ty)
   | rg_brn (p : g_prefix) (K : seq (lbl * rg_ty))
-  | rg_alt (l : lbl) (p : g_prefix) (G : rg_ty).
+  | rg_alt (l : lbl) (p : g_prefix) (K : seq (lbl * rg_ty)).
 
+
+  Fixpoint rg_parts G :=
+    match G with
+    | rg_end
+    | rg_var _  => [::]
+    | rg_rec G => rg_parts G
+    | rg_msg p G
+    | rg_rcv p G => p.1.1 :: p.1.2 :: rg_parts G
+    | rg_alt _ p K
+    | rg_brn p K => p.1.1 :: p.1.2 :: flatten [seq rg_parts X.2 | X <- K]
+    end.
 
   Fixpoint init G :=
     match G with
@@ -294,8 +305,14 @@ Section Semantics.
     | rg_rec G1, rg_rec G2 => eq_rg_ty G1 G2
     | rg_msg p1 G1, rg_msg p2 G2 => (p1 == p2) && eq_rg_ty G1 G2
     | rg_rcv p1 G1, rg_rcv p2 G2 => (p1 == p2) && eq_rg_ty G1 G2
-    | rg_alt lb1 p1 G1, rg_alt lb2 p2 G2
-      => (lb1 == lb2) && (p1 == p2) && eq_rg_ty G1 G2
+    | rg_alt l1 p1 K1, rg_alt l2 p2 K2 =>
+      (l1 == l2) && (p1 == p2)
+        && (fix eqL K1 K2 :=
+              match K1, K2 with
+              | [::], [::] => true
+              | l::K1, r::K2 => (l.1 == r.1) && eq_rg_ty l.2 r.2 && eqL K1 K2
+              | _, _ => false
+              end) K1 K2
     | rg_brn p1 K1, rg_brn p2 K2 =>
       (p1 == p2)
         && (fix eqL K1 K2 :=
@@ -309,11 +326,19 @@ Section Semantics.
 
   Definition eq_rg_alt (l r : lbl * rg_ty) := (l.1 == r.1) && eq_rg_ty l.2 r.2.
 
-  Lemma eqrgty_all p1 K1 p2 K2 :
+  Lemma eqrgty_brn_all p1 K1 p2 K2 :
     eq_rg_ty (rg_brn p1 K1) (rg_brn p2 K2) =
     (p1 == p2) && all2 eq_rg_alt K1 K2.
   Proof.
     rewrite /=; case: eqP=>///= _ {p1 p2}.
+    by move: K2; elim: K1=>[|lG1 K1 Ih]; case=>[|lG2 K2]/=//; rewrite Ih.
+  Qed.
+
+  Lemma eqrgty_alt_all l1 l2 p1 K1 p2 K2 :
+    eq_rg_ty (rg_alt l1 p1 K1) (rg_alt l2 p2 K2) =
+    (l1 == l2) && (p1 == p2) && all2 eq_rg_alt K1 K2.
+  Proof.
+    rewrite /=; case: eqP=>///= _ {l1 l2}; case: eqP=>///= _ {p1 p2}.
     by move: K2; elim: K1=>[|lG1 K1 Ih]; case=>[|lG2 K2]/=//; rewrite Ih.
   Qed.
 
@@ -327,15 +352,21 @@ Section Semantics.
     + by rewrite /=; case: Ih=>[->|H];constructor=>//[[]].
     + by rewrite /=; case:eqP=>[->|H]; case: Ih=>[->|H'];constructor=>//[[]].
     + by rewrite /=; case:eqP=>[->|H]; case: Ih=>[->|H'];constructor=>//[[]].
-    + rewrite eqrgty_all; case: eqP=>[<-|H];[|constructor=>[[]]//] =>/=.
+    + rewrite eqrgty_brn_all; case: eqP=>[<-|H];[|constructor=>[[]]//] =>/=.
       elim: Gsl Gsr.
       - by case; constructor.
       - move=>[ll Gl] Gsl Ih' [|[lr Gr] Gsr] /=; try (by constructor).
         rewrite /eq_rg_alt/=; case: eqP=>[->|F];[|constructor=>[[/F]]//].
         case: Ih=>[<-|F];[|constructor=>[[/F]]//].
         by case: Ih'=>[[]<-|F];constructor=>//[[F']]; move: F' F=>->.
-    + by rewrite /=; case:eqP=>[->|H]; case:eqP=>[->|H'];
-                     case: Ih=>[->|H''];constructor=>//[[]].
+    + rewrite eqrgty_alt_all; case: eqP=>[<-|H];[|constructor=>[[]]//] =>/=.
+      case: eqP=>[<-|H];[|constructor=>[[]]//] =>/=.
+      elim: Gl Gr.
+      - by case; constructor.
+      - move=>[ll Gl] Gsl Ih' [|[lr Gr] Gsr] /=; try (by constructor).
+        rewrite /eq_rg_alt/=; case: eqP=>[->|F];[|constructor=>[[/F]]//].
+        case: Ih=>[<-|F];[|constructor=>[[/F]]//].
+        by case: Ih'=>[[]<-|F];constructor=>//[[F']]; move: F' F=>->.
   Qed.
 
   Definition rg_ty_eqMixin := EqMixin rg_ty_eqP.
@@ -355,8 +386,8 @@ Section Semantics.
       (forall G, P G -> P (rg_rec G)) ->
       (forall p G, P G -> P (rg_msg p G)) ->
       (forall p G, P G -> P (rg_rcv p G)) ->
-      (forall lb p G, P G -> P (rg_alt lb p G)) ->
-      (forall p Gs, (forall lG, member lG Gs -> P lG.2) -> P (rg_brn p Gs)) ->
+      (forall lb p K, (forall lG, member lG K -> P lG.2) -> P (rg_alt lb p K)) ->
+      (forall p K, (forall lG, member lG K -> P lG.2) -> P (rg_brn p K)) ->
       forall g : rg_ty, P g.
   Proof.
     move=> P P_end P_var P_rec P_msg P_rcv P_alt P_branch; fix Ih 1; case.
@@ -369,7 +400,10 @@ Section Semantics.
       - by [].
       - move=> lG1 {Gs}Gs IhGs/=; split; first by apply Ih.
         apply: IhGs.
-    + by move=> lb p G; apply: P_alt =>//.
+    + move=>l p Gs; apply: P_alt; apply/forall_member; elim Gs.
+      - by [].
+      - move=> lG1 {Gs}Gs IhGs/=; split; first by apply Ih.
+        apply: IhGs.
   Qed.
 
   Lemma rgty_ind2 :
@@ -379,11 +413,12 @@ Section Semantics.
       (forall G, P G -> P (rg_rec G)) ->
       (forall p G, P G -> P (rg_msg p G)) ->
       (forall p G, P G -> P (rg_rcv p G)) ->
-      (forall lb p G, P G -> P (rg_alt lb p G)) ->
+      (forall l p Gs, Forall (fun lG => P lG.2) Gs -> P (rg_alt l p Gs)) ->
       (forall p Gs, Forall (fun lG => P lG.2) Gs -> P (rg_brn p Gs)) ->
       forall g : rg_ty, P g.
   Proof.
     move=> P P_end P_var P_rec P_msg P_rcv P_alt P_branch; elim/rgty_ind1=>//.
+    by move=> l p Gs /forall_member; apply: P_alt.
     by move=> p Gs /forall_member; apply: P_branch.
   Qed.
 
@@ -395,7 +430,7 @@ Section Semantics.
     | rg_msg p G => rg_msg p (rg_open d G2 G)
     | rg_rcv p G => rg_rcv p (rg_open d G2 G)
     | rg_brn p Gs => rg_brn p [seq (lG.1, rg_open d G2 lG.2) | lG <- Gs]
-    | rg_alt l p G => rg_alt l p (rg_open d G2 G)
+    | rg_alt l p Gs => rg_alt l p [seq (lG.1, rg_open d G2 lG.2) | lG <- Gs]
     end.
 
   Fixpoint rg_close (v : atom) (d : nat) (G1 : rg_ty) :=
@@ -405,7 +440,7 @@ Section Semantics.
     | rg_rec G => rg_rec (rg_close v d.+1 G)
     | rg_msg p G => rg_msg p (rg_close v d G)
     | rg_rcv p G => rg_rcv p (rg_close v d G)
-    | rg_alt lb p G => rg_alt lb p (rg_close v d G)
+    | rg_alt l p Gs => rg_alt l p [seq (lG.1, rg_close v d lG.2) | lG <- Gs]
     | rg_brn p Gs => rg_brn p [seq (lG.1, rg_close v d lG.2) | lG <- Gs]
     end.
 
@@ -415,8 +450,8 @@ Section Semantics.
     | rg_var v => Rvar.fvar v
     | rg_rec G
     | rg_msg _ G
-    | rg_rcv _ G
-    | rg_alt _ _ G => rg_fvar G
+    | rg_rcv _ G => rg_fvar G
+    | rg_alt _ _ Gs
     | rg_brn _ Gs => fsetUs [seq rg_fvar lG.2 | lG <- Gs]
     | rg_end => fset0
     end.
@@ -426,8 +461,8 @@ Section Semantics.
     | rg_var v => Rvar.fbvar d v
     | rg_rec G  => rg_fbvar d.+1 G
     | rg_msg _ G
-    | rg_rcv _ G
-    | rg_alt _ _ G => rg_fbvar d G
+    | rg_rcv _ G  => rg_fbvar d G
+    | rg_alt _ _ Gs
     | rg_brn _ Gs => fsetUs [seq rg_fbvar d lG.2 | lG <- Gs]
     | rg_end => fset0
     end.
@@ -461,8 +496,11 @@ Section Semantics.
       by rewrite -[in RHS](Ih d).
     - move=> p G Ih d; rewrite /rg_fvar -/(rg_fvar _)=>/Ih-{Ih}Ih.
       by rewrite -[in RHS](Ih d).
-    - move=> lb p G Ih d; rewrite /rg_fvar -/(rg_fvar _)=>/Ih-{Ih}Ih.
-      by rewrite -[in RHS](Ih d).
+    - move=> l p Gs /Fa_lift-Ih n; move: (Ih n)=>{Ih}Ih.
+      rewrite notin_fold_all -/rg_fvar all_map /preim/=.
+      rewrite /SimplPred/= -map_comp/comp/= =>/forallbP/=.
+      move=>/(Fa_conj Ih)/Fa_app{Ih}/Fa_map_eq-Ih; congr rg_alt.
+      by elim: Gs Ih=>[//|[ll G] Gs /= Ih [->/Ih->]].
     - move=> p Gs /Fa_lift-Ih n; move: (Ih n)=>{Ih}Ih.
       rewrite notin_fold_all -/rg_fvar all_map /preim/=.
       rewrite /SimplPred/= -map_comp/comp/= =>/forallbP/=.
@@ -479,7 +517,12 @@ Section Semantics.
       by rewrite -Eq.
     - by move=> p G Ih d n Eq n_in; congr rg_msg; apply: (Ih d).
     - by move=> p G Ih d n Eq n_in; congr rg_rcv; apply: (Ih d).
-    - by move=> lb p G Ih d n Eq n_in; congr rg_alt; apply: (Ih d).
+    - move=> l p Gs /Fa_lift-Fa d n Eq; rewrite notin_fold_all !all_map /preim/=.
+      move: (Fa d)=>{Fa}/Fa_lift/(_ n)/Fa_lift/(_ Eq)-Fa.
+      move=>/forallbP/(Fa_conj Fa){Fa}.
+      rewrite /SimplPred/= =>/Fa_app/Fa_map_eq-Ih.
+      rewrite -map_comp /comp/=; congr rg_alt => {Eq} {d} {n0} {p}.
+      by elim: Gs Ih=>[//|/=[ll G] Gs Ih [-> /Ih->]].
     - move=> p Gs /Fa_lift-Fa d n Eq; rewrite notin_fold_all !all_map /preim/=.
       move: (Fa d)=>{Fa}/Fa_lift/(_ n)/Fa_lift/(_ Eq)-Fa.
       move=>/forallbP/(Fa_conj Fa){Fa}.
@@ -497,9 +540,10 @@ Section Semantics.
       step (a_recv p) (rg_rcv p G) G
   | st_brn (lb : lbl) (p : g_prefix) (K : seq (lbl * rg_ty)) G :
       lookup lb K == Some G ->
-      step (a_sel p.1.1 p.1.2 lb) (rg_brn p K) (rg_alt lb p G)
-  | st_alt (lb : lbl) (p : g_prefix) G :
-      step (a_brn p.1.1 p.1.2 lb) (rg_alt lb p G) G
+      step (a_sel p.1.1 p.1.2 lb) (rg_brn p K) (rg_alt lb p K)
+  | st_alt (lb : lbl) (p : g_prefix) K G :
+      lookup lb K == Some G ->
+      step (a_brn p.1.1 p.1.2 lb) (rg_alt lb p K) G
 
   (* Asynchronous *)
   | st_amsg a p G G' :
@@ -514,11 +558,10 @@ Section Semantics.
       subject a \notin [:: p.1.1; p.1.2] ->
       step_all a K K' ->
       step a (rg_brn p K) (rg_brn p K')
-  | st_aalt a lb p G G' :
+  | st_aalt a lb p K K' :
       subject a != p.1.2 ->
-      step a G G' ->
-      step a (rg_alt lb p G) (rg_alt lb p G')
-
+      step_only lb a K K' ->
+      step a (rg_alt lb p K) (rg_alt lb p K')
 
   (* Structural *)
   | st_rec l G G' :
@@ -529,11 +572,20 @@ Section Semantics.
        | st_cons a G G' K K' lb :
            step a G G' ->
            step_all a K K' ->
-           step_all a ((lb, G) :: K) ((lb, G) :: K')
+           step_all a ((lb, G) :: K) ((lb, G') :: K')
+  with step_only : lbl -> act -> seq (lbl * rg_ty) -> seq (lbl * rg_ty) -> Prop :=
+       | st_this a G G' K lb :
+           step a G G' ->
+           step_only lb a ((lb, G) :: K) ((lb, G') :: K)
+       | st_next a lG K K' lb  :
+           lb != lG.1 ->
+           step_only lb a K K' ->
+           step_only lb a (lG :: K) (lG :: K')
   .
 
   Scheme step_ind1 := Induction for step Sort Prop
-  with stepall_ind1 := Induction for step_all Sort Prop.
+  with stepall_ind1 := Induction for step_all Sort Prop
+  with steponly_ind1 := Induction for step_only Sort Prop.
 
   CoInductive g_lts : trace -> rg_ty -> rg_ty -> Prop :=
   | eg_end : g_lts tr_end rg_end rg_end
