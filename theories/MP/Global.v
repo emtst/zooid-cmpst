@@ -8,9 +8,9 @@ Require Import MPST.MP.Atom.
 Require Import MPST.MP.Role.
 Require Import MPST.MP.Forall.
 Require Import MPST.MP.LNVar.
+Require Import MPST.MP.Actions.
 
 Section Syntax.
-  Definition g_prefix := ((role * role) * mty)%type.
 
   Inductive g_ty :=
   | g_end
@@ -479,27 +479,6 @@ Section Semantics.
   Qed.
   Close Scope fset_scope.
 
-  Inductive act :=
-  | a_send (p : g_prefix)
-  | a_recv (p : g_prefix)
-  | a_sel (p : role) (q : role) (l : lbl)
-  | a_brn (p : role) (q : role) (l : lbl)
-  .
-
-  Definition subject a :=
-    match a with
-    | a_send p => p.1.1
-    | a_recv p => p.1.2
-    | a_sel p _ _ => p
-    | a_brn _ q _ => q
-    end.
-
-  Fixpoint lookup (E : eqType) A (p : E) (K : seq (E * A)) : option A :=
-    match K with
-    | [::] => None
-    | h :: t => if h.1 == p then Some h.2 else lookup p t
-    end.
-
   Inductive step : act -> rg_ty -> rg_ty -> Prop :=
   (* Basic rules *)
   | st_msg p G :
@@ -545,10 +524,6 @@ Section Semantics.
 
   Scheme step_ind1 := Induction for step Sort Prop
   with stepall_ind1 := Induction for step_all Sort Prop.
-
-  CoInductive trace :=
-  | tr_end : trace
-  | tr_next : act -> trace -> trace.
 
   CoInductive g_lts : trace -> rg_ty -> rg_ty -> Prop :=
   | eg_end : g_lts tr_end rg_end rg_end

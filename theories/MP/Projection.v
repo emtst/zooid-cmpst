@@ -474,7 +474,6 @@ Section Project.
     by rewrite option_comm=> H; apply: Ih; move: H; case: (flatten K).
   Qed.
 
-  (* Lemma is not correct, need some precondition! (e.g. all defined?) *)
   Lemma all_compat G p q :
     p != q ->
     WFp p G ->
@@ -557,5 +556,3 @@ Section Project.
   Qed.
 
 End Project.
-
-Print Assumptions all_compat.

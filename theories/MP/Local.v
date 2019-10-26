@@ -8,6 +8,7 @@ Require Import MPST.MP.Atom.
 Require Import MPST.MP.Role.
 Require Import MPST.MP.Forall.
 Require Import MPST.MP.LNVar.
+Require Import MPST.MP.Actions.
 
 Section Syntax.
   Inductive l_ty :=
@@ -625,5 +626,82 @@ Section Session.
     - move=>/eqP; rewrite (rwP negPf)=> H; apply/esym; move: H; apply: contraTF.
       by rewrite negbK=>/eqP->; rewrite dualK.
   Qed.
-
 End Session.
+
+Section Semantics.
+
+  Definition PEnv := seq (role * l_ty).
+
+  Definition act_lty a L :=
+    if subject a == L.1
+    then
+      let L1 := match L.2 with
+                | l_rec L' => l_open 0 (l_rec L') L'
+                | _ => L.2
+                end
+      in match a, L1 with
+         | a_send p, l_send q ty L' =>
+           if (p.1.2 == q) && (p.2 == ty) then Some L'
+           else None
+         | a_recv p, l_recv q ty L' =>
+           if (p.1.1 == q) && (p.2 == ty) then Some L'
+           else None
+         | a_brn p q lb, l_brn q' K =>
+           if q == q'
+           then lookup lb K
+           else None
+         | a_sel p q lb, l_sel p' K =>
+           if p == p'
+           then lookup lb K
+           else None
+         | _, _ => None
+         end
+    else
+      None.
+
+  Fixpoint do_act (a : act) (e : PEnv) : option PEnv :=
+    match e with
+    | [::] => None
+    | h :: t => if h.1 == subject a
+                then
+                  match act_lty a h with
+                  | None => None
+                  | Some L => Some ((h.1, L) :: t)
+                  end
+                else
+                 match do_act a t with
+                  | None => None
+                  | Some t' => Some (h :: t')
+                  end
+    end.
+
+  Definition enqueue_msg (Q : MsgQ) p := enqueue Q (p.1, inr p.2) .
+  Definition enqueue_lbl (Q : MsgQ) p q lb := enqueue Q ((p, q), lb) .
+  (** lstep a Q P Q' P' is the 'step' relation <Q, P> ->^a <Q', P'> in Coq*)
+  Inductive lstep : act -> MsgQ -> PEnv -> MsgQ -> PEnv -> Prop :=
+  | ls_snd p P Q P' Q' :
+      Some (inr p.2, Q') == dequeue Q p.1 ->
+      Some P' == do_act (a_send p) P ->
+      lstep (a_send p) Q P Q' P'
+  | ls_rcv p P Q P' Q' :
+      Q' == enqueue_msg Q p ->
+      Some P' == do_act (a_recv p) P ->
+      lstep (a_recv p) Q P Q' P'
+  | ls_sel p q lb P Q P' Q' :
+      Some (inl lb, Q') == dequeue Q (p, q) ->
+      Some P' == do_act (a_sel p q lb) P ->
+      lstep (a_sel p q lb) Q P Q' P'
+  | ls_brn p q lb P Q P' Q' :
+      Some (inl lb, Q') == dequeue Q (p, q) ->
+      Some P' == do_act (a_sel p q lb) P ->
+      lstep (a_brn p q lb) Q P Q' P'
+  .
+
+  CoInductive ltrace : trace -> MsgQ -> PEnv -> MsgQ -> PEnv -> Prop :=
+  | lt_end Q P : ltrace tr_end Q P Q P
+  | lt_next a t Q P Q' P' Q'' P'' :
+      lstep a Q P Q'' P'' ->
+      ltrace t Q'' P'' Q' P' ->
+      ltrace (tr_next a t) Q P Q' P'.
+
+End Semantics.
