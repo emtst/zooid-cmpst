@@ -134,6 +134,27 @@ Section TraceEquiv.
     forall (P : MsgQ * seq (role * l_ty)),
     q_projection G == Some P ->
     step_equiv G P.
+  Proof.
+    rewrite /step_equiv => [[Q P] G_P a]; split.
+    - move=> [G' H]; move: H G_P; elim =>//.
+      (* Lemmas about q_projection to simplify these proofs: e.g.
+         if q_projection (rg_msg p G) == Some (Q, P) ->
+            msg_proj G p == Some Qp &&
+            msg_proj G q == Some Qq &&
+            Q == Qp ++ Qq &&
+            q_proj G p == Some Lp &&
+            q_proj G q == Some Lq &&
+            q_projection G == Some (Q', P') &&
+            Q == Qp ++ Qq ++ Q' &&
+            P == (p, Lp) :: (q, Lq) :: Some (Q', P')
+
+          Maybe the better option is to reflect q_projection as an inductive
+          predicate relating
+      *)
+      + move=> [[p q] ty] G0 /=.
+      admit.
+    - move=> [[Q' P']].
+      admit.
   Admitted.
 
   (*

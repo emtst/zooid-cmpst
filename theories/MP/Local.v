@@ -678,19 +678,19 @@ Section Semantics.
     end.
 
   Definition enqueue_msg (Q : MsgQ) p := enqueue Q (p.1, inr p.2) .
-  Definition enqueue_lbl (Q : MsgQ) p q lb := enqueue Q ((p, q), lb) .
+  Definition enqueue_lbl (Q : MsgQ) p q lb := enqueue Q ((p, q), inl lb) .
   (** lstep a Q P Q' P' is the 'step' relation <Q, P> ->^a <Q', P'> in Coq*)
   Inductive lstep : act -> MsgQ * PEnv -> MsgQ * PEnv -> Prop :=
   | ls_snd p P Q P' Q' :
-      Some (inr p.2, Q') == dequeue Q p.1 ->
+      Q' == enqueue_msg Q p ->
       Some P' == do_act (a_send p) P ->
       lstep (a_send p) (Q, P) (Q', P')
   | ls_rcv p P Q P' Q' :
-      Q' == enqueue_msg Q p ->
+      Some (inr p.2, Q') == dequeue Q p.1 ->
       Some P' == do_act (a_recv p) P ->
       lstep (a_recv p) (Q, P) (Q', P')
   | ls_sel p q lb P Q P' Q' :
-      Some (inl lb, Q') == dequeue Q (p, q) ->
+      Q' == enqueue_lbl Q p q lb ->
       Some P' == do_act (a_sel p q lb) P ->
       lstep (a_sel p q lb) (Q, P) (Q', P')
   | ls_brn p q lb P Q P' Q' :
