@@ -277,6 +277,16 @@ Section Semantics.
   | rg_brn (p : g_prefix) (K : seq (lbl * rg_ty))
   | rg_alt (l : lbl) (p : g_prefix) (K : seq (lbl * rg_ty)).
 
+  Fixpoint rg_depth (G : rg_ty) : nat :=
+    match G with
+    | rg_var _
+    | rg_end => 0
+    | rg_rec G
+    | rg_msg _ G
+    | rg_rcv _ G => (rg_depth G).+1
+    | rg_alt _ _ Gs
+    | rg_brn _ Gs => (maximum [seq rg_depth lG.2 | lG <- Gs]).+1
+    end.
 
   Fixpoint rg_parts G :=
     match G with
@@ -433,6 +443,24 @@ Section Semantics.
     | rg_alt l p Gs => rg_alt l p [seq (lG.1, rg_open d G2 lG.2) | lG <- Gs]
     end.
 
+  Lemma rg_depth_open G G' : rg_depth G' == 0 ->
+                             rg_depth G = rg_depth (rg_open 0 G' G).
+  Proof.
+    move: {-1}0; elim/rgty_ind2: G=>/=//.
+    + by case=>///= n n'; case: ifP=>// _ /eqP->.
+    + by move=> G Ih n H; rewrite (Ih n.+1).
+    + by move=> _ G Ih n H; rewrite (Ih n).
+    + by move=> _ G Ih n H; rewrite (Ih n).
+    + move=> _ _ Gs /Fa_lift-Ih n.
+      move: (Ih n) => {Ih}/Fa_lift-Ih /Ih-{Ih}/Fa_map_eq.
+      rewrite -map_comp /comp/=.
+      by elim: Gs=>[//|/=[l G] Gs Ih []<- /Ih-{Ih}[<-]].
+    + move=> _ Gs /Fa_lift-Ih n.
+      move: (Ih n) => {Ih}/Fa_lift-Ih /Ih-{Ih}/Fa_map_eq.
+      rewrite -map_comp /comp/=.
+      by elim: Gs=>[//|/=[l G] Gs Ih []<- /Ih-{Ih}[<-]].
+  Qed.
+
   Fixpoint rg_close (v : atom) (d : nat) (G1 : rg_ty) :=
     match G1 with
     | rg_end => G1
@@ -582,6 +610,8 @@ Section Semantics.
            step_only lb a K K' ->
            step_only lb a (lG :: K) (lG :: K')
   .
+
+  Derive Inversion step_inv with (forall a G G', step a G G') Sort Prop.
 
   Scheme step_ind1 := Induction for step Sort Prop
   with stepall_ind1 := Induction for step_all Sort Prop

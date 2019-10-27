@@ -102,8 +102,26 @@ Section Project.
                 end
     end.
 
+  Fixpoint isg_valid d G :=
+    match d with
+    | 0 => match G with
+           | g_var _ => false
+           | _ => true
+           end
+    | S d =>
+      match G with
+      | g_rec G =>
+        if G == g_end then false
+        else isg_valid d (g_open 0 g_end G)
+      | _ => true
+      end
+    end.
+
+  Definition g_valid G := isg_valid (depth_gty G) G.
+
   Definition projection (g : g_ty) : option (seq (role * l_ty)) :=
-    project_all g (participants g).
+    if g_valid g then project_all g (participants g)
+    else None.
 
   Lemma eta_option A (x : option A) :
     match x with

@@ -119,8 +119,16 @@ Section TraceEquiv.
                 end
     end.
 
+  Fixpoint is_valid G :=
+    match G with
+    | rg_var _ => false
+    | rg_rec G => is_valid G && (G != rg_end)
+    | _ => true
+    end.
+
   Definition q_projection G :=
-    q_project G (rg_parts G).
+    if is_valid G then q_project G (rg_parts G)
+    else None.
 
   Lemma g_stequiv G :
     forall (P : MsgQ * seq (role * l_ty)),
@@ -128,18 +136,35 @@ Section TraceEquiv.
     step_equiv G P.
   Admitted.
 
+  (*
+  Lemma st_valid a G G' :
+    is_valid G -> step a G G' -> is_valid G'.
+  Proof.
+  Admitted.
+   *)
+
   Lemma g_stproj a G G' :
     forall (P P' : MsgQ * seq (role * l_ty)),
     q_projection G == Some P ->
     step a G G' ->
     lstep a P P' ->
     q_projection G' == Some P'.
+  Proof.
   Admitted.
 
   Lemma qproj_end G :
     q_projection G == Some ([::], [::]) ->
     G = rg_end.
-  Admitted.
+  Proof.
+    rewrite /q_projection.
+    elim: {-1} (rg_parts G) (eq_refl (rg_parts G)) =>//.
+    + elim/rgty_ind2: G=>///= G; case: (is_valid G) =>//.
+      by move=> Ih /Ih/(_ (eq_refl _))->; rewrite eq_refl.
+    + move=> p rs Ih/= _.
+      case: (is_valid G); case: (q_proj G p); case: (q_project G rs) =>//.
+      - by move=>[Q P] [Q' L] /eqP-[].
+      - by move=>[Q P].
+  Qed.
 
   Lemma g_trequiv G :
     forall (P : MsgQ * seq (role * l_ty)),
@@ -195,10 +220,15 @@ Section TraceEquiv.
       by apply/Fa_map_eq/forall_member => x xK; move: (Ih x xK)=>->.
   Qed.
 
+  Lemma gvalid_isvalid G :
+    is_valid (init G) = g_valid G.
+  Admitted.
+
   Lemma project_init G P :
     projection G == Some P -> q_projection (init G) = Some ([::], P).
   Proof.
-    rewrite /projection/q_projection rgparts_init; elim: (participants G) P.
+    rewrite /projection/q_projection rgparts_init gvalid_isvalid.
+    case: (g_valid G) =>//; elim: (participants G) P.
     - by move=>P /eqP-[<-].
     - move=> a ps Ih/= P.
       rewrite /q_proj msg_project_init rg_project_init option_comm.
@@ -213,3 +243,8 @@ Section TraceEquiv.
   Proof. by move=>P /project_init/eqP; apply g_trequiv. Qed.
 
 End TraceEquiv.
+
+(* Validity of global types without participants missing, plus related lemmas
+ * We need that, if valid G and step a G G', then valid G'
+ *)
+Print Assumptions global_local_trequiv.
