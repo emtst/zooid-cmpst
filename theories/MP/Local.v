@@ -666,7 +666,9 @@ Section Semantics.
                 then
                   match act_lty a h with
                   | None => None
-                  | Some L => Some ((h.1, L) :: t)
+                  | Some L =>
+                    if L == l_end then Some t
+                    else Some ((h.1, L) :: t)
                   end
                 else
                  match do_act a t with
@@ -697,11 +699,13 @@ Section Semantics.
       lstep (a_brn p q lb) (Q, P) (Q', P')
   .
 
-  CoInductive l_lts : trace -> MsgQ * PEnv -> MsgQ * PEnv -> Prop :=
-  | lt_end P : l_lts tr_end P P
-  | lt_next a t P P' P'' :
-      lstep a P P'' ->
-      l_lts t P'' P' ->
-      l_lts (tr_next a t) P P'.
+  CoInductive l_lts : trace -> MsgQ * PEnv -> Prop :=
+  | lt_end : l_lts tr_end ([::], [::])
+  | lt_next a t P P' :
+      lstep a P P' ->
+      l_lts t P' ->
+      l_lts (tr_next a t) P.
+
+  Derive Inversion llts_inv with (forall tr G, l_lts tr G) Sort Prop.
 
 End Semantics.

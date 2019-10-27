@@ -587,13 +587,14 @@ Section Semantics.
   with stepall_ind1 := Induction for step_all Sort Prop
   with steponly_ind1 := Induction for step_only Sort Prop.
 
-  CoInductive g_lts : trace -> rg_ty -> rg_ty -> Prop :=
-  | eg_end : g_lts tr_end rg_end rg_end
-  | eg_trans a t G G' G'' :
+  CoInductive g_lts : trace -> rg_ty -> Prop :=
+  | eg_end : g_lts tr_end rg_end
+  | eg_trans a t G G' :
       step a G G' ->
-      g_lts t G' G'' ->
-      g_lts (tr_next a t) G G''
-  .
+      g_lts t G' ->
+      g_lts (tr_next a t) G.
+
+  Derive Inversion glts_inv with (forall tr G, g_lts tr G) Sort Prop.
 
 End Semantics.
 
