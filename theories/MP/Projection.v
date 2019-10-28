@@ -512,7 +512,7 @@ Section Project.
   Proof.
     move=>p_neq_q; elim/gty_ind1:G=>[|v/=|G|pr G|[[f t] ty] G]///=.
     + by rewrite is_dual_var.
-    + rewrite (fun_if (fun X=>p_proj X p)) (fun_if (fun X=>p_proj X q)) !pproj_rec /=.
+    + rewrite (fun_if (p_proj^~p)) (fun_if (p_proj^~q)) !pproj_rec /=.
       move=> Ih /wf_rec-[/negPf--> Wfp2] /wf_rec-[/negPf--> Wfq2].
       move: (p_proj (project G p) q) (p_proj (project G q) p) (Ih Wfp2 Wfq2).
       move=>S1 S2 {Ih Wfp2 Wfq2 p_neq_q p q G}.

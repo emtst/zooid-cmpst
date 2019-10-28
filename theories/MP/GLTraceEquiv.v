@@ -88,12 +88,14 @@ Section TraceEquiv.
          then ml_brn p K
          else merge_all K.
 
+  Notation lbv v := (l_var (Rvar.bv 0)).
+
   Fixpoint rg_proj G (r : role) : option l_ty :=
     match G with
     | rg_end => Some l_end
     | rg_var v => Some (l_var v)
     | rg_rec G => let: L := rg_proj G r in
-                  if L == Some (l_var (Rvar.bv 0)) then None else ml_rec L
+                  if L == Some (lbv 0) then None else ml_rec L
     | rg_rcv m G => project_rcv m r (rg_proj G r)
     | rg_msg m G => project_msg m r (rg_proj G r)
     | rg_brn p K => let: KL := [seq (X.1, rg_proj X.2 r) | X <- K]
@@ -107,6 +109,133 @@ Section TraceEquiv.
     | Some Q, Some L => Some (Q, L)
     | _, _ => None
     end.
+
+  Inductive mq_proj p : rg_ty -> MsgQ -> l_ty -> Prop :=
+  | prj_end :
+      mq_proj p rg_end [::] l_end
+  | prj_var  v :
+      mq_proj p (rg_var v) [::] (l_var v)
+  | prj_rec G Q L :
+      L != lbv 0 ->
+      mq_proj p G Q L ->
+      mq_proj p (rg_rec G) Q (l_rec L)
+  | prj_msg1 q x G Q L :
+      p != q ->
+      mq_proj p G Q L ->
+      mq_proj p (rg_msg ((p, q), x) G) Q (l_send q x L)
+  | prj_msg2 q x G Q L :
+      p != q ->
+      mq_proj p G Q L ->
+      mq_proj p (rg_msg ((q, p), x) G) Q (l_recv q x L)
+  | prj_msg3 f t x G Q L :
+      f != t ->
+      f != p ->
+      f != p ->
+      mq_proj p G Q L ->
+      mq_proj p (rg_msg ((f, t), x) G) Q L
+  | prj_rcv1 q x G Q L :
+      p != q ->
+      mq_proj p G Q L ->
+      mq_proj p (rg_rcv ((p, q), x) G) (add_head ((p, q), inr x) Q) L
+  | prj_rcv2 q x G Q L :
+      p != q ->
+      mq_proj p G Q L ->
+      mq_proj p (rg_rcv ((q, p), x) G) Q (l_recv q x L)
+  | prj_rcv3 f t x G Q L :
+      f != t ->
+      f != p ->
+      f != p ->
+      mq_proj p G Q L ->
+      mq_proj p (rg_rcv ((f, t), x) G) Q L
+  | prj_brn1 q x KG Q KL :
+      p != q ->
+      proj_alts p KG Q KL ->
+      mq_proj p (rg_brn ((p, q), x) KG) Q (l_sel q KL)
+  | prj_brn2 q x KG Q KL :
+      p != q ->
+      proj_alts p KG Q KL ->
+      mq_proj p (rg_brn ((q, p), x) KG) Q (l_brn q KL)
+  | prj_brn3 f t x KG Q L :
+      f != t ->
+      f != p ->
+      p != t ->
+      proj_all p KG Q L ->
+      mq_proj p (rg_brn ((f, t), x) KG) Q L
+  | prj_alt1 l q x KG Q KL L :
+      p != q ->
+      lookup l KL == Some L ->
+      proj_alts p KG Q KL ->
+      mq_proj p (rg_alt l ((p, q), x) KG) (add_head ((p, q), inl l) Q) L
+  | prj_alt2 l q x KG Q KL :
+      p != q ->
+      proj_alts p KG Q KL ->
+      mq_proj p (rg_alt l ((q, p), x) KG) Q (l_brn q KL)
+  | prj_alt3 l f t x KG Q L :
+      f != t ->
+      f != p ->
+      p != t ->
+      proj_all p KG Q L ->
+      mq_proj p (rg_alt l ((f, t), x) KG) Q L
+  with
+  proj_alts p : seq (lbl * rg_ty) -> MsgQ -> seq (lbl * l_ty) -> Prop :=
+  | prj_nil G Q L l :
+      mq_proj p G Q L ->
+      proj_alts p [:: (l, G)] Q [:: (l, L)]
+  | prj_cons KG Q KL l G L :
+      mq_proj p G Q L ->
+      proj_alts p KG Q KL ->
+      proj_alts p ((l, G) :: KG) Q ((l, L) :: KL)
+  with
+  proj_all p : seq (lbl * rg_ty) -> MsgQ -> l_ty -> Prop :=
+  | prj_all_nil G Q L l :
+      mq_proj p G Q L ->
+      proj_all p [:: (l, G)] Q L
+  | prj_all_cons KG Q l G L :
+      mq_proj p G Q L ->
+      proj_all p KG Q L ->
+      proj_all p ((l, G) :: KG) Q L.
+
+  Derive Inversion mqproj_inv with (forall p G Q L, mq_proj p G Q L) Sort Prop.
+  Derive Inversion mqproj_end_inv with (forall p Q L, mq_proj p rg_end Q L) Sort Prop.
+  Derive Inversion mqproj_var_inv with (forall v p Q L, mq_proj p (rg_var v) Q L) Sort Prop.
+  Derive Inversion mqproj_rec_inv with (forall p G Q L, mq_proj p (rg_rec G) Q L) Sort Prop.
+  Derive Inversion projalts_inv with (forall p K Q L, proj_alts p K Q L) Sort Prop.
+  Derive Inversion projall_inv with (forall p K Q L, proj_all p K Q L) Sort Prop.
+
+  Lemma qproj_equiv p G Q L : q_proj G p == Some (Q, L) <-> mq_proj p G Q L.
+  Proof.
+    suff : (msg_proj G p == Some Q) && (rg_proj G p == Some L)
+           <-> mq_proj p G Q L.
+    {
+      suff : (msg_proj G p == Some Q) && (rg_proj G p == Some L)
+             <-> q_proj G p == Some (Q, L)
+        by move=>->.
+      rewrite /q_proj; split; case: (msg_proj G p); case: (rg_proj G p)=>//Q'.
+      by rewrite andbC.
+    }
+    move: G Q L; elim/rgty_ind2 =>///=.
+    - move=> Q L; rewrite /q_proj/=; split.
+      + by move=>/andP-[/eqP-[<-] /eqP-[<-]]; constructor.
+      + by elim/mqproj_end_inv.
+    - move=> v Q L; rewrite /q_proj/=; split.
+      + by move=>/andP-[/eqP-[<-] /eqP-[<-]]; constructor.
+      + by elim/mqproj_var_inv; rewrite !eq_refl.
+    - move=> G Ih Q L; split.
+      + move=>/andP-[GQ]; case: ifP=>// neqL; rewrite /ml_rec => H.
+        have [L' GL']: exists L', rg_proj G p == Some L'
+            by move: H; case: (rg_proj G p) => // L' _; exists L'.
+        move: GQ GL' H neqL (Ih Q L') =>/eqP-> /eqP-> /eqP-[<-] {Ih}.
+        rewrite -[Some _ == Some _]/(L' == _) (rwP negPf) !eq_refl => L'lvar.
+        by move=>[/(_ is_true_true)-Ih _]; constructor.
+      + elim/mqproj_rec_inv=>_ G0 Q0 L0 Neq /Ih/andP-[->/eqP->] _ _ _{G0 Q0 L}/=.
+        by rewrite -[Some _ == _]/(L0 == _) (negPf Neq).
+  Admitted.
+
+  Inductive projection G : seq role -> MsgQ -> PEnv -> Prop :=
+  | proj_end : projection G [::] [::] [::]
+  | proj_next p ps Q1 Q2 L P :
+      mq_proj p G Q1 L -> projection G ps Q2 P ->
+      projection G (p :: ps) (Q1 ++ Q2) ((p, L) :: P).
 
   Definition q_union (Q1 Q2 : MsgQ) := Q1 ++ Q2.
 
