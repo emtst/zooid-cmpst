@@ -231,11 +231,14 @@ Section TraceEquiv.
         by rewrite -[Some _ == _]/(L0 == _) (negPf Neq).
   Admitted.
 
-  Inductive projection G : seq role -> MsgQ -> PEnv -> Prop :=
-  | proj_end : projection G [::] [::] [::]
+  Inductive Proj G : seq role -> MsgQ * PEnv -> Prop :=
+  | proj_end : Proj G [::] ([::], [::])
   | proj_next p ps Q1 Q2 L P :
-      mq_proj p G Q1 L -> projection G ps Q2 P ->
-      projection G (p :: ps) (Q1 ++ Q2) ((p, L) :: P).
+      mq_proj p G Q1 L -> Proj G ps (Q2, P) ->
+      Proj G (p :: ps) (Q1 ++ Q2, insert (p, L) P).
+
+  Definition Projection G P := (forall x, x \in rg_parts G <-> x \in unzip1 P.2)
+                               /\ Proj G (unzip1 P.2) P.
 
   Definition q_union (Q1 Q2 : MsgQ) := Q1 ++ Q2.
 
@@ -243,7 +246,7 @@ Section TraceEquiv.
     match ps with
     | [::] => Some ([::], [::])
     | h :: t => match q_proj G h , q_project G t with
-                | Some (Q', L), Some (Q, P) => Some (q_union Q Q', (h, L) :: P)
+                | Some (Q', L), Some (Q, P) => Some (q_union Q Q', insert (h, L) P)
                 | _, _ => None
                 end
     end.
@@ -261,11 +264,12 @@ Section TraceEquiv.
 
   Lemma g_stequiv G :
     forall (P : MsgQ * seq (role * l_ty)),
-    q_projection G == Some P ->
+    Projection G P ->
     step_equiv G P.
   Proof.
-    rewrite /step_equiv => [[Q P] G_P a]; split.
-    - move=> [G' H]; move: H G_P; elim =>//.
+    rewrite /step_equiv/Projection => [[Q P]/= [Parts G_P] a]; split.
+    - move=> [G' H]; move: H Parts G_P; elim =>///=.
+      - move=>[[p q] ty]/= {G}G Parts.
       (* Lemmas about q_projection to simplify these proofs: e.g.
          if q_projection (rg_msg p G) == Some (Q, P) ->
             msg_proj G p == Some Qp &&
@@ -280,7 +284,6 @@ Section TraceEquiv.
           Maybe the better option is to reflect q_projection as an inductive
           predicate relating
       *)
-      + move=> [[p q] ty] G0 /=.
       admit.
     - move=> [[Q' P']].
       admit.
@@ -312,7 +315,8 @@ Section TraceEquiv.
       by move=> Ih /Ih/(_ (eq_refl _))->; rewrite eq_refl.
     + move=> p rs Ih/= _.
       case: (is_valid G); case: (q_proj G p); case: (q_project G rs) =>//.
-      - by move=>[Q P] [Q' L] /eqP-[].
+      - move=>[Q P] [Q' L] /eqP-[QQ]; case: P=>// [l' L'].
+        by rewrite /insert/=; case: ifP=>/=// _; case: (lookup p L').
       - by move=>[Q P].
   Qed.
 

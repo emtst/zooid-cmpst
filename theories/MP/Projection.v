@@ -10,6 +10,7 @@ Require Import MPST.MP.Forall.
 Require Import MPST.MP.LNVar.
 Require Import MPST.MP.Global.
 Require Import MPST.MP.Local.
+Require Import MPST.MP.Actions.
 
 Section Project.
 
@@ -93,11 +94,17 @@ Section Project.
       project_brn p r KL
     end.
 
+  Definition insert (E : role * l_ty) P :=
+    match lookup E.1 P with
+    | Some _ => P
+    | None => E :: P
+    end.
+
   Fixpoint project_all (g : g_ty) (r : seq role) : option (seq (role * l_ty)) :=
     match r with
     | [::] => Some [::]
     | h :: t => match project g h, project_all g t with
-                | Some L, Some E => Some ((h, L) :: E)
+                | Some L, Some E => Some (insert (h, L) E)
                 | _, _ => None
                 end
     end.
