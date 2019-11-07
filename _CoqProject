@@ -1,14 +1,16 @@
 -Q theories/ MPST
+-Q theories/MP MPST.MP
 -arg -w
 -arg none
 theories/Atom.v
 theories/AtomScopes.v
 theories/Env.v
 theories/Syntax.v
-theories/MP/Atom.v
 theories/MP/Forall.v
+theories/MP/Atom.v
 theories/MP/LNVar.v
 theories/MP/Role.v
 theories/MP/Local.v
 theories/MP/Global.v
 theories/MP/Projection.v
+theories/MP/Actions.v
