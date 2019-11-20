@@ -4,14 +4,14 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Require Import MPST.MP.Atom.
-Require Import MPST.MP.Role.
-Require Import MPST.MP.Forall.
-Require Import MPST.MP.LNVar.
-Require Import MPST.MP.Global.
-Require Import MPST.MP.Local.
-Require Import MPST.MP.Actions.
-Require Import MPST.MP.Projection.
+Require Import MPST.Atom.
+Require Import MPST.Role.
+Require Import MPST.Forall.
+Require Import MPST.LNVar.
+Require Import MPST.Global.
+Require Import MPST.Local.
+Require Import MPST.Actions.
+Require Import MPST.Projection.
 
 Section TraceEquiv.
 
@@ -325,26 +325,27 @@ Section TraceEquiv.
     q_projection G == Some P ->
     trace_equiv G P.
   Proof.
-    move=> P H; rewrite /trace_equiv=> tr; split.
-    - move: tr G P H; cofix Ch; move=> tr G P H; case: tr.
-      + move=> H1; elim/glts_inv: H1=>// _ _ Eq; move: Eq H=><-/=.
-        by rewrite /q_projection/==>/eqP-[<-]; constructor.
-      + move=> a t; elim/glts_inv=>// _ a' t' G0 G' aG tG' [aa' tt' _ {G0}].
-        move: aa' aG=>->aG {a'}.
-        move: tt' tG'=>->tG' {t'}.
-        move: (g_stequiv H) => /(_ a)-[/(_ (ex_intro _ G' aG))-[P' PP'] _].
-        apply: lt_next; [apply: PP'| apply: Ch]; last (by apply: tG').
-        by apply: (g_stproj H aG).
-    - move: tr G P H; cofix Ch; move=> tr G P H; case: tr.
-      + move=> H1; elim/llts_inv: H1=>// _ _ Eq; move: Eq H=><-/=.
-        by move=>/qproj_end->; apply: eg_end.
-      + move=> a t; elim/llts_inv=>// _ a' t' P0 P' aP tP' [aa' tt' _ {P0}].
-        move: aa' aP=>->aP {a'}.
-        move: tt' tP'=>->tP' {t'}.
-        move: (g_stequiv H) => /(_ a)-[_ /(_ (ex_intro _ P' aP))-[G' GG']].
-        apply: eg_trans; [apply: GG'| apply: Ch]; last (by apply: tP').
-        by apply: (g_stproj H GG').
-  Qed.
+  (*   move=> P H; rewrite /trace_equiv=> tr; split. *)
+  (*   - move: tr G P H; cofix Ch; move=> tr G P H; case: tr. *)
+  (*     + move=> H1; elim/glts_inv: H1=>// _ _ Eq; move: Eq H=><-/=. *)
+  (*       by rewrite /q_projection/==>/eqP-[<-]; constructor. *)
+  (*     + move=> a t; elim/glts_inv=>// _ a' t' G0 G' aG tG' [aa' tt' _ {G0}]. *)
+  (*       move: aa' aG=>->aG {a'}. *)
+  (*       move: tt' tG'=>->tG' {t'}. *)
+  (*       move: (g_stequiv H) => /(_ a)-[/(_ (ex_intro _ G' aG))-[P' PP'] _]. *)
+  (*       apply: lt_next; [apply: PP'| apply: Ch]; last (by apply: tG'). *)
+  (*       by apply: (g_stproj H aG). *)
+  (*   - move: tr G P H; cofix Ch; move=> tr G P H; case: tr. *)
+  (*     + move=> H1; elim/llts_inv: H1=>// _ _ Eq; move: Eq H=><-/=. *)
+  (*       by move=>/qproj_end->; apply: eg_end. *)
+  (*     + move=> a t; elim/llts_inv=>// _ a' t' P0 P' aP tP' [aa' tt' _ {P0}]. *)
+  (*       move: aa' aP=>->aP {a'}. *)
+  (*       move: tt' tP'=>->tP' {t'}. *)
+  (*       move: (g_stequiv H) => /(_ a)-[_ /(_ (ex_intro _ P' aP))-[G' GG']]. *)
+  (*       apply: eg_trans; [apply: GG'| apply: Ch]; last (by apply: tP'). *)
+  (*       by apply: (g_stproj H GG'). *)
+  (* Qed. *)
+  Admitted.
 
   Lemma rgparts_init G :
     rg_parts (init G) = participants G.

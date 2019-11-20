@@ -4,11 +4,11 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Require Import MPST.MP.Atom.
-Require Import MPST.MP.Role.
-Require Import MPST.MP.Forall.
-Require Import MPST.MP.LNVar.
-Require Import MPST.MP.Actions.
+Require Import MPST.Atom.
+Require Import MPST.Role.
+Require Import MPST.Forall.
+Require Import MPST.LNVar.
+Require Import MPST.Actions.
 
 Section Syntax.
   Inductive l_ty :=

@@ -4,7 +4,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Require Import MPST.MP.Atom.
+Require Import MPST.Atom.
 
 (* FIXME: Should be a parameterised type Inductive lnvar t := ... *)
 Module MkLnVar(M : Atom).

@@ -4,7 +4,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Require Import MPST.MP.Role.
+Require Import MPST.Role.
 
 Inductive act :=
 | a_send (p : g_prefix)

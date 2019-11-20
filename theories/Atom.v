@@ -1,75 +1,60 @@
-(* Atoms for locally nameless *)
-
-From mathcomp.ssreflect Require Import ssreflect ssrbool ssrnat ssrfun eqtype seq path.
-
+From mathcomp.ssreflect Require Import all_ssreflect seq.
+From mathcomp Require Import finmap.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Module Type ATOM.
+Require Import MPST.Forall.
 
-  Parameter atom : Set.
-  Definition t := atom.
+Definition maximum := foldr maxn 0.
 
-  (* atoms can be compared to booleans *)
+Lemma in_maximum_leq v l: v \in l -> v <= maximum l.
+Proof.
+  elim: l=>//v' l Ih; rewrite in_cons=>/orP-[/eqP<-|]/=.
+  + by apply: leq_maxl.
+  + by move=>/Ih{Ih}; move: (maximum l) => k {l}; rewrite leq_max orbC=>->.
+Qed.
 
-  Parameter eq_atom : atom -> atom -> bool.
-  Parameter eq_reflect : forall (a b : atom), ssrbool.reflect (a = b) (eq_atom a b).
-  Parameter atom_eqMixin : Equality.mixin_of atom.
-  Canonical atom_eqType := EqType atom atom_eqMixin.
+(*
+Lemma maximum_in l r : maximum l < maximum r ->
+                       exists v, v \in r /\ forall v', v' \in l -> v' < v.
+  elim: r l =>/=// rh rt Ih l.
+  rewrite leq_max=>/orP[H|H].
+  - exists rh; rewrite in_cons eq_refl; split=>// v' /in_maximum_leq-H'.
+    by (apply: leq_ltn_trans H' H).
+  - move: (Ih l H) =>{Ih} [v [v_rt Ih]].
+    by exists v; rewrite in_cons orbC v_rt; split.
+Qed.
+*)
 
-  Parameter fresh : seq atom -> atom.
-
-  Parameter fresh_not_in : forall l, (fresh l) \notin l.
-
-  Parameter nat_of : atom -> nat.
-End ATOM.
-
-Module Atom : ATOM.
-
-  (* begin hide *)
-  Definition atom := nat.
-  Definition t := atom.
-
-  Definition eq_atom (a b : nat) : bool := ssrnat.eqn a b.
-
-  Lemma eq_reflect a b :  ssrbool.reflect (a = b) (eq_atom a b).
-  Proof. by apply: ssrnat.eqnP. Qed.
-
-  Definition atom_eqMixin := EqMixin Atom.eq_reflect.
-  Canonical atom_eqType := EqType atom atom_eqMixin.
-
-  Fixpoint fresh' a (l : seq atom) :=
-    match l with
-    | [::] => a +1
-    | x::xs => fresh' (maxn x a) xs
-    end.
-
-  Definition fresh l := fresh' 0 l.
-
-  Lemma fresh_not_head a a' l : a <= a' -> fresh' a' l != a.
+Module Type Atom.
+  Parameter t : choiceType.
+  Parameter fresh : {fset t} -> t.
+  Parameter freshK : forall s, fresh s \notin s.
+  Lemma is_fresh s1 s2 : fsubset s1 s2 -> fresh s2 \notin s1.
   Proof.
-    elim: l a' => [|  a'' l IHl] a' Le_a_a'.
-      by rewrite /fresh' neq_ltn addn1 ltnS orb_idl.
-    by rewrite /fresh' maxnC; apply IHl; rewrite leq_max orb_idr.
+    move=> /eqP<-; rewrite in_fsetI negb_and; apply/orP; right=>{s1}.
+    by apply: freshK.
   Qed.
-
-  Lemma fresh_not_in l : fresh l \notin l.
-  Proof.
-    suff fresh'_not_in a : fresh' a l \notin l by apply fresh'_not_in.
-    elim: l a =>  // a' l IHl a.
-      by rewrite /fresh/fresh' in_cons Bool.negb_orb fresh_not_head ?(IHl (maxn a' a)) ?leq_maxl.
-  Qed.
-
-  Definition nat_of (x : atom) := x.
-  (* end hide *)
 End Atom.
 
-(** We make [atom], [fresh], [fresh_not_in] and [atom_fresh_for_list] available
-    without qualification. *)
+Module def_atom : Atom.
+  Definition t := nat_choiceType.
+  Definition fresh (s : {fset t}) : t := (maximum s).+1.
 
-Notation atom := Atom.atom.
-Notation fresh := Atom.fresh.
-Notation fresh_not_in := Atom.fresh_not_in.
+  Lemma freshK s : fresh s \notin s.
+  Proof. by apply: contraT; rewrite negbK => /in_maximum_leq; rewrite ltnn. Qed.
 
-Canonical atom_eqType := EqType Atom.atom Atom.atom_eqMixin.
+  Lemma is_fresh s1 s2 : fsubset s1 s2 -> fresh s2 \notin s1.
+  Proof.
+    move=> /eqP<-; rewrite in_fsetI negb_and; apply/orP; right=>{s1}.
+    by apply: freshK.
+  Qed.
+End def_atom.
+
+Module NewAtom (m : Atom) : Atom.
+  Definition t := m.t.
+  Definition fresh := m.fresh.
+  Definition is_fresh := m.is_fresh.
+  Definition freshK := m.freshK.
+End NewAtom.
