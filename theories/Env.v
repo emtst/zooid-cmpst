@@ -3,6 +3,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Require Import MPST.Atom.
+
 (* Set Printing All. *)
 
 Module Type ENTRY.
@@ -153,14 +155,12 @@ Module Env (En : ENTRY) : ENV En.
   Definition def (E : env) := uniq (map fst E).
   Definition undef E := negb(def E).
 
-  Locate uniq.
-  SearchAbout uniq.
 
   Lemma def_nil: def [::].
   Proof. by []. Qed.
 
   Lemma def_cons_def x t (E: env): def ((x,t) :: E) -> def E.
-  Proof. unfold def. rewrite map_cons. rewrite cons_uniq.
+  Proof. unfold def. rewrite map_cons. rewrite cons_uniq. 
     move=> /andP[notin unique]. by apply: unique.
   Qed.
 
@@ -173,56 +173,58 @@ Module Env (En : ENTRY) : ENV En.
   Definition upd x t (E : env) :=
     map (fun en => if x == fst en then (x, t) else en) E.
 
+  Lemma evennondef_upd_same_dom x T E: map fst (upd x T E) = map fst E .
+  Proof. unfold upd. elim E; [by []| elim; move=> x0 T0 E0 hp; simpl; case: eqP; rewrite <-hp].
+  + by move=> hp_eq; rewrite hp_eq //.
+  + by rewrite //.
+  Qed.
+
   (* update or insert *)
   Definition add_upd x t (E : env) : env:=
     if x \in dom E then upd x t E else (x , t) :: E.
 
   Fixpoint look x (E : env) : option En.V :=
-    match E with
-    | nil => None
-    | (x', t) :: E => if x == x' then Some t else look x E
-    end
+    if def E then
+      match E with
+      | nil => None
+      | (x', t) :: E => if x == x' then Some t else look x E
+      end
+    else None
     .
 
-  Lemma look_cons x x' t E: look x ((x', t) :: E)
-    = (if x == x' then Some t else look x E).
-  Proof. by []. Qed.
+  Lemma look_cons x x' t E: def ((x', t) :: E) ->
+    look x ((x', t) :: E) = (if x == x' then Some t else look x E).
+  Proof. simpl; case (def ((x', t) :: E)); [rewrite // | by []]. Qed.
 
 
   Definition add x t (E : env) : env := add_upd x t E.
-(*don't you want an add without update?*)
+(*L to D and F: don't you want an add without update?*)
 
   Definition rem x (E : env) : env := filter (fun en => x != fst en) E.
 
   Lemma not_in_dom_nil x : x \notin dom [::].
   Proof. by []. Qed.
 
-(*L to L: the problem is in def!!! Can I do cases?*)
-
-  Lemma in_dom_cons x y t E : def ((y,t) :: E) ->
+  Lemma in_dom_cons x y t E : def ((y,t) :: E) -> 
     ( (x \in dom ((y,t) :: E)) = ((x == y) || (x \in dom E)) ).
   Proof.
   unfold dom. rewrite //.  move=> defcons. rewrite defcons. rewrite map_cons.
   have defE: def E. apply: def_cons_def. by apply: defcons.
-  rewrite defE. by [].
+  rewrite defE. by []. 
   Qed.
 
-
-  Lemma in_domP' x E : def E -> reflect (exists v, look x E = Some v) (x \in dom E).
-  Proof.
-  elim E.
+(*L to D and F: here I had to add an hypothesis, namely def E*)
+  Lemma in_domP x E : def E -> reflect (exists v, look x E = Some v) (x \in dom E).
+  Proof. 
+  elim E. 
     move => defnil; apply (iffP idP); [by [] | elim; by [] ].
   elim. move => x0 t0 E0 ih defcons.
-  apply (iffP idP). rewrite in_dom_cons; [ | by apply: defcons]. rewrite look_cons.
+  apply (iffP idP). rewrite in_dom_cons; [ | by apply: defcons]. rewrite (look_cons _ defcons).
     case: (x==x0); [intro; exists t0; by [] | simpl; by apply: ih (def_cons_def defcons)].
-  rewrite look_cons in_dom_cons; [ | by apply: defcons].
+  rewrite (look_cons _ defcons) in_dom_cons; [ | by apply: defcons].
   case: (x==x0); [ by [] | simpl; case: (ih (def_cons_def defcons)); by []].
   Qed.
 
-  Lemma in_domP x E : reflect (exists v, look x E = Some v) (x \in dom E).
-  Proof. (* FF Q: is this one true? *) (* FF A: no it is not, unless look only works for def stuff *)
-         (* FF Q2: do we want look to check if the environment is def? *)
-  Admitted.
 
   (***************************************************************************************)
 
@@ -234,13 +236,13 @@ Module Env (En : ENTRY) : ENV En.
   | look_some v : look x D = Some v -> look_spec x D true
   | look_none : look x D = None -> look_spec x D false.
 
-  Lemma domP x D : look_spec x D (x \in dom D).
+(*L to D and F: added hp def E  (in_domP legacy) *)
+  Lemma domP x D : def D -> look_spec x D (x \in dom D).
   Proof.
-  (*   case: in_domP=>[|/look_not_some]. *)
-  (*   + move=>[v]; apply: look_some. *)
-  (*   + apply: look_none. *)
-  (* Qed. *)
-  Admitted.
+    intro defD. case: (in_domP _ defD) =>[|/look_not_some].
+    + move=>[v]; apply: look_some.
+    + apply: look_none.
+  Qed.
 
   Lemma singleton_def k v : def (add k v empty). (* stays *)
   Proof.
@@ -254,10 +256,40 @@ Module Env (En : ENTRY) : ENV En.
   Qed.
 
   (* Properties of defined environments *)
-  Lemma look_add a T D: def (add a T D) -> look a (add a T D) = Some T.
-  Admitted.
+  Lemma def_cons_notin_dom x T D: def ( (x, T) :: D) -> (x \notin dom D).
+  Proof. unfold dom. case (def D); [| by []].
+    unfold def; simpl. elim andP; [ elim; by [] | intro; by [] ]. 
+  Qed.
 
-  Lemma look_add_deep a a' T D: a != a' -> def (add a T D) -> look a' (add a T D) == look a' D.
+
+
+  Lemma def_iff_def_upd a T D: def D <-> def (upd a T D).
+  Proof.
+    unfold def; rewrite evennondef_upd_same_dom; by [].
+  Qed.
+
+
+(*  Lemma def_def_upd a T D: def D -> def (upd a T D).
+  Proof. elim D; [by [] | ].
+    elim. move=> x0 T0 E0
+
+  Lemma def_upd_def a T D: def (upd a T D) -> def D.
+  Proof. elim D; [ by [] | ].*)
+
+  Lemma def_add_upd_def a T D: def (add_upd a T D) -> def D.
+  Proof. unfold add_upd. by case: (a \in dom D); 
+    [ move=> defu; rewrite def_iff_def_upd; apply defu | apply: def_cons_def].
+  Qed.
+
+  Lemma look_add a T D: def (add a T D) -> look a (add a T D) = Some T.
+  Proof. elim D; [intro; unfold add; unfold add_upd; simpl; rewrite eq_refl // | ].
+    elim. move=> x0 T0 E0; unfold add; move=> ih defadd; unfold add_upd. 
+    case: (in_domP _ (def_add_upd_def defadd)). elim.
+
+(*
+SearchAbout eq_op.
+
+  Lemma look_add_deep a a' T D: a != a' -> def (add a T D) -> look a' (add a T D) == look a' D.*)
   Admitted.
 
 
