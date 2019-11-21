@@ -167,7 +167,13 @@ Module Env (En : ENTRY) : ENV En.
   Definition dom (E : env)  : seq En.K := if def E then map fst E else [::].
 
   Definition dom_pred (E : env) : pred En.K := mem (dom E).
+  
 
+
+  Lemma in_dom_cons x T (E : env) : def ((x,T)::E) -> x \in dom ((x,T)::E).
+  Proof. 
+  unfold dom. case (@idP (def ((x,T)::E))); [simpl; intro; intro; apply mem_head | rewrite //].
+  Qed.
 
   (* update if present *)
   Definition upd x t (E : env) :=
@@ -179,9 +185,26 @@ Module Env (En : ENTRY) : ENV En.
   + by rewrite //.
   Qed.
 
+  Lemma upd_cons_head x t t0 (E0 : env): upd x t ((x,t0)::E0) = (x,t) :: (upd x t E0).
+  Proof.
+  unfold upd. rewrite map_cons. by case (@idP (x == (x, t0).1)); rewrite //. 
+  Qed.
+
+  Lemma upd_cons_nothead x t x0 t0 (E0 : env): 
+    x0<>x -> upd x t ((x0,t0)::E0) = (x0,t0) :: (upd x t E0).
+  Proof.
+  unfold upd. rewrite map_cons. 
+  by case (@idP (x == (x0, t0).1)); [ simpl; intro eq; rewrite (eqP eq); rewrite // | rewrite //].
+  Qed.
+
   (* update or insert *)
   Definition add_upd x t (E : env) : env:=
     if x \in dom E then upd x t E else (x , t) :: E.
+
+(*  Lemma in_dom_add_upd_same_dom_aux x T E: x \in dom E -> map fst (add_upd x T E) = map fst E .
+  Proof. 
+  unfold add_upd. by case (x \in dom E); [ intro; apply evennondef_upd_same_dom | rewrite //].
+  Qed.*)
 
   Fixpoint look x (E : env) : option En.V :=
     if def E then
@@ -205,7 +228,7 @@ Module Env (En : ENTRY) : ENV En.
   Lemma not_in_dom_nil x : x \notin dom [::].
   Proof. by []. Qed.
 
-  Lemma in_dom_cons x y t E : def ((y,t) :: E) -> 
+  Lemma in_dom_cons_eq x y t E : def ((y,t) :: E) -> 
     ( (x \in dom ((y,t) :: E)) = ((x == y) || (x \in dom E)) ).
   Proof.
   unfold dom. rewrite //.  move=> defcons. rewrite defcons. rewrite map_cons.
@@ -219,9 +242,9 @@ Module Env (En : ENTRY) : ENV En.
   elim E. 
     move => defnil; apply (iffP idP); [by [] | elim; by [] ].
   elim. move => x0 t0 E0 ih defcons.
-  apply (iffP idP). rewrite in_dom_cons; [ | by apply: defcons]. rewrite (look_cons _ defcons).
+  apply (iffP idP). rewrite in_dom_cons_eq; [ | by apply: defcons]. rewrite (look_cons _ defcons).
     case: (x==x0); [intro; exists t0; by [] | simpl; by apply: ih (def_cons_def defcons)].
-  rewrite (look_cons _ defcons) in_dom_cons; [ | by apply: defcons].
+  rewrite (look_cons _ defcons) in_dom_cons_eq; [ | by apply: defcons].
   case: (x==x0); [ by [] | simpl; case: (ih (def_cons_def defcons)); by []].
   Qed.
 
@@ -268,13 +291,17 @@ Module Env (En : ENTRY) : ENV En.
     unfold def; rewrite evennondef_upd_same_dom; by [].
   Qed.
 
+  Lemma def_iff_def_updb a T D: def D = def (upd a T D).
+  Proof.
+    unfold def; rewrite evennondef_upd_same_dom; by [].
+  Qed.
 
-(*  Lemma def_def_upd a T D: def D -> def (upd a T D).
-  Proof. elim D; [by [] | ].
-    elim. move=> x0 T0 E0
+  Lemma in_dom_add_upd_same_dom x T E: x \in dom E -> dom (add_upd x T E) = dom E .
+  Proof.
+    intro. unfold add_upd, dom. rewrite H. rewrite <-def_iff_def_updb. rewrite (in_dom_def H).
+    by apply: evennondef_upd_same_dom.
+  Qed.
 
-  Lemma def_upd_def a T D: def (upd a T D) -> def D.
-  Proof. elim D; [ by [] | ].*)
 
   Lemma def_add_upd_def a T D: def (add_upd a T D) -> def D.
   Proof. unfold add_upd. by case: (a \in dom D); 
@@ -283,8 +310,34 @@ Module Env (En : ENTRY) : ENV En.
 
   Lemma look_add a T D: def (add a T D) -> look a (add a T D) = Some T.
   Proof. elim D; [intro; unfold add; unfold add_upd; simpl; rewrite eq_refl // | ].
-    elim. move=> x0 T0 E0; unfold add; move=> ih defadd; unfold add_upd. 
-    case: (in_domP _ (def_add_upd_def defadd)). elim.
+    elim. move=> x0 T0 E0; unfold add; move=> ih defadd. (*; unfold add_upd.*)
+    + case (@idP (a \in dom ((x0, T0) :: E0))). intro indom.
+      (*have indom_au: a \in dom(add_upd a T ((x0, T0) :: E0)). 
+        rewrite (in_dom_add_upd_same_dom ); by apply: indom.*)
+      (*have def0: def ((x0, T0) :: E0). by apply (in_dom_def indom).*)
+      unfold add_upd. rewrite indom. case (@idP (a==x0)); intro eq.
+      * rewrite (eqP eq). rewrite upd_cons_head. rewrite look_cons. case (@idP (x0==x0)); by [].
+        rewrite <-(upd_cons_head _ _ T0). rewrite (eqP eq) in defadd.
+        have updeq: upd x0 T ((x0, T0) :: E0) = add_upd x0 T ((x0, T0) :: E0).
+          unfold add_upd. by rewrite in_dom_cons; [rewrite // | apply (in_dom_def indom)].
+        rewrite updeq; by apply: defadd.
+      * rewrite upd_cons_nothead.
+    
+
+
+        
+
+
+
+
+unfold dom; rewrite defadd.
+      rewrite (in_dom_add_upd_same_dom ).
+    
+
+
+(stupidP a ((x0, T0) :: E0)).
+
+
 
 (*
 SearchAbout eq_op.
