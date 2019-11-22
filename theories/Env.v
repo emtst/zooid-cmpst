@@ -143,6 +143,7 @@ End ENV.
 Module Env (En : ENTRY) : ENV En.
   Definition env := seq (En.K * En.V).
 
+
   (*Definition eq_env : env -> env -> bool. Admitted.*)
   Definition eq_env (E E': env) : bool :=  E == E'.
   Definition eq_envP : Equality.axiom eq_env.
@@ -174,6 +175,7 @@ Module Env (En : ENTRY) : ENV En.
   Proof. 
   unfold dom. case (@idP (def ((x,T)::E))); [simpl; intro; intro; apply mem_head | rewrite //].
   Qed.
+
 
   (* update if present *)
   Definition upd x t (E : env) :=
@@ -284,7 +286,12 @@ Module Env (En : ENTRY) : ENV En.
     unfold def; simpl. elim andP; [ elim; by [] | intro; by [] ]. 
   Qed.
 
-
+  Lemma notin_dom_def_cons x T D: def D -> (x \notin dom D) -> def ((x,T)::D).
+  Proof. 
+  unfold dom. case (@idP (def D)); [ | by [] ]. 
+  unfold def. rewrite map_cons. rewrite cons_uniq. intro unique. intro. intro notin.
+  apply /andP. split; [by apply notin | by apply unique].
+  Qed.
 
   Lemma def_iff_def_upd a T D: def D <-> def (upd a T D).
   Proof.
@@ -302,47 +309,68 @@ Module Env (En : ENTRY) : ENV En.
     by apply: evennondef_upd_same_dom.
   Qed.
 
+  Lemma def_def_add_upd a T D: def D -> def (add_upd a T D).
+  Proof. unfold add_upd. case: (@idP (a \in dom D)).
+  + intro indom. unfold def. rewrite evennondef_upd_same_dom. by [].
+  + unfold dom. intro H0. intro H1. move: H0. case: (@idP (def D)); [ |intro H; contradict H; apply H1].
+    unfold def. rewrite map_cons. rewrite cons_uniq. intro unique. intro notin. apply /andP. 
+    split; [simpl; apply /negP; by apply: notin | by apply: unique ].
+  Qed.
 
   Lemma def_add_upd_def a T D: def (add_upd a T D) -> def D.
   Proof. unfold add_upd. by case: (a \in dom D); 
     [ move=> defu; rewrite def_iff_def_upd; apply defu | apply: def_cons_def].
   Qed.
 
+(*   Lemma stupid0 (x y: En.K): (x == y) <-> (x = y).
+  Proof. apply conj. apply /eqP. case eqP. by []. by[]. Qed.
+
+
+  Lemma stupid (x: En.K) y: ~ (x == y) -> ~ (x = y).
+  Proof. case eqP; rewrite //. Qed.
+ *)
+
+(* 
+About negP.
+  Locate "_ <> _".
+  Locate "_ != _".
+  Locate " ~ _". *)
+
+
+  SearchAbout eqb.
+
   Lemma look_add a T D: def (add a T D) -> look a (add a T D) = Some T.
-  Proof. elim D; [intro; unfold add; unfold add_upd; simpl; rewrite eq_refl // | ].
-    elim. move=> x0 T0 E0; unfold add; move=> ih defadd. (*; unfold add_upd.*)
-    + case (@idP (a \in dom ((x0, T0) :: E0))). intro indom.
-      (*have indom_au: a \in dom(add_upd a T ((x0, T0) :: E0)). 
-        rewrite (in_dom_add_upd_same_dom ); by apply: indom.*)
-      (*have def0: def ((x0, T0) :: E0). by apply (in_dom_def indom).*)
-      unfold add_upd. rewrite indom. case (@idP (a==x0)); intro eq.
-      * rewrite (eqP eq). rewrite upd_cons_head. rewrite look_cons. case (@idP (x0==x0)); by [].
-        rewrite <-(upd_cons_head _ _ T0). rewrite (eqP eq) in defadd.
-        have updeq: upd x0 T ((x0, T0) :: E0) = add_upd x0 T ((x0, T0) :: E0).
-          unfold add_upd. by rewrite in_dom_cons; [rewrite // | apply (in_dom_def indom)].
-        rewrite updeq; by apply: defadd.
-      * rewrite upd_cons_nothead.
-    
+  Proof.
+  elim D; [intro; unfold add, add_upd; simpl; rewrite eq_refl // | ].
+  elim. move=> x0 T0 E0; unfold add; move=> ih defadd.
+  case (@idP (a \in dom ((x0, T0) :: E0))).
+    + intro indom. unfold add_upd. rewrite indom. case (@idP (a==x0)); intro case_a.
+      * rewrite (eqP case_a). rewrite upd_cons_head. rewrite look_cons. 
+          by case (@idP (x0==x0)); rewrite //.
+        move: defadd. unfold add_upd. 
+          rewrite indom; rewrite (eqP case_a); rewrite upd_cons_head; by [].
+      * have ainE0: a \in dom E0. move: indom. rewrite in_dom_cons_eq. 
+          rewrite <-(rwP orP). by elim; [move: case_a; rewrite // | rewrite // ].
+          by apply: (def_add_upd_def defadd).
+        rewrite upd_cons_nothead. rewrite look_cons. 
+          case (@idP (a==x0)); [intro H; contradict H; apply case_a | intro h; move: ih; elim].
+          unfold add_upd. by case (@idP (a \in dom E0)); [rewrite // | move: ainE0; rewrite //].
+          apply def_def_add_upd. by apply: (def_cons_def (in_dom_def indom)).
+          move: defadd. unfold add_upd. 
+            case: (@idP (a \in dom ((x0, T0) :: E0))); [ | intro H; contradict H; apply indom].
+            rewrite upd_cons_nothead; [ by [] | ]. rewrite (rwP eqP). rewrite eq_sym. by apply case_a.
+          rewrite (rwP eqP). rewrite eq_sym. by apply case_a.
+    + unfold add_upd. case (@idP (a \in dom ((x0, T0) :: E0))); rewrite //. intro notindom. intro.
+      rewrite look_cons.
+      * by case (@idP (a==a)); rewrite //.
+      * apply notin_dom_def_cons; 
+        [ by apply: (def_add_upd_def defadd) 
+        | by apply /negP; apply notindom
+        ].
+  Qed.
 
 
-        
-
-
-
-
-unfold dom; rewrite defadd.
-      rewrite (in_dom_add_upd_same_dom ).
-    
-
-
-(stupidP a ((x0, T0) :: E0)).
-
-
-
-(*
-SearchAbout eq_op.
-
-  Lemma look_add_deep a a' T D: a != a' -> def (add a T D) -> look a' (add a T D) == look a' D.*)
+  Lemma look_add_deep a a' T D: a != a' -> def (add a T D) -> look a' (add a T D) == look a' D.
   Admitted.
 
 
