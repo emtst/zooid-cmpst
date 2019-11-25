@@ -168,7 +168,8 @@ Module Env (En : ENTRY) : ENV En.
   Definition dom (E : env)  : seq En.K := if def E then map fst E else [::].
 
   Definition dom_pred (E : env) : pred En.K := mem (dom E).
-  
+
+  (*Lemma not_in_dom_nil x: x =*)
 
 
   Lemma in_dom_cons x T (E : env) : def ((x,T)::E) -> x \in dom ((x,T)::E).
@@ -199,14 +200,16 @@ Module Env (En : ENTRY) : ENV En.
   by case (@idP (x == (x0, t0).1)); [ simpl; intro eq; rewrite (eqP eq); rewrite // | rewrite //].
   Qed.
 
+
   (* update or insert *)
   Definition add_upd x t (E : env) : env:=
     if x \in dom E then upd x t E else (x , t) :: E.
 
-(*  Lemma in_dom_add_upd_same_dom_aux x T E: x \in dom E -> map fst (add_upd x T E) = map fst E .
-  Proof. 
-  unfold add_upd. by case (x \in dom E); [ intro; apply evennondef_upd_same_dom | rewrite //].
+  (*Lemma add_upd_nil x T: add_upd x T [::] = [:: (x,T)].
+  Proof.
+  unfold add_upd; by rewrite //.
   Qed.*)
+
 
   Fixpoint look x (E : env) : option En.V :=
     if def E then
@@ -236,6 +239,12 @@ Module Env (En : ENTRY) : ENV En.
   unfold dom. rewrite //.  move=> defcons. rewrite defcons. rewrite map_cons.
   have defE: def E. apply: def_cons_def. by apply: defcons.
   rewrite defE. by []. 
+  Qed.
+
+  Lemma notin_dom_cons_eq x y t E : def ((y,t) :: E) -> 
+    ( (x \notin dom ((y,t) :: E)) = (~~(x == y) && (x \notin dom E)) ).
+  Proof. 
+  intro defE; rewrite <-negb_or; rewrite (in_dom_cons_eq); by[].
   Qed.
 
 (*L to D and F: here I had to add an hypothesis, namely def E*)
@@ -293,6 +302,19 @@ Module Env (En : ENTRY) : ENV En.
   apply /andP. split; [by apply notin | by apply unique].
   Qed.
 
+  Lemma not_indom_upd_id x T (D : env): def D -> x \notin dom D -> upd x T D = D.
+  Proof.
+  elim D; [unfold upd; by [] | elim].
+  (*case: (@eqP def D).
+  unfold dom. case: ifP; [ | by [] ]. elim D; [by [] | elim].*)
+  move=> x0 T0 E0 ih defcons. rewrite notin_dom_cons_eq; [| by apply defcons]. 
+  move=>/andP. elim. move=>/negP. move=> neq notin. rewrite upd_cons_nothead;
+  [ rewrite (ih (def_cons_def defcons) notin); by []
+  | rewrite (rwP eqP); rewrite eq_sym; by []
+  ].
+  Qed.
+
+
   Lemma def_iff_def_upd a T D: def D <-> def (upd a T D).
   Proof.
     unfold def; rewrite evennondef_upd_same_dom; by [].
@@ -330,11 +352,11 @@ Module Env (En : ENTRY) : ENV En.
   Proof. case eqP; rewrite //. Qed.
  *)
 
-(* 
+
 About negP.
   Locate "_ <> _".
   Locate "_ != _".
-  Locate " ~ _". *)
+  Locate " ~ _". 
 
 
   SearchAbout eqb.
@@ -371,7 +393,19 @@ About negP.
 
 
   Lemma look_add_deep a a' T D: a != a' -> def (add a T D) -> look a' (add a T D) == look a' D.
-  Admitted.
+  Proof.
+  elim D; [rewrite <-(rwP negP); rewrite eq_sym; simpl; case: ifP; rewrite // | elim].
+  move=> x0 T0 E0 ih neq.
+  unfold add, add_upd. case: ifP.
+  + case (@idP (x0 == a)). 
+    * move=> eq. rewrite (eqP eq). rewrite upd_cons_head. move=> indom. simpl.
+      case: ifP; [ | by [] ]. move=> defupd tr. move: (in_dom_def indom).
+      case (@idP (def ((a, T0) :: E0))); [| by []]. move=> defadd tr2.
+      case: ifP; [by move: neq; rewrite <-(rwP negP); rewrite eq_sym; rewrite // | ].
+      elim. move: (def_cons_notin_dom (in_dom_def indom)).
+      
+
+  Qed.
 
 
   Lemma dom_add k v (E : env) : def (add k v E) ->
