@@ -9,4 +9,4 @@ theories/Actions.v
 theories/Global.v
 theories/Local.v
 theories/Projection.v
-theories/GLTraceEquiv.v
+theories/TraceEquiv.v
