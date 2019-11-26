@@ -247,6 +247,16 @@ Module Env (En : ENTRY) : ENV En.
   intro defE; rewrite <-negb_or; rewrite (in_dom_cons_eq); by[].
   Qed.
 
+  Lemma def_cons_not_head x y t E : def ((y,t) :: E) -> x \in dom E -> 
+    ~ x == y.
+  Proof.
+  move=> defcons. unfold dom. rewrite (def_cons_def defcons). move: defcons.
+  unfold def. rewrite map_cons. rewrite cons_uniq. simpl. case (@idP (x==y)); [ | by []].
+  move=>/eqP->. rewrite <-(rwP andP); elim. rewrite <-(rwP negP). congruence.
+  Qed.
+
+
+
 (*L to D and F: here I had to add an hypothesis, namely def E*)
   Lemma in_domP x E : def E -> reflect (exists v, look x E = Some v) (x \in dom E).
   Proof. 
@@ -331,6 +341,11 @@ Module Env (En : ENTRY) : ENV En.
     by apply: evennondef_upd_same_dom.
   Qed.
 
+  Lemma in_dom_add_same_dom x T E: x \in dom E -> dom (add x T E) = dom E .
+  Proof.
+  unfold add. by apply in_dom_add_upd_same_dom.
+  Qed.
+
   Lemma def_def_add_upd a T D: def D -> def (add_upd a T D).
   Proof. unfold add_upd. case: (@idP (a \in dom D)).
   + intro indom. unfold def. rewrite evennondef_upd_same_dom. by [].
@@ -343,6 +358,32 @@ Module Env (En : ENTRY) : ENV En.
   Proof. unfold add_upd. by case: (a \in dom D); 
     [ move=> defu; rewrite def_iff_def_upd; apply defu | apply: def_cons_def].
   Qed.
+
+
+  Lemma def_add_upd_def_eq a T D: def (add_upd a T D) <-> def D.
+  Proof.
+  split; [by apply: def_add_upd_def| by apply: def_def_add_upd].
+  Qed.
+
+  Lemma def_def_add a T D: def D -> def (add a T D).
+  Proof. 
+  unfold add; by apply def_def_add_upd.
+  Qed.
+
+  Lemma def_add_def a T D: def (add a T D) -> def D.
+  Proof.
+  unfold add; by apply def_add_upd_def.
+  Qed.
+
+
+  Lemma def_add_def_eq a T D: def (add a T D) <-> def D.
+  Proof.
+  split; [by apply: def_add_def| by apply: def_def_add].
+  Qed.
+
+
+
+
 
 (*   Lemma stupid0 (x y: En.K): (x == y) <-> (x = y).
   Proof. apply conj. apply /eqP. case eqP. by []. by[]. Qed.
@@ -395,23 +436,48 @@ About negP.
   Lemma look_add_deep a a' T D: a != a' -> def (add a T D) -> look a' (add a T D) == look a' D.
   Proof.
   elim D; [rewrite <-(rwP negP); rewrite eq_sym; simpl; case: ifP; rewrite // | elim].
-  move=> x0 T0 E0 ih neq.
-  unfold add, add_upd. case: ifP.
-  + case (@idP (x0 == a)). 
-    * move=> eq. rewrite (eqP eq). rewrite upd_cons_head. move=> indom. simpl.
-      case: ifP; [ | by [] ]. move=> defupd tr. move: (in_dom_def indom).
-      case (@idP (def ((a, T0) :: E0))); [| by []]. move=> defadd tr2.
-      case: ifP; [by move: neq; rewrite <-(rwP negP); rewrite eq_sym; rewrite // | ].
-      elim. move: (def_cons_notin_dom (in_dom_def indom)).
-      
-
+  move=> x0 T0 E0. unfold add. move=> ih neq defadd.
+  have defcons: def ((x0,T0):: E0). apply (def_add_upd_def defadd).
+  move: ih defadd.
+  unfold add_upd. case: ifP.
+  + move=> inE0 ih. rewrite (in_dom_cons_eq _ defcons). rewrite inE0. rewrite orbT. 
+    rewrite upd_cons_nothead. move=> defupd.
+    rewrite (look_cons _ defupd). rewrite (look_cons _ defcons). case: ifP; [ by [] | ].
+    move=> neq2. by rewrite (ih neq (def_cons_def defupd)) //. rewrite (rwP eqP).
+    rewrite eq_sym. by apply (def_cons_not_head defcons inE0).
+  + case (@idP (a==x0)).
+    * move=>/eqP-eqax0; rewrite eqax0. rewrite (in_dom_cons defcons).
+      move=> ninE0 ih. rewrite upd_cons_head. rewrite not_indom_upd_id.
+      move: neq. rewrite <-(rwP negP); rewrite eq_sym. rewrite eqax0. move=> neq defT.
+      rewrite (look_cons _ defT). rewrite (look_cons _ defcons). 
+      move: neq; case: ifP; [rewrite (rwP negP); simpl; by [] | by []].
+      by apply (def_cons_def defcons).
+      by rewrite ninE0 //.
+    * case: (@ifP _ (a \in dom ((x0, T0) :: E0))).
+      rewrite (in_dom_cons_eq _ defcons). move=> or false1 false2. move: or false1. 
+      rewrite false2. rewrite orbF. by congruence.
+      move=> ndomcons neqax0 ndom ih defall.
+      rewrite (look_cons _ defall). rewrite (look_cons _ defcons).
+      case: ifP; [ move: neq; rewrite <-(rwP negP); rewrite eq_sym; by [] 
+      | move=> neq2; case: ifP; by []]. 
   Qed.
+
+
+ (* Lemma playing (x: En.K) b: x \in [pred x | b x] = b x.
+  Proof.
+  rewrite inE.*)
 
 
   Lemma dom_add k v (E : env) : def (add k v E) ->
                                 dom (add k v E) =i predU (pred1 k) (mem (dom E)).
-  Admitted.
-
+  Proof.
+  unfold pred_of_simpl, predU, pred1. simpl.
+  move=> defadd. unfold eq_mem. unfold add, add_upd. move=> x.
+  rewrite inE. case: ifP. 
+  + unfold dom; rewrite <-def_iff_def_updb; rewrite (def_add_def defadd).
+    rewrite evennondef_upd_same_dom. move=> kin. case: eqP; rewrite //; move=>->; apply kin.
+  + move=> neq. apply in_dom_cons_eq. move: defadd. unfold add, add_upd; rewrite neq; by[].
+  Qed.
 
   Lemma rem_add_id k' v' D : def (add k' v' D) -> D = rem k' (add k' v' D).
   Admitted.
