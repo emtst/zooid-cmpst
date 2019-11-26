@@ -14,59 +14,22 @@ Require Import MPST.Actions.
 
 Section Project.
 
-  Definition ml_send p t L :=
-    match L with
+  Definition ml_act (a : l_act) (r : role) (Ks : seq (lbl * (mty * option l_ty))) :=
+    match flat_alts Ks with
+    | Some x => Some (l_msg a r x)
     | None => None
-    | Some L => Some (l_send p t L)
     end.
 
-  Definition ml_recv p t L :=
-    match L with
-    | None => None
-    | Some L => Some (l_recv p t L)
-    end.
-
-  Definition project_msg (p : g_prefix) (r : role) (L : option l_ty) :=
-    let: ((p, q), t) := p in
+  Open Scope mpst_scope.
+  Definition project_brn (p : role) (q : role) (r : role)
+             (K : seq (lbl * (mty * option l_ty))) :=
     if p == q
     then None
     else if p == r
-         then ml_send q t L
+         then ml_act l_send q K
          else if q == r
-              then ml_recv p t L
-              else L.
-
-  Definition pproj_msg (p : g_prefix) (r1 r2 : role) (L : option s_ty) :=
-    let: ((p, q), t) := p in
-    if p == q
-    then None
-    else if (p == r1) && (q == r2)
-         then ms_send t L
-         else if (q == r1) && (p == r2)
-              then ms_recv t L
-              else L.
-
-  Definition ml_brn (r : role) (a : seq (lbl * option l_ty)) :=
-    match flat_alts a with
-    | Some x => Some (l_brn r x)
-    | None => None
-    end.
-
-  Definition ml_sel (r : role) (a : seq (lbl * option l_ty)) :=
-    match flat_alts a with
-    | Some x => Some (l_sel r x)
-    | None => None
-    end.
-
-  Definition project_brn (p : g_prefix) (r : role) (K : seq (lbl * option l_ty)) :=
-    let: ((p, q), t) := p in
-    if p == q
-    then None
-    else if p == r
-         then ml_sel q K
-         else if q == r
-              then ml_brn p K
-              else merge_all K.
+              then ml_act l_recv p K
+              else merge_all [seq x.cnt | x <- K].
 
   Notation lbv n := (l_var (Rvar.bv n)).
 
@@ -82,16 +45,16 @@ Section Project.
     | None => None
     end.
 
+  Notation g_ty := (g_ty unit).
+
   Fixpoint project (g : g_ty) (r : role) : option l_ty :=
     match g with
     | g_end => Some l_end
-    | g_msg m G => project_msg m r (project G r)
     | g_var v => Some (l_var v)
     | g_rec G => let L := project G r in
                  if L == Some (lbv 0) then None else ml_rec L
-    | g_brn p K =>
-      let KL := map (fun X => (X.1, project X.2 r)) K in
-      project_brn p r KL
+    | g_msg _ p q K =>
+      project_brn p q r [seq (X.lbl, (X.mty, project X.cnt r)) | X <- K]
     end.
 
   Definition insert (E : role * l_ty) P :=
@@ -109,7 +72,8 @@ Section Project.
                 end
     end.
 
-  Fixpoint isg_valid d G :=
+  Fixpoint isg_valid (d : nat) (G : g_ty) := true.
+  (*
     match d with
     | 0 => match G with
            | g_var _ => false
@@ -123,6 +87,7 @@ Section Project.
       | _ => true
       end
     end.
+   *)
 
   Definition g_valid G := isg_valid (depth_gty G) G.
 
@@ -172,49 +137,19 @@ Section Project.
   Lemma msrec_not_var S i : (ms_rec S == Some (sbv i)) = false.
   Proof. by case: S. Qed.
 
-  Lemma pproj_recv f ty L p :
-    p_proj (ml_recv f ty L) p =
-    (if f == p then ms_recv ty (p_proj L p) else p_proj L p).
-  Proof.
-    rewrite /ml_recv (fun_option (fun X => p_proj X p)) /p_proj.
-    by case: L=>[L|]/=; case: ifP=>//; rewrite eta_option.
-  Qed.
-
-  Lemma pproj_send f ty L p :
-    p_proj (ml_send f ty L) p =
-    (if f == p then ms_send ty (p_proj L p) else p_proj L p).
-  Proof.
-    rewrite /ml_send (fun_option (fun X => p_proj X p)) /p_proj.
-    by case: L=>[L|]/=; case: ifP=>//; rewrite eta_option.
-  Qed.
-
   Definition pproj_brn (p : g_prefix)
-             (r1 r2 : role) (S : option s_ty) (K : seq (lbl * option s_ty)) :=
+             (r1 r2 : role) (S : option s_ty)
+             (K : seq (lbl * (mty * option s_ty))) :=
     let: ((p, q), t) := p in
     if p == q
     then None
     else if p == r1
-         then if q == r2 then ms_sel K
-              else merge_all K
+         then if q == r2 then ms_msg l_send K
+              else merge_all [seq X.cnt | X <- K ]
          else if p == r2
-              then if q == r1 then ms_brn K
-                   else merge_all K
+              then if q == r1 then ms_msg l_recv K
+                   else merge_all [seq X.cnt | X <- K ]
               else S.
-
-  Lemma pproj_msg_swap pr p q L :
-    p_proj (project_msg pr q L) p
-    = pproj_msg pr q p (p_proj L p).
-  Proof.
-    case: pr=>[[f t] ty] /=.
-    case: ifP =>// f_neq_t; case: ifP=>/=//[f_eq_g|f_neq_g].
-    - case: ifP=>[/eqP->|t_neq_p].
-      + by rewrite pproj_send eq_refl.
-      + move: f_eq_g f_neq_t=>/eqP->.
-        rewrite eq_sym=>->; rewrite /p_proj/=.
-        by case: L=>//L/=; rewrite t_neq_p.
-    - by case: ifP=>///=t_eq_q; rewrite pproj_recv.
-  Qed.
-
 
   Lemma option_comm A B C (x : option A) (f : A -> option B) (g : B -> C) z z' :
     match
@@ -261,58 +196,57 @@ Section Project.
   Proof. by case: x. Qed.
 
 
-  Lemma flatten_some (A : eqType) (L : seq (lbl * option A)) LL :
+  Lemma flatten_some (A : eqType) (L : seq (lbl * (mty * option A))) LL :
     flatten L == Some LL ->
-    L = [seq (X.1, Some X.2) | X <- LL].
+    L = [seq (X.lbl, (X.mty, Some X.cnt)) | X <- LL].
   Proof.
-    elim: L LL=>[LL /eqP-[<-]//| [l L] K Ih K']/=.
+    elim: L LL=>[LL /eqP-[<-]//| [l [t L]] K Ih K']/=.
     case: L=>//a; move: Ih; case: (flatten K)=>//FK Ih /eqP-[<-]/=.
     by rewrite -Ih.
   Qed.
 
-  Lemma flatalts_some (A : eqType) (L : seq (lbl * option A)) LL :
+  Lemma flatalts_some (A : eqType) (L : seq (lbl * (mty * option A))) LL :
     flat_alts L == Some LL ->
-    L = [seq (X.1, Some X.2) | X <- LL].
+    L = [seq (X.lbl, (X.mty,  Some X.cnt)) | X <- LL].
   Proof. by case: L=>// L K; apply: flatten_some. Qed.
 
-  Lemma flatten_none (A : eqType) (L : seq (lbl * option A)) :
-    flatten L == None -> exists l, (l, None) \in L.
+  Lemma flatten_none (A : eqType) (L : seq (lbl * (mty * option A))) :
+    flatten L == None -> exists l t, (l, (t, None)) \in L.
   Proof.
-    elim: L=>// [[l [S|]] K]/=.
-    - move=> Ih F_none.
-      have {F_none} /Ih: flatten K == None by case: (flatten K) F_none.
-      + by move=>[l0 Pf]; exists l0; rewrite in_cons orbC Pf.
-      + by move=>_ _; exists l; rewrite in_cons eq_refl.
+    elim: L=>[// | [l [t [S|]]] K]/=; move=> Ih F_none.
+    + have {F_none} /Ih: flatten K == None by case: (flatten K) F_none.
+      by move=>[l0 [t0 Pf]]; exists l0; exists t0; rewrite in_cons orbC Pf.
+    + by exists l; exists t; rewrite in_cons eq_refl.
   Qed.
 
-  Lemma flatalts_none (A : eqType) (L : seq (lbl * option A)) :
-    flat_alts L == None -> L == [::] \/ exists l, (l, None) \in L.
+  Lemma flatalts_none (A : eqType) (L : seq (lbl * (mty * option A))) :
+    flat_alts L == None -> L == [::] \/ exists l t, (l, (t, None)) \in L.
   Proof.
     case: L; first by move=> _; left.
     by move=> a L H; right; apply: flatten_none.
   Qed.
 
-  Lemma flatten_pproj (L : seq (lbl * option l_ty)) t :
-    flatten [seq (X.1, p_proj X.2 t) | X <- L]
+  Lemma flatten_pproj (L : seq (lbl * (mty * option l_ty))) t :
+    flatten [seq (X.lbl, (X.mty, p_proj X.cnt t)) | X <- L]
     = match flatten L with
-      | Some K => flatten [seq (X.1, partial_proj X.2 t) | X <- K]
+      | Some K => flatten [seq (X.lbl, (X.mty, partial_proj X.cnt t)) | X <- K]
       | None => None
       end.
   Proof.
-    elim: L=>// [[l [S|]] K]///=.
+    elim: L=>// [[l [ty [S|]]] K]///=.
     move=>->/=; rewrite option_comm/=.
     case: (partial_proj S t)=>[FK|]; last (by case: (flatten K)).
     by rewrite option_comm.
   Qed.
 
-  Lemma flatalts_cons (A : eqType) (a : lbl * option A) L :
+  Lemma flatalts_cons (A : eqType) (a : lbl * (mty * option A)) L :
     flat_alts (a :: L) = flatten (a :: L).
   Proof. by []. Qed.
 
-  Lemma flatalts_pproj (L : seq (lbl * option l_ty)) t :
-    flat_alts [seq (X.1, p_proj X.2 t) | X <- L]
+  Lemma flatalts_pproj L  t :
+    flat_alts [seq (X.lbl, (X.mty, p_proj X.cnt t)) | X <- L]
     = match flat_alts L with
-      | Some K => flat_alts [seq (X.1, partial_proj X.2 t) | X <- K]
+      | Some K => flat_alts [seq (X.lbl, (X.mty, partial_proj X.cnt t)) | X <- K]
       | None => None
       end.
   Proof.
@@ -321,43 +255,23 @@ Section Project.
     by move=>/flatten_some; case: K.
   Qed.
 
-  Lemma pproj_sel f L t:
-    p_proj (ml_sel f L) t =
-    if f == t then ms_sel [seq (X.1, p_proj X.2 t) | X <- L]
-    else merge_all [seq (X.1, p_proj X.2 t) | X <- L].
+  Lemma pproj_msg a f L t:
+    p_proj (ml_act a f L) t =
+    if f == t then ms_msg a [seq (X.lbl, (X.mty, p_proj X.cnt t)) | X <- L]
+    else merge_all [seq p_proj X.cnt t | X <- L].
   Proof.
-    rewrite /ml_sel (fun_option (fun X => p_proj X t))/=.
+    rewrite /ml_act (fun_option (fun X => p_proj X t))/=.
     move: {-1} (flat_alts L) (eq_refl (flat_alts L)) => LL.
-    case: LL=>[LL|]; first by move=>/flatalts_some->; rewrite -map_comp /comp/=.
-    case:ifP=> _//; rewrite /ms_sel.
+    case: LL=>[LL|]; first (by move=>/flatalts_some->; rewrite -!map_comp /comp/=).
+    case:ifP=> _//; rewrite /ms_msg.
     - by rewrite flatalts_pproj=>/eqP->.
-    - move=>/flatalts_none-[/eqP->//|[l]].
-      rewrite /merge_all; case: L=>// a K/=.
-      case: a=>[l' [S|]]//.
-      rewrite in_cons xpair_eqE andbC/=.
+    - move=>/flatalts_none-[/eqP->//|[l [t0]]].
+      rewrite /merge_all; case: L=>// a' K/=.
+      case: a'=>[l' [t' [S|]]]//.
+      rewrite in_cons !xpair_eqE andbA andbC/=.
       case: (partial_proj S t)=>// {S}S.
-      elim: K=>// [[l'' [S'|]] K]// Ih.
-      rewrite in_cons xpair_eqE andbC/==>/Ih-{Ih}Ih.
-      by case: (partial_proj S' t)=>// {S'}S'; case:ifP=>//.
-  Qed.
-
-  Lemma pproj_lbrn f L t:
-    p_proj (ml_brn f L) t =
-    if f == t then ms_brn [seq (X.1, p_proj X.2 t) | X <- L]
-    else merge_all [seq (X.1, p_proj X.2 t) | X <- L].
-  Proof.
-    rewrite /ml_brn (fun_option (fun X => p_proj X t))/=.
-    move: {-1} (flat_alts L) (eq_refl (flat_alts L)) => LL.
-    case: LL=>[LL|]; first by move=>/flatalts_some->; rewrite -map_comp /comp/=.
-    case:ifP=> _//; rewrite /ms_brn.
-    - by rewrite flatalts_pproj=>/eqP->.
-    - move=>/flatalts_none-[/eqP->//|[l]].
-      rewrite /merge_all; case: L=>// a K/=.
-      case: a=>[l' [S|]]//.
-      rewrite in_cons xpair_eqE andbC/=.
-      case: (partial_proj S t)=>// {S}S.
-      elim: K=>// [[l'' [S'|]] K]// Ih.
-      rewrite in_cons xpair_eqE andbC/==>/Ih-{Ih}Ih.
+      elim: K=>// [[l'' [t'' [S'|]]] K]// Ih.
+      rewrite in_cons !xpair_eqE andbA andbC/==>/Ih-{Ih}Ih.
       by case: (partial_proj S' t)=>// {S'}S'; case:ifP=>//.
   Qed.
 
@@ -367,11 +281,11 @@ Section Project.
   Lemma pproj_mergeall L t:
     is_def (merge_all L) ->
     p_proj (merge_all L) t =
-    merge_all [seq (X.1, p_proj X.2 t) | X <- L].
+    merge_all [seq p_proj X t | X <- L].
   Proof.
-    case: L=>[|[l [L|]] K]/=//.
+    case: L=>[|[L|] K]/=//.
     elim: K=>/=; first (by rewrite eta_option).
-    move=> [l' [L'|]] K Ih/=; last (by case: (partial_proj L t)).
+    move=> [L'|] K Ih/=; last (by case: (partial_proj L t)).
     case: ifP=>[/eqP-[->{L'}] /Ih->{Ih}|//].
     by case: (partial_proj L t)=>// L'; rewrite eq_refl.
   Qed.
@@ -379,45 +293,25 @@ Section Project.
   Lemma mdual_mrec Sp Sq : mdual (ms_rec Sp) (ms_rec Sq) = mdual Sp Sq.
   Proof. by case: Sp; case: Sq. Qed.
 
-  Lemma mdual_msend_recv Sp Sq ty :
-    mdual (ms_send ty Sp) (ms_recv ty Sq) = mdual Sp Sq.
-  Proof.
-    case: Sp; case: Sq=>//Sp Sq/=; rewrite /is_dual/=.
-    rewrite -[s_send _ _ == s_send _ _]/((ty == ty) && (Sq == dual Sp)).
-    by rewrite eq_refl.
-  Qed.
-
-  Lemma mdual_mrecv_send Sp Sq ty :
-    mdual (ms_recv ty Sp) (ms_send ty Sq) = mdual Sp Sq.
-  Proof. by rewrite mdualC mdual_msend_recv mdualC. Qed.
-
   Lemma pproj_def mL p S :
     p_proj mL p == Some S ->
     exists L, (mL == Some L) && (partial_proj L p == Some S).
   Proof. by case: mL=>/=//L H; exists L; rewrite eq_refl H. Qed.
 
-  Lemma mdual_msel_mbrn K K' :
-    all2 (fun x y => (x.1 == y.1) && mdual x.2 y.2) K K' ->
-    mdual (ms_sel K) (ms_brn K').
+  Lemma mdual_act a a' K K' :
+    dual_act a == a' ->
+    all2 (fun x y => (x.lbl == y.lbl) && (x.mty == y.mty) && mdual x.cnt y.cnt) K K' ->
+    mdual (ms_msg a K) (ms_msg a' K').
   Proof.
-    rewrite /ms_sel /ms_brn; case: K; case: K'=>// lS K lS' K'.
+    move=>/eqP<-{a'}; rewrite /ms_msg; case: K; case: K'=>// lS K lS' K'.
     rewrite !flatalts_cons; move: {lS K lS' K'} (lS :: K) (lS' :: K')=> K K'.
-    elim: K K'=>[|[l Sl] K Ih];case=>[|[r Sr] K']/=//.
-    case: Sl; case: Sr=>///=; try (by rewrite -andbA andbC).
-    move=> Sl Sr /andP-[/andP-[/eqP<- SlSr] /Ih-{Ih}].
-    rewrite !option_comm /=.
-    case: (flatten K'); case: (flatten K)=>//{K K'} K K'; rewrite /=/is_dual/=.
-    by move: SlSr; rewrite/is_dual/==>/eqP<-; move=>/eqP-[<-].
-  Qed.
-
-  Lemma mdual_mbrn_msel K K' :
-    all2 (fun x y => (x.1 == y.1) && mdual x.2 y.2) K K' ->
-    mdual (ms_brn K) (ms_sel K').
-  Proof.
-    move=> H; suff: all2 (fun x y => (x.1 == y.1) && mdual x.2 y.2) K' K
-             by move=>/mdual_msel_mbrn; rewrite mdualC.
-    elim: K' K H=>[|h t Ih]; case=>[|h' t']/=//; move=>/andP-[/andP-[/eqP<-]].
-    by rewrite mdualC=>-> /Ih->; rewrite eq_refl.
+    elim: K K'=>[|[l [tl Sl]] K Ih];case=>[|[r [tr Sr]] K']/=//.
+    - by rewrite /is_dual/dual//= dual_actK.
+    - case: Sl; case: Sr=>///=; try (by rewrite -andbA andbC).
+      move=> Sl Sr /andP-[/andP-[/andP-[/eqP<-/eqP<- SlSr]]] /Ih-{Ih}.
+      rewrite !option_comm /=.
+      case: (flatten K'); case: (flatten K)=>//{K K'} K K'; rewrite /=/is_dual/=.
+      by move: SlSr; rewrite /is_dual/==>/eqP<-; move=>/eqP-[<-<-].
   Qed.
 
   Lemma all2_map A B C (P : B -> C -> bool) f g (L : seq A) :
@@ -425,20 +319,14 @@ Section Project.
     = all (fun x => P (f x) (g x)) L.
   Proof. by elim: L => [|a L /=->]. Qed.
 
-  Lemma dual_brn_sel K K1 :
-    is_dual (s_brn K) (s_sel K1)
-    = all2 (fun X Y => (X.1 == Y.1) && is_dual X.2 Y.2) K K1.
+  Lemma dual_msg a a' K K1 :
+    is_dual (s_msg a K) (s_msg a' K1)
+    = (a == dual_act a')
+        && all2 (fun X Y => (X.lbl == Y.lbl) && (X.mty == Y.mty) && is_dual X.cnt Y.cnt) K K1.
   Proof.
-    rewrite /is_dual; elim: K K1;[case=>//|].
-    by move=>[ll Ll] K Ih [|[lr Lr] K1]/=//; move: Ih=>/(_ K1)<-.
-  Qed.
-
-  Lemma dual_sel_brn K K1 :
-    is_dual (s_sel K) (s_brn K1)
-    = all2 (fun X Y => (X.1 == Y.1) && is_dual X.2 Y.2) K K1.
-  Proof.
-    rewrite /is_dual; elim: K K1;[case=>//|].
-    by move=>[ll Ll] K Ih [|[lr Lr] K1]/=//; move: Ih=>/(_ K1)<-.
+    case:eqP=>[->{a}|/eqP]; rewrite/is_dual/=; last (by apply: contraNF =>/eqP[->]).
+    - move: (dual_act a') => {a'}a; rewrite !eqE /= eq_refl /= -!/eqE.
+      by elim: K K1=>[|L K Ih]; case=>// [L1 K1]/=; rewrite Ih.
   Qed.
 
   Lemma dual_eq A B C:
@@ -452,13 +340,13 @@ Section Project.
   Qed.
 
   Lemma mdual_mergeall K K' :
-    all2 (fun X Y => mdual X.2 Y.2) K K'
+    all2 (fun X Y => mdual X Y) K K'
     -> mdual (merge_all K) (merge_all K').
   Proof.
-    case: K K'=>[|[ll Ll]/= K]; case=>[|[ll' Ll']/= K']//.
+    case: K K'=>[|Ll/= K]; case=>[|Ll'/= K']//.
     case: Ll; case: Ll'=>// Sl Sl'/=.
-    move=>/andP-[] {ll ll'}.
-    elim: K K' Sl Sl'=>[[|h K'] Sl Sl'//|[ll Ll] K Ih [//|[lr Lr] K'/=]].
+    move=>/andP-[].
+    elim: K K' Sl Sl'=>[[|h K'] Sl Sl'//|Ll K Ih [//|Lr K'/=]].
     move=>Sl Sl' D /andP-[].
     case: Ll; case: Lr=>//Ll Lr/=.
     rewrite -[Some Lr == Some Sl']/(Lr == Sl') -[Some Ll == Some Sl]/(Ll == Sl).
@@ -479,36 +367,20 @@ Section Project.
     (project G p != Some (lbv 0)) /\ WFp p G.
   Proof. by rewrite /WFp/=; case: ifP=>///=; case: (project G p). Qed.
 
-  Lemma wf_msg p pr G :
-    WFp p (g_msg pr G) -> (pr.1.1 != pr.1.2) && WFp p G.
+  Lemma isdef_sel a q K :
+    is_def (ml_act a q K) -> all (fun X => is_def X.cnt) K.
   Proof.
-    case: pr=>[[f t] ty]; rewrite /WFp/=; case: ifP=>///=.
-    by do ! (case: ifP=>//); case: (project G p).
-  Qed.
-
-  Lemma isdef_sel q K :
-    is_def (ml_sel q K) -> all (fun X => is_def X.2) K.
-  Proof.
-    rewrite /ml_sel; case: K=>// lL K; rewrite flatalts_cons.
+    rewrite /ml_act; case: K=>// lL K; rewrite flatalts_cons.
     move: {lL K}(lL :: K)=>K.
-    elim:K=>[//|[l [L|//]] K Ih]/=.
+    elim:K=>[//|[l [t [L|//]]] K Ih]/=.
     by rewrite option_comm=> H; apply: Ih; move: H; case: (flatten K).
   Qed.
 
-  Lemma isdef_merge (A : eqType) (K : seq (lbl * option A)) :
-    is_def (merge_all K) -> all (fun X => is_def X.2) K.
+  Lemma isdef_merge (A : eqType) (K : seq (option A)) :
+    is_def (merge_all K) -> all (fun X => is_def X) K.
   Proof.
-    rewrite /merge_all; case: K=>[//|[l [o|//]]  K]/={l}.
-    by elim:K=>[//|[l [L|//]] K Ih]/=; case:ifP.
-  Qed.
-
-  Lemma isdef_brn q K :
-    is_def (ml_brn q K) -> all (fun X => is_def X.2) K.
-  Proof.
-    rewrite /ml_brn ; case: K=>// lL K; rewrite flatalts_cons.
-    move: {lL K}(lL :: K)=>K.
-    elim:K=>[//|[l [L|//]] K Ih]/=.
-    by rewrite option_comm=> H; apply: Ih; move: H; case: (flatten K).
+    rewrite /merge_all; case: K=>[//|[o|//]  K]/=.
+    by elim:K=>[//|[L|//] K Ih]/=; case:ifP.
   Qed.
 
   Lemma all_compat G p q :
@@ -517,7 +389,7 @@ Section Project.
     WFp q G ->
     mdual (p_proj (project G p) q) (p_proj (project G q) p).
   Proof.
-    move=>p_neq_q; elim/gty_ind1:G=>[|v/=|G|pr G|[[f t] ty] G]///=.
+    move=>p_neq_q; elim/gty_ind1:G=>[|v/=|G|m f t G]///=.
     + by rewrite is_dual_var.
     + rewrite (fun_if (p_proj^~p)) (fun_if (p_proj^~q)) !pproj_rec /=.
       move=> Ih /wf_rec-[/negPf--> Wfp2] /wf_rec-[/negPf--> Wfq2].
@@ -525,65 +397,62 @@ Section Project.
       move=>S1 S2 {Ih Wfp2 Wfq2 p_neq_q p q G}.
       do 2 (case: S1; case: S2=>// S1 S2/=).
       by move=>/eqP-[->]; case: ifP=>///=; rewrite /is_dual/dual.
-    + rewrite !pproj_msg_swap.
-      move: (p_proj (project G p) q) (p_proj (project G q) p) => Sp Sq Ih.
-      case: pr=> [[f t] ty]/=; rewrite andbC; case: ifP=>//f_neq_t.
-      move=> /wf_msg-/andP-[_ Wf1] /wf_msg-/andP-[_ Wf2].
-      case: ifP=>[/andP-[/eqP-> /eqP->]|];[rewrite (negPf p_neq_q)/=|].
-      - by rewrite mdual_msend_recv; apply: Ih.
-      - move=>H; rewrite andbC; case: ifP=>[_|_]; last (by apply: Ih).
-        by rewrite mdual_mrecv_send; apply: Ih.
     + rewrite !(fun_if(fun X=> p_proj X p)) !(fun_if(fun X=> p_proj X q))/=.
-      rewrite !pproj_sel !pproj_lbrn -!map_comp /comp/=.
-      rewrite /WFp/=; do ! (case: ifP=>//).
+      rewrite !pproj_msg -!map_comp /comp/=.
+      rewrite /WFp/=/project_brn; do ! (case: ifP=>//).
       - by move=>/eqP->; rewrite (negPf p_neq_q).
       - by move=>_ _ /eqP->; rewrite eq_sym (negPf p_neq_q).
       - by move=> _ _ /eqP->; rewrite eq_sym (negPf p_neq_q).
       - by move=> _ _ /eqP->; rewrite eq_sym (negPf p_neq_q).
-      - move=>/eqP-> _ /eqP-> _/= Ih /isdef_sel.
+      - move => /eqP->{t} _ /eqP->{f} _/= Ih /isdef_sel.
         rewrite all_map /pred_of_simpl/preim/SimplPred/fun_of_simpl/=.
-        move=>/forallbP/forall_member-H1 /isdef_brn.
+        move=>/forallbP/forall_member-H1 /isdef_sel.
         rewrite all_map /pred_of_simpl/preim/SimplPred/fun_of_simpl/=.
-        move=>/forallbP/forall_member-H2; rewrite mdual_msel_mbrn // all2_map/=.
+        move=>/forallbP/forall_member-H2; rewrite mdual_act // all2_map/=.
         apply/forallbP/forall_member =>x xG; rewrite eq_refl/=.
         move: Ih H1 H2 =>/(_ x xG)-Ih /(_ x xG)-H1 /(_ x xG)-H2.
-        by apply: Ih.
+        by rewrite eq_refl /=; apply: Ih.
       - move=> _ _/eqP-> _ Ih.
-        move=>/isdef_sel/forallbP/Fa_map/=/forall_member-H1 H2.
+        move=>/isdef_sel/forallbP/Fa_map/=/forall_member-H1.
+        rewrite -map_comp/comp/==>H2.
         rewrite pproj_mergeall // -map_comp /comp/=; apply: mdual_mergeall.
         move: H2 =>/isdef_merge/forallbP/Fa_map//=/forall_member-H2.
         rewrite all2_map; apply/forallbP/forall_member=> /=- x xG.
         by move: H1 H2 Ih=>/(_ x xG)-H1 /(_ x xG)-H2 /(_ x xG H1 H2).
-      - move=>/eqP-> /eqP-> _ _ Ih /isdef_brn.
+      - move=>/eqP-> /eqP-> _ _ Ih /isdef_sel.
         rewrite all_map/pred_of_simpl/preim/SimplPred/fun_of_simpl/=.
         move=>/forallbP/forall_member=> H1 /isdef_sel.
         rewrite all_map/pred_of_simpl/preim/SimplPred/fun_of_simpl/=.
         move=>/forallbP/forall_member=> H2.
-        apply/mdual_mbrn_msel; rewrite all2_map/=.
-        apply/forallbP/forall_member=> x xG; rewrite eq_refl.
+        apply/mdual_act=>//; rewrite all2_map/=.
+        apply/forallbP/forall_member=> x xG; rewrite !eq_refl/=.
         by move: H1 H2 Ih=> /(_ x xG)-H1 /(_ x xG)-H2 /(_ x xG H1 H2).
       - by move=>/eqP-> _; rewrite eq_sym (negPf p_neq_q).
       - move=> _ _ /eqP-> _ _ Ih.
-        move=>/isdef_brn/forallbP/Fa_map/=/forall_member-H1 H2.
+        move=>/isdef_sel/forallbP/Fa_map/=/forall_member-H1.
+        rewrite -map_comp/comp/==>H2.
         rewrite pproj_mergeall // -map_comp /comp/=; apply: mdual_mergeall.
         move: H2 =>/isdef_merge/forallbP/Fa_map//=/forall_member-H2.
         rewrite all2_map; apply/forallbP/forall_member=> /=- x xG.
         by move: H1 H2 Ih=>/(_ x xG)-H1 /(_ x xG)-H2 /(_ x xG H1 H2).
-      - move=> /eqP-> _ _ _ Ih H1.
+      - move=> /eqP-> _ _ _ Ih.
+        rewrite -map_comp/comp/==>H1.
         rewrite pproj_mergeall // -map_comp /comp/=; move: H1.
         move=>/isdef_merge/forallbP/Fa_map/=/forall_member-H1.
         move=>/isdef_sel/forallbP/Fa_map/=/forall_member-H2.
         apply: mdual_mergeall; rewrite all2_map.
         apply/forallbP/forall_member=> /=- x xG.
         by move: H1 H2 Ih=>/(_ x xG)-H1 /(_ x xG)-H2 /(_ x xG H1 H2).
-      - move=> /eqP-> _ _ _ _ Ih H1.
+      - move=> /eqP-> _ _ _ _ Ih.
+        rewrite -map_comp/comp/==>H1.
         rewrite pproj_mergeall // -map_comp /comp/=; move: H1.
         move=>/isdef_merge/forallbP/Fa_map/=/forall_member-H1.
-        move=>/isdef_brn/forallbP/Fa_map/=/forall_member-H2.
+        move=>/isdef_sel/forallbP/Fa_map/=/forall_member-H2.
         apply: mdual_mergeall; rewrite all2_map.
         apply/forallbP/forall_member=> /=- x xG.
         by move: H1 H2 Ih=>/(_ x xG)-H1 /(_ x xG)-H2 /(_ x xG H1 H2).
-      - move=> _ _ _ _ _ Ih H1 H2.
+      - move=> _ _ _ _ _ Ih.
+        rewrite -!map_comp/comp/==>H1 H2.
         rewrite !pproj_mergeall // -!map_comp /comp/=; move: H1 H2.
         move=>/isdef_merge/forallbP/Fa_map/=/forall_member-H1.
         move=>/isdef_merge/forallbP/Fa_map/=/forall_member-H2.

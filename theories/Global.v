@@ -10,12 +10,6 @@ Require Import MPST.Forall.
 Require Import MPST.LNVar.
 Require Import MPST.Actions.
 
-Declare Scope gty_scope.
-
-Notation "K .lbl" := (K.1)   (at level 2, left associativity, format "K .lbl") : gty_scope.
-Notation "K .mty" := (K.2.1) (at level 2, left associativity, format "K .mty") : gty_scope.
-Notation "K .gty" := (K.2.2) (at level 2, left associativity, format "K .gty") : gty_scope.
-
 Section Syntax.
 
   Inductive g_ty A :=
@@ -27,7 +21,7 @@ Section Syntax.
   Arguments g_end [_].
   Arguments g_var [_].
 
-  Open Scope gty_scope.
+  Open Scope mpst_scope.
 
   Notation gfv a := (g_var (Rvar.fv a)).
   Notation gbv n := (g_var (Rvar.bv n)).
@@ -37,7 +31,7 @@ Section Syntax.
     | g_end
     | g_var _ => 0
     | g_rec G => (depth_gty G).+1
-    | g_msg _ _ _ K => (maximum (map (fun x=> depth_gty x.gty) K)).+1
+    | g_msg _ _ _ K => (maximum (map (fun x=> depth_gty x.cnt) K)).+1
     end.
 
   Fixpoint participants A (G : g_ty A) :=
@@ -45,7 +39,7 @@ Section Syntax.
     | g_end
     | g_var _ => [::]
     | g_rec G => participants G
-    | g_msg _ p q Ks => p::q::flatten [seq participants K.gty | K <- Ks]
+    | g_msg _ p q Ks => p::q::flatten [seq participants K.cnt | K <- Ks]
     end.
 
   Lemma gty_ind1 :
@@ -53,7 +47,7 @@ Section Syntax.
       P g_end ->
       (forall v, P (g_var v)) ->
       (forall G, P G -> P (g_rec G)) ->
-      (forall m p q Ks, (forall K, member K Ks -> P K.gty) ->
+      (forall m p q Ks, (forall K, member K Ks -> P K.cnt) ->
                         P (g_msg m p q Ks)) ->
       forall g : g_ty A, P g.
   Proof.
@@ -82,7 +76,7 @@ Section Syntax.
               | [::], [::] => true
               | K1::Ks1, K2::Ks2 => (K1.lbl == K2.lbl)
                                       && (K1.mty == K2.mty)
-                                      && eq_g_ty K1.gty K2.gty
+                                      && eq_g_ty K1.cnt K2.cnt
                                       && eqL Ks1 Ks2
               | _, _ => false
               end) Ks1 Ks2
@@ -90,7 +84,7 @@ Section Syntax.
     end.
 
   Definition eq_alt (A : eqType) (l r : lbl * (mty * g_ty A)) :=
-    (l.lbl == r.lbl) && (l.mty == r.mty) && eq_g_ty l.gty r.gty.
+    (l.lbl == r.lbl) && (l.mty == r.mty) && eq_g_ty l.cnt r.cnt.
 
   Lemma eqgty_all (A : eqType) m1 p1 q1 (Ks1 : seq (lbl * (mty * g_ty A))) m2 p2 q2 Ks2 :
     eq_g_ty (g_msg m1 p1 q1 Ks1) (g_msg m2 p2 q2 Ks2) =
@@ -131,7 +125,7 @@ Section Syntax.
       P g_end ->
       (forall v, P (g_var v)) ->
       (forall G, P G -> P (g_rec G)) ->
-      (forall m p q Ks, Forall (fun K => P K.gty) Ks -> P (g_msg m p q Ks)) ->
+      (forall m p q Ks, Forall (fun K => P K.cnt) Ks -> P (g_msg m p q Ks)) ->
       forall G : g_ty A, P G.
   Proof.
     move=> A P P_end P_var P_rec P_msg; elim/gty_ind1=>//.
@@ -144,7 +138,7 @@ Section Syntax.
     | g_var v => Rvar.open (@g_var A) d G2 v
     | g_rec G => g_rec (g_open d.+1 G2 G)
     | g_msg m p q Ks =>
-      g_msg m p q [seq (K.lbl, (K.mty, g_open d G2 K.gty)) | K <- Ks]
+      g_msg m p q [seq (K.lbl, (K.mty, g_open d G2 K.cnt)) | K <- Ks]
     end.
   Notation "{ k '~>' v } G":= (g_open k v G) (at level 30, right associativity).
   Notation "G '^' v":= (g_open 0 (gfv v) G) (at level 30, right associativity).
@@ -154,7 +148,7 @@ Section Syntax.
     | g_end => G1
     | g_var gv => g_var (Rvar.close v d gv)
     | g_rec G => g_rec (g_close v d.+1 G)
-    | g_msg m p q Ks => g_msg m p q [seq (K.lbl, (K.mty, g_close v d K.gty)) | K <- Ks]
+    | g_msg m p q Ks => g_msg m p q [seq (K.lbl, (K.mty, g_close v d K.cnt)) | K <- Ks]
     end.
   Notation "{ k '<~' v } G":= (g_close v k G) (at level 30, right associativity).
 
@@ -174,7 +168,7 @@ Section Syntax.
     match G with
     | g_var v => Rvar.fvar v
     | g_rec G => g_fvar G
-    | g_msg m p q Ks => fsetUs [seq g_fvar K.gty | K <- Ks]
+    | g_msg m p q Ks => fsetUs [seq g_fvar K.cnt | K <- Ks]
     | g_end => fset0
     end.
 
@@ -196,7 +190,7 @@ Section Syntax.
     match G with
     | g_var v => Rvar.fbvar d v
     | g_rec G => g_fbvar d.+1 G
-    | g_msg m p q Ks => fsetUs [seq g_fbvar d K.gty | K <- Ks]
+    | g_msg m p q Ks => fsetUs [seq g_fbvar d K.cnt | K <- Ks]
     | g_end => fset0
     end.
 
@@ -261,7 +255,7 @@ Section Syntax.
       (forall v, P (g_var v)) ->
       (forall G, (forall X (s : {fset atom}), X \notin s -> P (G ^ X)) ->
                  P (g_rec G)) ->
-      (forall m p q Ks, (forall K, K \in Ks -> P K.gty) -> P (g_msg m p q Ks)) ->
+      (forall m p q Ks, (forall K, K \in Ks -> P K.cnt) -> P (g_msg m p q Ks)) ->
       forall g : g_ty A, P g.
   Proof.
     move=> A P P_end P_var P_rec P_msg G.
@@ -269,18 +263,18 @@ Section Syntax.
     + by case.
     + move=>n Ih; case=>///=.
       - by move=> G dG; apply: P_rec => X S _; apply: Ih; rewrite -g_depth_open.
-      - move=>m p q Ks dKs; apply: P_msg=>K /(map_f (fun X => depth_gty X.gty))/=.
+      - move=>m p q Ks dKs; apply: P_msg=>K /(map_f (fun X => depth_gty X.cnt))/=.
         move=>/in_maximum_leq-dG; move: (leq_trans dG dKs)=>{dG} {dKs}.
         by apply: Ih.
   Qed.
-  Close Scope gty_scope.
+  Close Scope mpst_scope.
 End Syntax.
 
 Section Semantics.
 
   Definition rg_ty := g_ty (option lbl).
 
-  Open Scope gty_scope.
+  Open Scope mpst_scope.
 
   Definition conflict a (m : option lbl) p q :=
     match m with
@@ -290,12 +284,12 @@ Section Semantics.
 
   Inductive step : act -> rg_ty -> rg_ty -> Prop :=
   (* Basic rules *)
-  | st_send lb p q Ks :
-      lb \in [seq K.1 | K <- Ks] ->
-      step (a_sel p q lb) (g_msg None p q Ks) (g_msg (Some lb) p q Ks)
+  | st_send lb p q Ks t K :
+      lookup lb Ks == Some (t, K) ->
+      step (a_send p q lb t) (g_msg None p q Ks) (g_msg (Some lb) p q Ks)
   | st_recv lb p q Ks t G :
       lookup lb Ks == Some (t, G) ->
-      step (a_brn p q lb) (g_msg (Some lb) p q Ks) G
+      step (a_recv p q lb t) (g_msg (Some lb) p q Ks) G
 
   (* Struct *)
   | st_amsg1 a p q Ks Ks' :
