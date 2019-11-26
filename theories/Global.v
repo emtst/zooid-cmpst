@@ -282,66 +282,67 @@ Section Semantics.
 
   Open Scope gty_scope.
 
+  Definition conflict a (m : option lbl) p q :=
+    match m with
+    | None => ~~ ((subject a == p) || (subject a == q))
+    | Some _ => subject a != q
+    end.
+
   Inductive step : act -> rg_ty -> rg_ty -> Prop :=
   (* Basic rules *)
-  | st_send (lb : lbl) p q (Ks : seq (lbl * (mty * rg_ty))) :
+  | st_send lb p q Ks :
       lb \in [seq K.1 | K <- Ks] ->
       step (a_sel p q lb) (g_msg None p q Ks) (g_msg (Some lb) p q Ks)
-  | st_recv (lb : lbl) p q (Ks : seq (lbl * (mty * rg_ty))) t G :
+  | st_recv lb p q Ks t G :
       lookup lb Ks == Some (t, G) ->
       step (a_brn p q lb) (g_msg (Some lb) p q Ks) G
-  .
-           (*
 
-  (* Asynchronous *)
-  | st_amsg a p G G' :
-      subject a \notin [:: p.1.1; p.1.2] ->
-      step a G G' ->
-      step a (rg_msg p G) (rg_msg p G')
-  | st_arcv a p G G' :
-      subject a != p.1.2 ->
-      step a G G' ->
-      step a (rg_rcv p G) (rg_rcv p G')
-  | st_abrn a p K K' :
-      subject a \notin [:: p.1.1; p.1.2] ->
-      step_all a K K' ->
-      step a (rg_brn p K) (rg_brn p K')
-  | st_aalt a lb p K K' :
-      subject a != p.1.2 ->
-      step_only lb a K K' ->
-      step a (rg_alt lb p K) (rg_alt lb p K')
-
-  (* Structural *)
+  (* Struct *)
+  | st_amsg1 a p q Ks Ks' :
+      subject a != p ->
+      subject a != q ->
+      step_all a Ks Ks' ->
+      step a (g_msg None p q Ks) (g_msg None p q Ks')
+  | st_amsg2 l a p q Ks Ks' :
+      subject a != q ->
+      step_only l a Ks Ks' ->
+      step a (g_msg (Some l) p q Ks) (g_msg (Some l) p q Ks')
   | st_rec l G G' :
-      step l (rg_open 0 G (rg_rec G)) G' ->
-      step l (rg_rec G)               G'
-  with step_all : act -> seq (lbl * rg_ty) -> seq (lbl * rg_ty) -> Prop :=
-       | st_nil a : step_all a [::] [::]
-       | st_cons a G G' K K' lb :
-           step a G G' ->
-           step_all a K K' ->
-           step_all a ((lb, G) :: K) ((lb, G') :: K')
-  with step_only : lbl -> act -> seq (lbl * rg_ty) -> seq (lbl * rg_ty) -> Prop :=
-       | st_this a G G' K lb :
-           step a G G' ->
-           step_only lb a ((lb, G) :: K) ((lb, G') :: K)
-       | st_next a lG K K' lb  :
-           lb != lG.1 ->
-           step_only lb a K K' ->
-           step_only lb a (lG :: K) (lG :: K')
+      step l (g_open 0 G (g_rec G)) G' ->
+      step l (g_rec G) G'
+  with
+  step_all : act ->
+             seq (lbl * (mty * rg_ty)) ->
+             seq (lbl * (mty * rg_ty)) ->
+             Prop :=
+  | step_a1 a : step_all a [::] [::]
+  | step_a2 a G G' Ks Ks' l t :
+      step a G G' ->
+      step_all a Ks Ks' ->
+      step_all a ((l, (t, G)) :: Ks) ((l, (t, G')) :: Ks')
+  with
+  step_only : lbl ->
+              act ->
+              seq (lbl * (mty * rg_ty)) ->
+              seq (lbl * (mty * rg_ty)) ->
+              Prop :=
+  | step_o1 l a G G' t Ks :
+      step a G G' ->
+      step_only l a ((l, (t, G)) :: Ks) ((l, (t, G')) :: Ks)
+  | step_o2  l a Ks Ks' K :
+      l != K.lbl ->
+      step_only l a Ks Ks' ->
+      step_only l a (K :: Ks) (K :: Ks')
   .
-*)
 
   Derive Inversion step_inv with (forall a G G', step a G G') Sort Prop.
 
-  (*
   Scheme step_ind1 := Induction for step Sort Prop
   with stepall_ind1 := Induction for step_all Sort Prop
   with steponly_ind1 := Induction for step_only Sort Prop.
-  *)
 
   CoInductive g_lts : trace -> rg_ty -> Prop :=
-  | eg_end : g_lts tr_end g_end
+  | eg_end : g_lts tr_end (@g_end (option lbl))
   | eg_trans a t G G' :
       step a G G' ->
       g_lts t G' ->
@@ -350,61 +351,3 @@ Section Semantics.
   Derive Inversion glts_inv with (forall tr G, g_lts tr G) Sort Prop.
 
 End Semantics.
-
-(*
-r0 -> r1. r1 -> r0. r1 -> r2. r2 -> r1
-C0 < C1
-C1 < C0
-C1 < C2
-C2 < C1
-
-0 - 1 |- 0
-      |- 2 - 1
-
-0 - 1 - 0 (c0 + c1)
-
-0 - 1 - 2 (c0 + c1)
-
-
-[0, 1, 0] [1, 2, 1] [0, 1, 2, 1]
-
-[0,1]
-[0,1,0]
-[0,1,0] [1,2]
-[0,1,0] [1,2,1]
-
-[0, 1, 2] <- 1-0
-[0, 1, 0] [1, 2, 1]
-
-
-
-                  C0 = C1     | c0   ==== C1 + c0
-                  C1 = C0, C2 | c1   ==== C0 + c1 | C2 + c1
-                  C2 = C1     | c2   ====
-
-cost C = [r |-> max (cost^C [C(r)])(r) ]_r\in C
-cost^C [] [0] = cost^C [(0,c0)] [1]
-              = cost^C [(1, c1), (0, c0)] [0, 2]
-              = cost^C [(0, c0 + c1), (1, c1)] [2]
-              = cost^C [(2, c2), (0, c0 + c1), (1, c1)] [1]
-              = cost^C [(2, c2 + c1)]
-
-cost [1,0] (C0, C2 | c1) =
-cost [2, 1,0] (C1 | c1) =
-
- T0 =
- T1 = max (c0 + c1, c1 + c2)
- T2 = max (c0 + c1, c1 + c2)
-                  C0 = C1, C0, C2 | c0
-                  C1 = C0, C1, C2 | c1
-                  C2 = C0, C1 | c2
-
-                  C0 = C0, C1 | c0
-                  C1 = C0, C1 | c1
-                  C2 = C0, C1 | c2
-    C0 + C1 , C0 + C1 , max(C0 + C1, C1 + C2)
-
-T0 = ts + tr + c1 + ts + tr + t0
-T1 = ts + tr + c1 + ts + tr + t0
-                                T2 = tr + ts + tr + t0 + c1 + ts + tr + c2
-*)
