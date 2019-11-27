@@ -24,9 +24,6 @@ Definition mty := nat.
 
 Definition g_prefix := ((role * role) * mty)%type.
 
-Notation "p '.snd'" := (p.1.1) (at level 0).
-Notation "p '.rcv'" := (p.1.2) (at level 0).
-Notation "p '.typ'" := (p.2) (at level 0).
 (*
  Parameter mty_lbl : mty -> seq lbl.
  Parameter lbl_mty : seq lbl -> mty.

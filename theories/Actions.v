@@ -7,10 +7,8 @@ Import Prenex Implicits.
 Require Import MPST.Role.
 
 Inductive act :=
-| a_send (p : g_prefix)
-| a_recv (p : g_prefix)
-| a_sel (p : role) (q : role) (l : lbl)
-| a_brn (p : role) (q : role) (l : lbl)
+| a_send (p : role) (q : role) (l : lbl) (t : mty)
+| a_recv (p : role) (q : role) (l : lbl) (t : mty)
 .
 
 CoInductive trace :=
@@ -19,10 +17,8 @@ CoInductive trace :=
 
 Definition subject a :=
   match a with
-  | a_send p => p.1.1
-  | a_recv p => p.1.2
-  | a_sel p _ _ => p
-  | a_brn _ q _ => q
+  | a_send p _ _ _ => p
+  | a_recv _ q _ _ => q
   end.
 
 Fixpoint lookup (E : eqType) A (p : E) (K : seq (E * A)) : option A :=
@@ -53,3 +49,9 @@ Fixpoint dequeue (A : eqType) B (p : seq (A * seq B)) (x : A)
                    | Some (e, t') => Some (e, h :: t')
                    end
   end.
+
+Declare Scope mpst_scope.
+
+Notation "K .lbl" := (K.1)   (at level 2, left associativity, format "K .lbl") : mpst_scope.
+Notation "K .mty" := (K.2.1) (at level 2, left associativity, format "K .mty") : mpst_scope.
+Notation "K .cnt" := (K.2.2) (at level 2, left associativity, format "K .cnt") : mpst_scope.
