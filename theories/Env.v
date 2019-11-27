@@ -463,10 +463,6 @@ About negP.
   Qed.
 
 
- (* Lemma playing (x: En.K) b: x \in [pred x | b x] = b x.
-  Proof.
-  rewrite inE.*)
-
 
   Lemma dom_add k v (E : env) : def (add k v E) ->
                                 dom (add k v E) =i predU (pred1 k) (mem (dom E)).
@@ -479,9 +475,12 @@ About negP.
   + move=> neq. apply in_dom_cons_eq. move: defadd. unfold add, add_upd; rewrite neq; by[].
   Qed.
 
-  Lemma rem_add_id k' v' D : def (add k' v' D) -> D = rem k' (add k' v' D).
-  Admitted.
-
+(*  Lemma rem_add_id k' v' D : def (add k' v' D) -> D = rem k' (add k' v' D).
+  Admitted. *)
+(*L to D and F, the above lemma is false, since we have that 
+  add and add_update are defined the same way.
+  The above lemma is true only in the case when 
+  our add actually adds and does not update.*)
 
   Lemma rem_add k k' v D : k != k' -> rem k' (add k v D) = add k v (rem k' D).
   Admitted.
