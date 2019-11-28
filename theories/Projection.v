@@ -399,12 +399,9 @@ Section Project.
       by move=>/eqP-[->]; case: ifP=>///=; rewrite /is_dual/dual.
     + rewrite !(fun_if(fun X=> p_proj X p)) !(fun_if(fun X=> p_proj X q))/=.
       rewrite !pproj_msg -!map_comp /comp/=.
-      rewrite /WFp/=/project_brn; do ! (case: ifP=>//).
-      - by move=>/eqP->; rewrite (negPf p_neq_q).
-      - by move=>_ _ /eqP->; rewrite eq_sym (negPf p_neq_q).
-      - by move=> _ _ /eqP->; rewrite eq_sym (negPf p_neq_q).
-      - by move=> _ _ /eqP->; rewrite eq_sym (negPf p_neq_q).
-      - move => /eqP->{t} _ /eqP->{f} _/= Ih /isdef_sel.
+      rewrite /WFp/=/project_brn.
+      do ! (case: ifP=>[H|_];[rewrite ?(eqP H) ?(negPf p_neq_q)//; move: H|]).
+      - move => _  _/= Ih /isdef_sel.
         rewrite all_map /pred_of_simpl/preim/SimplPred/fun_of_simpl/=.
         move=>/forallbP/forall_member-H1 /isdef_sel.
         rewrite all_map /pred_of_simpl/preim/SimplPred/fun_of_simpl/=.
@@ -412,14 +409,14 @@ Section Project.
         apply/forallbP/forall_member =>x xG; rewrite eq_refl/=.
         move: Ih H1 H2 =>/(_ x xG)-Ih /(_ x xG)-H1 /(_ x xG)-H2.
         by rewrite eq_refl /=; apply: Ih.
-      - move=> _ _/eqP-> _ Ih.
+      - move=> _ Ih.
         move=>/isdef_sel/forallbP/Fa_map/=/forall_member-H1.
         rewrite -map_comp/comp/==>H2.
         rewrite pproj_mergeall // -map_comp /comp/=; apply: mdual_mergeall.
         move: H2 =>/isdef_merge/forallbP/Fa_map//=/forall_member-H2.
         rewrite all2_map; apply/forallbP/forall_member=> /=- x xG.
         by move: H1 H2 Ih=>/(_ x xG)-H1 /(_ x xG)-H2 /(_ x xG H1 H2).
-      - move=>/eqP-> /eqP-> _ _ Ih /isdef_sel.
+      - move=> _ _ Ih /isdef_sel.
         rewrite all_map/pred_of_simpl/preim/SimplPred/fun_of_simpl/=.
         move=>/forallbP/forall_member=> H1 /isdef_sel.
         rewrite all_map/pred_of_simpl/preim/SimplPred/fun_of_simpl/=.
@@ -427,15 +424,14 @@ Section Project.
         apply/mdual_act=>//; rewrite all2_map/=.
         apply/forallbP/forall_member=> x xG; rewrite !eq_refl/=.
         by move: H1 H2 Ih=> /(_ x xG)-H1 /(_ x xG)-H2 /(_ x xG H1 H2).
-      - by move=>/eqP-> _; rewrite eq_sym (negPf p_neq_q).
-      - move=> _ _ /eqP-> _ _ Ih.
+      - move=> _ Ih.
         move=>/isdef_sel/forallbP/Fa_map/=/forall_member-H1.
         rewrite -map_comp/comp/==>H2.
         rewrite pproj_mergeall // -map_comp /comp/=; apply: mdual_mergeall.
         move: H2 =>/isdef_merge/forallbP/Fa_map//=/forall_member-H2.
         rewrite all2_map; apply/forallbP/forall_member=> /=- x xG.
         by move: H1 H2 Ih=>/(_ x xG)-H1 /(_ x xG)-H2 /(_ x xG H1 H2).
-      - move=> /eqP-> _ _ _ Ih.
+      - move=> _ Ih.
         rewrite -map_comp/comp/==>H1.
         rewrite pproj_mergeall // -map_comp /comp/=; move: H1.
         move=>/isdef_merge/forallbP/Fa_map/=/forall_member-H1.
@@ -443,7 +439,7 @@ Section Project.
         apply: mdual_mergeall; rewrite all2_map.
         apply/forallbP/forall_member=> /=- x xG.
         by move: H1 H2 Ih=>/(_ x xG)-H1 /(_ x xG)-H2 /(_ x xG H1 H2).
-      - move=> /eqP-> _ _ _ _ Ih.
+      - move=> _ Ih.
         rewrite -map_comp/comp/==>H1.
         rewrite pproj_mergeall // -map_comp /comp/=; move: H1.
         move=>/isdef_merge/forallbP/Fa_map/=/forall_member-H1.
@@ -451,7 +447,7 @@ Section Project.
         apply: mdual_mergeall; rewrite all2_map.
         apply/forallbP/forall_member=> /=- x xG.
         by move: H1 H2 Ih=>/(_ x xG)-H1 /(_ x xG)-H2 /(_ x xG H1 H2).
-      - move=> _ _ _ _ _ Ih.
+      - move=> Ih.
         rewrite -!map_comp/comp/==>H1 H2.
         rewrite !pproj_mergeall // -!map_comp /comp/=; move: H1 H2.
         move=>/isdef_merge/forallbP/Fa_map/=/forall_member-H1.
