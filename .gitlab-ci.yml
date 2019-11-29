@@ -2,7 +2,7 @@ image: coqorg/coq:8.9
 
 build:
   script:
-    - opam install -y coq-mathcomp-ssreflect.1.7.0
+    - opam install -y coq-mathcomp-ssreflect
     - opam install -y coq-mathcomp-finmap
     - ./generateMakefile
     - make
