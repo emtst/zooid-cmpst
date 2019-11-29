@@ -50,7 +50,7 @@ Fixpoint dequeue (A : eqType) B (p : seq (A * seq B)) (x : A)
                    end
   end.
 
-Declare Scope mpst_scope.
+(* Declare Scope mpst_scope. *)
 
 Notation "K .lbl" := (K.1)   (at level 2, left associativity, format "K .lbl") : mpst_scope.
 Notation "K .mty" := (K.2.1) (at level 2, left associativity, format "K .mty") : mpst_scope.
