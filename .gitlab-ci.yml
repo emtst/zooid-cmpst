@@ -1,0 +1,6 @@
+image: coqorg/coq:8.9
+
+build:
+  script:
+    - ./generateMakefile
+    - make
