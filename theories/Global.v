@@ -12,6 +12,9 @@ Require Import MPST.Actions.
 
 Section Syntax.
 
+  (**
+   * Global Types
+   *)
   Inductive g_ty A :=
   | g_end
   | g_var (v : rvar)
