@@ -1,0 +1,33 @@
+\documentclass{minimal}
+
+\usepackage{stmaryrd}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+
+\begin{document}
+
+\begin{tikzpicture}[auto, node distance=2cm]
+  \node (sgp) {Scribble Global Protocol};
+  \node[below=of sgp] (slp) {Scribble Local Protocol};
+  \node[right=of sgp] (snf) {SNF};
+  \node[below=of snf] (slnf) {LSNF};
+  \node[right=of snf] (g) {Global Type};
+  \node[right=of g] (gtlts) {GT-LTS};
+  \node[below=of g] (l1) {Local Type};
+  \node[below=of gtlts] (ltlts) {LT-LTS};
+  \node[below=of l1] (cfsm) {CFSM};
+  \node[below=of cfsm] (prog) {Program};
+  \draw [->, thick] (sgp) -- node[above]{$\langle\_\rangle$} (snf);
+  \draw [->, thick] (sgp) -- node[right]{Projection} (slp);
+  \draw [->, thick] (snf) -- node[above]{$\llbracket\_\rrbracket$} (g);
+  \draw [->, thick] (slp) -- node[above]{} (slnf);
+  \draw [->, thick] (slnf) -- node[above]{} (l1);
+  \draw [->, thick] (g) -- node[right]{Projection} (l1);
+  \draw [->, thick] (g) -- node[above]{semantics} (gtlts);
+  \draw [->, thick] (l1) -- node[above]{semantics} (ltlts);
+  \draw [->, thick] (gtlts) -- node[right]{semantics} (ltlts);
+  \draw [->, thick] (l1) -- node[right]{} (cfsm);
+  \draw [->, thick] (cfsm) -- node[right]{} (prog);
+\end{tikzpicture}
+
+\end{document}
