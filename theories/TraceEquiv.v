@@ -110,8 +110,6 @@ Section TraceEquiv.
     | _, _ => None
     end.
 
-  Print l_ty.
-
 
   Fail Inductive mq_proj p : rg_ty -> MsgQ -> l_ty -> Prop :=
   | prj_end :

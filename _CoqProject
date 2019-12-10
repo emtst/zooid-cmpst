@@ -8,5 +8,6 @@ theories/Role.v
 theories/Actions.v
 theories/Global.v
 theories/Local.v
+theories/Session.v
 theories/Projection.v
 theories/TraceEquiv.v
