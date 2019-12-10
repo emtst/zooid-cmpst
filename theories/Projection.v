@@ -4,7 +4,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Require Import MPST.Atom.
 Require Import MPST.Role.
 Require Import MPST.Forall.
 Require Import MPST.LNVar.
@@ -438,8 +437,8 @@ Section Project.
       do ! case: ifP=>[//|_]/=.
       case Epq: (partial_proj Lp q)=>[Spq|//].
       case Eqp: (partial_proj Lq p)=>[Sqp|//].
-      move: Eq =>/eqP/fullproject_some-H0; move: Eqp=>/eqP/H0-{H0}/eqP/Ih-Ih.
-      move: Ep =>/eqP/fullproject_some-H0; move: Epq=>/eqP/H0-{H0}/eqP/Ih->.
+      move: Eq =>/eqP/fullproject_some-H0; move: Eqp=>/eqP/H0/eqP/Ih-{H0 Ih}Ih.
+      move: Ep =>/eqP/fullproject_some-H0; move: Epq=>/eqP/H0/eqP/Ih{H0 Ih}->.
       case: ifP=>[/eqP->/eqP-[<-]/eqP-[<-]//|].
       by rewrite -{1}(dualK Spq); case: ifP=>[/eqP->//|_ _ /eqP-[<-] /eqP-[<-]].
     - move: Ih=>/fprojall_eq-Ih; rewrite /full_project !project_msg.
