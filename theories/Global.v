@@ -57,12 +57,9 @@ Section Syntax.
     move=> A P P_end P_var P_rec P_msg; fix Ih 1; case.
     + by apply: P_end.
     + by apply: P_var.
-    + by move=>G; apply: P_rec=>//.
+    + by move=>G; apply: P_rec.
     + move=>m p q Ks; apply: P_msg.
-      apply/forall_member; elim: Ks.
-      - by [].
-      - move=> K Ks IhKs; split; first (by apply: Ih).
-        apply: IhKs.
+      by apply/forall_member; elim: Ks.
   Qed.
 
   Fixpoint eq_g_ty (A : eqType) (a b : g_ty A) :=
@@ -287,8 +284,8 @@ Section Semantics.
 
   Inductive step : act -> rg_ty -> rg_ty -> Prop :=
   (* Basic rules *)
-  | st_send lb p q Ks t K :
-      lookup lb Ks == Some (t, K) ->
+  | st_send lb p q Ks t G :
+      lookup lb Ks == Some (t, G) ->
       step (a_send p q lb t) (g_msg None p q Ks) (g_msg (Some lb) p q Ks)
   | st_recv lb p q Ks t G :
       lookup lb Ks == Some (t, G) ->

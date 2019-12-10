@@ -5,6 +5,32 @@ Unset Strict Implicit.
 Import Prenex Implicits.
 
 Require Import MPST.Role.
+Require Import MPST.Forall.
+
+Inductive l_act := l_send | l_recv.
+
+Definition dual_act a :=
+  match a with
+  | l_send => l_recv
+  | l_recv => l_send
+  end.
+
+Lemma dual_actK a : dual_act (dual_act a) = a.
+Proof. by case: a. Qed.
+
+Definition eq_lact a b :=
+  match a, b with
+  | l_send, l_send
+  | l_recv, l_recv => true
+  | _, _ => false
+  end.
+
+Lemma lact_eqP : Equality.axiom eq_lact.
+Proof. by rewrite /Equality.axiom => [[] []/=]; constructor. Qed.
+
+Definition lact_eqMixin := EqMixin lact_eqP.
+Canonical lact_eqType := Eval hnf in EqType l_act lact_eqMixin.
+
 
 Inductive act :=
 | a_send (p : role) (q : role) (l : lbl) (t : mty)
@@ -27,7 +53,7 @@ Fixpoint lookup (E : eqType) A (p : E) (K : seq (E * A)) : option A :=
   | h :: t => if h.1 == p then Some h.2 else lookup p t
   end.
 
-Definition MsgQ := seq ((role * role) * seq (lbl + mty)).
+Definition MsgQ := seq ((role * role) * seq (lbl * mty)).
 
 Fixpoint enqueue (A : eqType) B (p : seq (A * seq B)) (x : A * B) :=
   match p with
@@ -49,6 +75,17 @@ Fixpoint dequeue (A : eqType) B (p : seq (A * seq B)) (x : A)
                    | Some (e, t') => Some (e, h :: t')
                    end
   end.
+
+Definition fsetUs (K : choiceType) : seq {fset K} -> {fset K}
+  := foldl fsetU fset0.
+
+Lemma notin_unions (X : choiceType) (x : X) (l : seq {fset X}) :
+  (x \notin fsetUs l) <-> Forall (fun e => x \notin e) l.
+Proof.
+  rewrite /fsetUs Fa_rev -(revK l) foldl_rev revK; move: (rev l)=> {l}l.
+  by elim: l => // a l Ih /=; rewrite fsetUC in_fsetU negb_or -(rwP andP) Ih.
+Qed.
+
 
 (* Declare Scope mpst_scope. *)
 

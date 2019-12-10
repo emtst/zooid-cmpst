@@ -12,21 +12,6 @@ Require Import MPST.Actions.
 
 Section Syntax.
 
-  Inductive l_act := l_send | l_recv.
-
-  Definition eq_lact a b :=
-    match a, b with
-    | l_send, l_send
-    | l_recv, l_recv => true
-    | _, _ => false
-    end.
-
-  Lemma lact_eqP : Equality.axiom eq_lact.
-  Proof. by rewrite /Equality.axiom => [[] []/=]; constructor. Qed.
-
-  Definition lact_eqMixin := EqMixin lact_eqP.
-  Canonical lact_eqType := Eval hnf in EqType l_act lact_eqMixin.
-
   Inductive l_ty :=
   | l_end
   | l_var (v : rvar)
@@ -145,7 +130,6 @@ Section Syntax.
     zip (unzip1 K) [seq f x | x <- unzip2 K] = [seq (x.1, f x.2) | x <- K].
   Proof. by rewrite unzip2_lift (unzip1_map2 f) zip_unzip. Qed.
 
-
   (*
   Lemma lclose_send_zip v d p K :
     l_close v d (l_send p K)
@@ -157,16 +141,6 @@ Section Syntax.
     = l_sel p (zip (unzip1 K) [seq l_close v d x | x <- unzip2 K]).
   Proof. by rewrite /= unzip2_lift (unzip1_map2 (l_close v d)) zip_unzip. Qed.
    *)
-
-  Definition fsetUs (K : choiceType) : seq {fset K} -> {fset K}
-    := foldl fsetU fset0.
-
-  Lemma notin_unions (X : choiceType) (x : X) (l : seq {fset X}) :
-    (x \notin fsetUs l) <-> Forall (fun e => x \notin e) l.
-  Proof.
-    rewrite /fsetUs Fa_rev -(revK l) foldl_rev revK; move: (rev l)=> {l}l.
-    by elim: l => // a l Ih /=; rewrite fsetUC in_fsetU negb_or -(rwP andP) Ih.
-  Qed.
 
   Fixpoint l_fvar (L : l_ty) : {fset atom} :=
     match L with
@@ -234,284 +208,6 @@ Section Syntax.
   Qed.
 End Syntax.
 
-Section Session.
-
-  Inductive s_ty :=
-  | s_end
-  | s_var (v : rvar)
-  | s_rec (S : s_ty)
-  | s_msg (a: l_act) (K : seq (lbl * (mty * s_ty))).
-
-  Open Scope mpst_scope.
-
-  Fixpoint eq_sty x y :=
-    match x, y with
-    | s_end, s_end => true
-    | s_var x, s_var y => x == y
-    | s_rec x, s_rec y => eq_sty x y
-    | s_msg a1 Ks1, s_msg a2 Ks2
-      => (a1 == a2)
-           && (fix eqK Ks1 Ks2 :=
-                 match Ks1, Ks2 with
-                 | [::], [::] => true
-                 | K1::Ks1, K2::Ks2 =>
-                   (K1.lbl == K2.lbl)
-                     && (K1.mty == K2.mty)
-                     && eq_sty K1.cnt K2.cnt && eqK Ks1 Ks2
-                 | _, _ => false
-                 end) Ks1 Ks2
-    (* all2 (fun l r => (l.1 == r.1) && eq_lty l.2 r.2) K1 K2 *)
-    | _, _ => false
-    end.
-
-  Definition eq_salt (l r : lbl * (mty * s_ty)) :=
-    (l.lbl == r.lbl) && (l.mty == r.mty) && eq_sty l.cnt r.cnt.
-
-  Lemma eq_smsg_all a1 a2 K1 K2 :
-    eq_sty (s_msg a1 K1) (s_msg a2 K2) = (a1 == a2) && all2 eq_salt K1 K2.
-  Proof.
-    rewrite /=; case: eqP=>[/=_{a1 a2}|//]; move: K1 K2.
-    by elim=>//[[l1 [t1 L1]] K1] Ih; case=>//[[l2 [t2 L2]] K2]/=; rewrite Ih.
-  Qed.
-
-  Lemma sty_eqP : Equality.axiom eq_sty.
-  Proof.
-    rewrite /Equality.axiom; fix Ih 1 => x y.
-    case: x => [|v|L|a K];
-       case: y =>[|v'|L'|a' K']; try (by constructor).
-    + by rewrite /eq_sty; case: eqP=>[->|F]; constructor=>//[[/F]].
-    + by rewrite /=; case: Ih=>[->|F]; constructor=>//[[/F]].
-    + rewrite eq_smsg_all/=; case: eqP=>[<-{a'}|F]/=; [|by constructor=>[[/F]]].
-      elim: K K'=>[|[l [t L]] K IhK]; case=>[|[l' [t' L']]K']/=; try (by constructor).
-      rewrite {1}/eq_salt/=; do 2 (case: eqP=>[<-|F];[|constructor=>[[/F]]//]).
-      case: Ih=>[<-|F];[|constructor=>[[/F]]//].
-      by case: IhK=>[[]<-|F]; constructor=>//[[]]H; apply: F; rewrite H.
-  Qed.
-
-  Definition sty_eqMixin := EqMixin sty_eqP.
-  Canonical sty_eqType := Eval hnf in EqType s_ty sty_eqMixin.
-
-  Fixpoint s_open (d : nat) (S2 : s_ty) (S1 : s_ty) :=
-    match S1 with
-    | s_end => S1
-    | s_var v => Rvar.open s_var d S2 v
-    | s_rec s => s_rec (s_open d.+1 S2 s)
-    | s_msg a K => s_msg a [seq (lS.lbl, (lS.mty, s_open d S2 lS.cnt)) | lS <- K]
-    end.
-  Notation sfv a := (s_var (Rvar.fv a)).
-  Notation sbv n := (s_var (Rvar.bv n)).
-  Notation "{ k '~>' v } s":= (s_open k v s) (at level 30, right associativity).
-  Notation "L '^' v":= (s_open 0 (sfv v) L) (at level 30, right associativity).
-
-  Fixpoint s_close (v : atom) (d : nat) (L1 : s_ty) :=
-    match L1 with
-    | s_end => L1
-    | s_var lv => s_var (Rvar.close v d lv)
-    | s_rec L => s_rec (s_close v d.+1 L)
-    | s_msg a K => s_msg a [seq (lL.lbl, (lL.mty, s_close v d lL.cnt)) | lL <- K]
-    end.
-  Notation "{ k '<~' v } L":= (s_close v k L) (at level 30, right associativity).
-
-  Fixpoint s_fvar (L : s_ty) : {fset atom} :=
-    match L with
-    | s_end => fset0
-    | s_var v => Rvar.fvar v
-    | s_rec L => s_fvar L
-    | s_msg _ K => fsetUs [seq s_fvar lL.cnt | lL <- K]
-    end.
-
-  Fixpoint s_fbvar (d : nat) (L : s_ty) : {fset nat} :=
-    match L with
-    | s_end => fset0
-    | s_var v => Rvar.fbvar d v
-    | s_rec L => s_fbvar d.+1 L
-    | s_msg _ K => fsetUs [seq s_fbvar d lL.cnt | lL <- K]
-    end.
-
-  Lemma sty_ind :
-    forall (P : s_ty -> Prop),
-      P s_end ->
-      (forall v, P (s_var v)) ->
-      (forall s, P s -> P (s_rec s)) ->
-      (forall a K, Forall (fun lS => P lS.cnt) K -> P (s_msg a K)) ->
-      forall s : s_ty, P s.
-  Proof.
-    move => P P_end P_var P_rec P_msg.
-    fix Ih 1; case=>[|v|L|a K].
-    + by apply: P_end.
-    + by apply: P_var.
-    + by apply: P_rec.
-    + by apply: P_msg; elim: K.
-  Qed.
-
-  Lemma s_open_close X L n : X \notin s_fvar L -> {n <~ X}{n ~> sfv X}L = L.
-  Proof.
-    elim/sty_ind: L n=>[|v|L Ih|a K Ih] n /=Fv//;
-      try (by rewrite Ih).
-    + by move: Fv; rewrite Rvar.open_fun/= =>H; rewrite Rvar.open_close.
-    + move: Ih=>/Fa_lift/(_ n)-Ih; move: Fv => /notin_unions/Fa_map-Fv.
-      move: (Fa_app (Fa_conj Ih Fv)) => {Ih Fv}Ih; rewrite -map_comp /comp/=.
-      by elim: K Ih=>// [[l [t L]] K Ih/= [-> /Ih-[->]]].
-  Qed.
-
-  Lemma s_close_open n X L : n \notin s_fbvar 0 L -> {n ~> sfv X}{n <~ X}L = L.
-  Proof.
-    move: {1 3}n (add0n n)=>n0; elim/sty_ind: L 0 n =>///=.
-    - by move=>v n n1;rewrite addnC Rvar.open_fun=><-H;rewrite Rvar.close_open.
-    - by move=>G Ih n n1 Eq/= H; rewrite (Ih n.+1 n1.+1) // -Eq.
-    - move=> a K /Fa_lift-Ih n n1 Eq /notin_unions/Fa_map-H.
-      move:Ih=>/(_ n)/Fa_lift/(_ n1)/Fa_lift/(_ Eq)/Fa_conj/( _ H)/Fa_app-Ih{H}.
-      congr s_msg; rewrite -map_comp/comp/=; elim: K Ih=>[//|[l[t S]] K Ih /=].
-      by move=>[->/Ih->].
-  Qed.
-
-  Fixpoint depth_sty L :=
-    match L with
-    | s_end
-    | s_var _ => 0
-    | s_rec L => (depth_sty L).+1
-    | s_msg _ K  => (maximum [seq depth_sty l.cnt | l <- K]).+1
-    end.
-
-  Lemma s_depth_open L X : depth_sty L = depth_sty (L^X).
-  Proof.
-    move: 0; elim/sty_ind: L=>/=//.
-    + by move=>v n; rewrite Rvar.open_fun.
-    + by move=> L Ih n; rewrite (Ih n.+1).
-    + move=> a K Ih n; rewrite -map_comp /comp/=.
-      by move: Ih => /Fa_lift/(_ n)/Fa_map_eq<-.
-  Qed.
-
-  Lemma sty_ind1 :
-    forall (P : s_ty -> Prop),
-      P s_end ->
-      (forall v, P (s_var v)) ->
-      (forall s, (forall X (A : {fset atom}), X \notin A -> P (s ^ X)) ->
-                 P (s_rec s)) ->
-      (forall a Ks, (forall K, K \in Ks -> P K.cnt) -> P (s_msg a Ks)) ->
-      forall s : s_ty, P s.
-  Proof.
-    move => P P_end P_var P_rec P_msg L.
-    move: {-1}(depth_sty L) (leqnn (depth_sty L))=> n; move: n L; elim.
-    + by case.
-    + move=>n Ih; case=>/=//.
-      - by move=>L D; apply:P_rec=>X S _;apply: Ih;rewrite -(s_depth_open L X).
-      - move=> a K D;apply: P_msg =>L /(map_f (fun X => depth_sty X.cnt)).
-        move=>/in_maximum_leq-/=dG; move: (leq_trans dG D)=>{dG} {D}.
-        by apply: Ih.
-  Qed.
-
-  Definition pmerge (s : option s_ty) (l : lbl * (mty * s_ty)) :=
-    match s with
-    | None => None
-    | Some s => if s == l.cnt then Some s else None
-    end.
-
-  Definition partial_merge (l : seq (lbl * (mty * s_ty))) :=
-    match l with
-    | [::] => None
-    | h :: t => foldl pmerge (Some h.cnt) t
-    end.
-
-  Fixpoint merge (A: eqType) (oL : A) (K : seq (option A)) :=
-    match K with
-    | [::] => Some oL
-    | h::t => if h == Some oL then merge oL t
-              else None
-    end.
-
-  Definition merge_all (A : eqType) (K : seq (option A)) :=
-    match K with
-    | [::] => None
-    | (h :: t) =>
-      match h with
-      | Some o => merge o t
-      | None => None
-      end
-    end.
-
-  Fixpoint flatten A (L : seq (lbl * (mty * option A))) :=
-    match L with
-    | [::] => Some [::]
-    | h :: t => match h.cnt, flatten t with
-                | None, _ => None
-                | _, None => None
-                | Some s, Some t => Some ((h.lbl, (h.mty, s)) :: t)
-                end
-    end.
-
-  Definition flat_alts A (L : seq (lbl * (mty * option A))) :=
-    match L with
-    | [::] => None
-    | _ => flatten L
-    end.
-
-  Definition ms_msg a L :=
-    match flat_alts L with
-    | Some L => Some (s_msg a L)
-    | None => None
-    end.
-
-  Definition ms_rec s :=
-    match s with
-    | None => None
-    | Some s => Some (s_rec s)
-    end.
-
-  Fixpoint partial_proj (l : l_ty) (r : role) : option s_ty :=
-    match l with
-    | l_end => Some (s_end)
-    | l_var v => Some (s_var v)
-    | l_rec L =>
-      let: s := partial_proj L r in
-      if s == Some (sbv 0) then Some s_end else ms_rec s
-    | l_msg a p K =>
-      if p == r then ms_msg a [seq (X.lbl, (X.mty, partial_proj X.cnt r)) | X <- K]
-      else merge_all [seq partial_proj X.cnt r | X <- K]
-    end.
-
-  Definition dual_act a :=
-    match a with
-    | l_send => l_recv
-    | l_recv => l_send
-    end.
-
-  Fixpoint dual (L : s_ty) : s_ty :=
-    match L with
-    | s_end => s_end
-    | s_var v => s_var v
-    | s_rec s => s_rec (dual s)
-    | s_msg a K => s_msg (dual_act a) [seq (x.lbl, (x.mty, dual x.cnt)) | x <- K]
-    end.
-
-  Lemma dual_actK a : dual_act (dual_act a) = a.
-  Proof. by case: a. Qed.
-
-  Lemma dualK s : dual (dual s) = s.
-  Proof.
-    elim/sty_ind: s=>[|v|s Ih|a K Ih]//; try (by rewrite /=Ih).
-    - rewrite /= -map_comp /comp/= dual_actK.
-      by elim: K Ih=>[//|[l [t s]] K Ihl /= [-> /Ihl-[->]]].
-  Qed.
-
-  Definition is_dual (s1 s2 : s_ty) : bool := s1 == dual s2.
-
-  Lemma isdual_sym (s1 s2 : s_ty) : is_dual s1 s2 -> is_dual s2 s1.
-  Proof. by move=>/eqP->; rewrite /is_dual dualK. Qed.
-
-  Lemma is_dual_var v : is_dual (s_var v) (s_var v).
-  Proof. by rewrite /is_dual/dual. Qed.
-
-  Lemma isdualC (s1 s2 : s_ty) : is_dual s1 s2 = is_dual s2 s1.
-  Proof.
-    move: {-1}(is_dual s1 s2) (eq_refl (is_dual s1 s2)) => D.
-    rewrite /is_dual; case: D=>[/eqP/eqP->|].
-    - by rewrite dualK eq_refl.
-    - move=>/eqP; rewrite (rwP negPf)=> H; apply/esym; move: H; apply: contraTF.
-      by rewrite negbK=>/eqP->; rewrite dualK.
-  Qed.
-End Session.
-
 Section Semantics.
 
   Definition PEnv := seq (role * l_ty).
@@ -561,16 +257,14 @@ Section Semantics.
                   end
     end.
 
-  Definition enqueue_msg (Q : MsgQ) p := enqueue Q (p.1, inr p.2) .
-  Definition enqueue_lbl (Q : MsgQ) p q lb := enqueue Q ((p, q), inl lb) .
   (** lstep a Q P Q' P' is the 'step' relation <Q, P> ->^a <Q', P'> in Coq*)
   Inductive lstep : act -> MsgQ * PEnv -> MsgQ * PEnv -> Prop :=
   | ls_send t p q lb P Q P' Q' :
-      Q' == enqueue_lbl Q p q lb ->
+      Q' == enqueue Q ((p, q), (lb, t)) ->
       Some P' == do_act (a_send p q lb t) P ->
       lstep (a_send p q lb t) (Q, P) (Q', P')
   | ls_recv t p q lb P Q P' Q' :
-      Some (inl lb, Q') == dequeue Q (p, q) ->
+      Some ((lb, t), Q') == dequeue Q (p, q) ->
       Some P' == do_act (a_recv p q lb t) P ->
       lstep (a_recv p q lb t) (Q, P) (Q', P')
   .
