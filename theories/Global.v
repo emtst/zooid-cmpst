@@ -26,8 +26,9 @@ Section Syntax.
 
   Open Scope mpst_scope.
 
-  Notation gfv a := (g_var (Rvar.fv a)).
-  Notation gbv n := (g_var (Rvar.bv n)).
+  Arguments bv [_] _.
+  Notation gfv a := (g_var (fv a)).
+  Notation gbv n := (g_var (bv n)).
 
   Fixpoint depth_gty A (a : g_ty A) :=
     match a with
@@ -44,6 +45,20 @@ Section Syntax.
     | g_rec G => participants G
     | g_msg _ p q Ks => p::q::flatten [seq participants K.cnt | K <- Ks]
     end.
+
+  Fixpoint flat_set (A : choiceType) (L : seq {fset A}) :=
+    match L with
+    | [::] => fset0
+    | x::xs => x `|` flat_set xs
+    end%fset.
+
+  Fixpoint parts_set A (G : g_ty A) :=
+    match G with
+    | g_end
+    | g_var _ => fset0
+    | g_rec G => parts_set G
+    | g_msg _ p q Ks => p |` (q |` flat_set [seq parts_set K.cnt | K <- Ks])
+    end%fset.
 
   Lemma gty_ind1 :
     forall A (P : g_ty A -> Prop),
@@ -135,7 +150,7 @@ Section Syntax.
   Fixpoint g_open A (d : nat) (G2 : g_ty A) (G1 : g_ty A) :=
     match G1 with
     | g_end => G1
-    | g_var v => Rvar.open (@g_var A) d G2 v
+    | g_var v => open (@g_var A) d G2 v
     | g_rec G => g_rec (g_open d.+1 G2 G)
     | g_msg m p q Ks =>
       g_msg m p q [seq (K.lbl, (K.mty, g_open d G2 K.cnt)) | K <- Ks]
@@ -146,7 +161,7 @@ Section Syntax.
   Fixpoint g_close A (v : atom) (d : nat) (G1 : g_ty A) :=
     match G1 with
     | g_end => G1
-    | g_var gv => g_var (Rvar.close v d gv)
+    | g_var gv => g_var (close v d gv)
     | g_rec G => g_rec (g_close v d.+1 G)
     | g_msg m p q Ks => g_msg m p q [seq (K.lbl, (K.mty, g_close v d K.cnt)) | K <- Ks]
     end.
@@ -166,7 +181,7 @@ Section Syntax.
   Open Scope fset_scope.
   Fixpoint g_fvar A (G : g_ty A) : {fset atom} :=
     match G with
-    | g_var v => Rvar.fvar v
+    | g_var v => fvar v
     | g_rec G => g_fvar G
     | g_msg m p q Ks => fsetUs [seq g_fvar K.cnt | K <- Ks]
     | g_end => fset0
@@ -188,7 +203,7 @@ Section Syntax.
 
   Fixpoint g_fbvar A (d : nat) (G : g_ty A) : {fset nat} :=
     match G with
-    | g_var v => Rvar.fbvar d v
+    | g_var v => fbvar d v
     | g_rec G => g_fbvar d.+1 G
     | g_msg m p q Ks => fsetUs [seq g_fbvar d K.cnt | K <- Ks]
     | g_end => fset0
@@ -208,12 +223,12 @@ Section Syntax.
 
   Lemma gclose_gfv A n X (a : atom) :
     g_close (A:=A) X n (gfv a) = if X == a then (gbv n) else (gfv a).
-  Proof. by rewrite /g_close/Rvar.close (fun_if (@g_var A)). Qed.
+  Proof. by rewrite /g_close/close (fun_if (@g_var A)). Qed.
 
   Lemma g_open_close A X (G : g_ty A) n : X \notin g_fvar G -> {n <~ X}{n ~> gfv X}G = G.
   Proof.
     elim/gty_ind1: G n =>//.
-    - by move=> v d /= H; rewrite Rvar.open_fun /= (Rvar.open_close d H).
+    - by move=> v d /= H; rewrite open_fun /= (open_close d H).
     - move=> G Ih d; rewrite /g_fvar -/(g_fvar _)=>/Ih-{Ih}Ih.
       by rewrite -[in RHS](Ih d.+1).
     - move=> m p q Ks Ih n /= H; rewrite -map_comp/comp/=; congr g_msg.
@@ -226,7 +241,7 @@ Section Syntax.
   Lemma g_close_open A n X (G : g_ty A) : n \notin g_fbvar 0 G -> {n ~> gfv X}{n <~ X}G = G.
   Proof.
     move: {1 3}n (add0n n)=>n0; elim/gty_ind2: G 0 n =>///=.
-    - by move=> v n n1 <- H; rewrite addnC Rvar.open_fun Rvar.close_open.
+    - by move=> v n n1 <- H; rewrite addnC open_fun close_open.
     - move=> G Ih d n Eq n_in; congr g_rec; apply: (Ih d.+1)=>//.
       by rewrite -Eq.
     - move=> m p q Ks /Fa_lift-Fa d n Eq; rewrite notin_fold_all !all_map /preim/=.
@@ -241,7 +256,7 @@ Section Syntax.
   Lemma g_depth_open A (G : g_ty A) X : depth_gty G = depth_gty (G^X).
   Proof.
     move: 0; elim/gty_ind2: G=>/=//.
-    + by move=>v n; rewrite Rvar.open_fun.
+    + by move=>v n; rewrite open_fun.
     + by move=> G Ih n; rewrite (Ih n.+1).
     + move=> _ _ _ Gs /Fa_lift-Ih n; move: (Ih n) => {Ih}/Fa_map_eq.
       rewrite -map_comp /comp/=.

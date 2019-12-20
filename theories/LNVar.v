@@ -7,13 +7,13 @@ Import Prenex Implicits.
 Require Import MPST.Atom.
 
 (* FIXME: Should be a parameterised type Inductive lnvar t := ... *)
-Module MkLnVar(M : Atom).
-  Inductive t :=
-  | fv (a : M.t)
+Section LNVar.
+  Variable A : choiceType.
+  Inductive lnvar :=
+  | fv (a : A)
   | bv (n : nat).
 
-  Coercion bv : nat >-> t.
-  (* Coercion fv : atom >-> t. *)
+  Coercion bv : nat >-> lnvar.
 
   Definition eq_var a b :=
     match a, b with
@@ -28,15 +28,16 @@ Module MkLnVar(M : Atom).
              case: eqP => H; try rewrite H; constructor=>//[[]].
   Qed.
 
-  Definition eqMixin := EqMixin lnvar_eqP.
-  Canonical eqType := Eval hnf in EqType t eqMixin.
+  Definition ln_eqMixin := EqMixin lnvar_eqP.
+  Canonical ln_eqType := Eval hnf in EqType lnvar ln_eqMixin.
 
   Open Scope fset_scope.
-  Definition fvar v : {fset M.t} :=
+  Definition fvar v :=
     match v with
     | fv a => [fset a]
     | _ => fset0
     end.
+
   Definition fbvar d v : {fset nat} :=
     match v with
     | bv n => if d <= n then [fset n - d] else fset0
@@ -44,13 +45,13 @@ Module MkLnVar(M : Atom).
     end.
   Close Scope fset_scope.
 
-  Definition open A (z : t -> A) (d : nat) (y : A) (x : t) :=
+  Definition open B (z : lnvar -> B) (d : nat) (y : B) (x : lnvar) :=
     match x with
     | fv _ => z x
     | bv n => if d == n then y else z x
     end.
 
-  Definition close (v : M.t) (d : nat) (x : t) :=
+  Definition close (v : A) (d : nat) (x : lnvar) :=
     match x with
     | bv _ => x
     | fv a => if v == a then bv d else x
@@ -85,6 +86,6 @@ Module MkLnVar(M : Atom).
     - by case: ifP =>///eqP->; rewrite subn0 fset11.
   Qed.
 
-  Lemma open_fun A (f : t -> A) d w v : open f d (f w) v = f (open id d w v).
+  Lemma open_fun B (f : lnvar -> B) d w v : open f d (f w) v = f (open id d w v).
   Proof. by case: v=>//n; rewrite /open (fun_if f). Qed.
-End MkLnVar.
+End LNVar.

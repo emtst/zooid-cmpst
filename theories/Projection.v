@@ -16,8 +16,8 @@ Section Project.
 
   Open Scope mpst_scope.
 
-  Notation sfv a := (s_var (Rvar.fv a)).
-  Notation sbv n := (s_var (Rvar.bv n)).
+  Notation sfv a := (s_var (fv a)).
+  Notation sbv n := (s_var (bv _ n)).
 
   Fixpoint merge (A: eqType) (oL : A) (K : seq A) :=
     match K with
@@ -78,8 +78,8 @@ Section Project.
   Proof. by []. Qed.
 
   Notation g_ty := (g_ty unit).
-  Notation Lfv a := (l_var (Rvar.fv a)).
-  Notation lbv n := (l_var (Rvar.bv n)).
+  Notation Lfv a := (l_var (fv a)).
+  Notation lbv n := (l_var (bv _ n)).
 
   Fixpoint project (g : g_ty) (r : role) : option l_ty :=
     match g with

@@ -13,9 +13,7 @@ Notation role:=roleid.t.
 Module avar := NewAtom def_atom.
 Notation atom:=avar.t.
 
-Module Rvar := MkLnVar avar.
-Notation rvar := Rvar.t.
-Canonical rvar_eqType := Rvar.eqType.
+Notation rvar := (lnvar atom).
 
 Module Lbl := NewAtom def_atom.
 Notation lbl := Lbl.t.

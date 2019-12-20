@@ -88,7 +88,7 @@ Section TraceEquiv.
          then ml_brn p K
          else merge_all K.
 
-  Notation lbv v := (l_var (Rvar.bv 0)).
+  Notation lbv v := (l_var (bv _ 0)).
 
   Fail Fixpoint rg_proj G (r : role) : option l_ty :=
     match G with

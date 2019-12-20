@@ -19,8 +19,8 @@ Section Syntax.
   | l_msg (a : l_act) (r : role) (Ks : seq (lbl * (mty * l_ty)))
   .
 
-  Notation lfv a := (l_var (Rvar.fv a)).
-  Notation lbv n := (l_var (Rvar.bv n)).
+  Notation lfv a := (l_var (fv a)).
+  Notation lbv n := (l_var (bv n)).
 
   Open Scope mpst_scope.
 
@@ -100,7 +100,7 @@ Section Syntax.
   Fixpoint l_open (d : nat) (L2 : l_ty) (L1 : l_ty) :=
     match L1 with
     | l_end => L1
-    | l_var v => Rvar.open l_var d L2 v
+    | l_var v => open l_var d L2 v
     | l_rec L => l_rec (l_open d.+1 L2 L)
     | l_msg a p Ks =>
       l_msg a p [seq (K.lbl, (K.mty, l_open d L2 K.cnt)) | K <- Ks]
@@ -111,7 +111,7 @@ Section Syntax.
   Fixpoint l_close (v : atom) (d : nat) (L1 : l_ty) :=
     match L1 with
     | l_end => L1
-    | l_var lv => l_var (Rvar.close v d lv)
+    | l_var lv => l_var (close v d lv)
     | l_rec L => l_rec (l_close v d.+1 L)
     | l_msg a p Ks =>
       l_msg a p [seq (K.lbl, (K.mty, l_close v d K.cnt)) | K <- Ks]
@@ -145,7 +145,7 @@ Section Syntax.
   Fixpoint l_fvar (L : l_ty) : {fset atom} :=
     match L with
     | l_end => fset0
-    | l_var v => Rvar.fvar v
+    | l_var v => fvar v
     | l_rec L => l_fvar L
     | l_msg _ _ K => fsetUs [seq l_fvar lL.cnt | lL <- K]
     end.
@@ -153,7 +153,7 @@ Section Syntax.
   Fixpoint l_fbvar (d : nat) (L : l_ty) : {fset nat} :=
     match L with
     | l_end => fset0
-    | l_var v => Rvar.fbvar d v
+    | l_var v => fbvar d v
     | l_rec L => l_fbvar d.+1 L
     | l_msg _ _ K => fsetUs [seq l_fbvar d lL.cnt | lL <- K]
     end.
@@ -162,7 +162,7 @@ Section Syntax.
   Proof.
     elim/lty_ind: L n=>[|v|L Ih|a r K Ih] n /=Fv//;
       try (by rewrite Ih).
-    + by move: Fv; rewrite Rvar.open_fun/= =>H; rewrite Rvar.open_close.
+    + by move: Fv; rewrite open_fun/= =>H; rewrite open_close.
     + move: Ih=>/Fa_lift/(_ n)-Ih; move: Fv => /notin_unions/Fa_map-Fv.
       move: (Fa_app (Fa_conj Ih Fv)) => {Ih Fv}Ih; rewrite -map_comp /comp/=.
       by elim: K Ih=>// [[l [t L]] K Ih/= [-> /Ih-[->]]].
@@ -171,7 +171,7 @@ Section Syntax.
   Lemma l_close_open n X L : n \notin l_fbvar 0 L -> {n ~> lfv X}{n <~ X}L = L.
   Proof.
     move: {1 3}n (add0n n)=>n0; elim/lty_ind: L 0 n =>///=.
-    - by move=>v n n1;rewrite addnC Rvar.open_fun=><-H;rewrite Rvar.close_open.
+    - by move=>v n n1;rewrite addnC open_fun=><-H;rewrite close_open.
     - by move=>G Ih n n1 Eq/= H; rewrite (Ih n.+1 n1.+1) // -Eq.
     - move=> a r K /Fa_lift-Ih n n1 Eq /notin_unions/Fa_map-H.
       move:Ih=>/(_ n)/Fa_lift/(_ n1)/Fa_lift/(_ Eq)/Fa_conj/( _ H)/Fa_app-Ih{H}.
@@ -182,7 +182,7 @@ Section Syntax.
   Lemma l_depth_open L X : depth_lty L = depth_lty (L^X).
   Proof.
     move: 0; elim/lty_ind: L=>/=//.
-    + by move=>v n; rewrite Rvar.open_fun.
+    + by move=>v n; rewrite open_fun.
     + by move=> L Ih n; rewrite (Ih n.+1).
     + move=> _ _ K Ih n; rewrite -map_comp /comp/=.
       by move: Ih => /Fa_lift/(_ n)/Fa_map_eq<-.
