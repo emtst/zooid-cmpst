@@ -210,67 +210,77 @@ End Syntax.
 
 Section Semantics.
 
-  Definition PEnv := seq (role * l_ty).
+  Notation renv := {fmap role -> l_ty}.
+  Notation qenv := {fmap role * role -> seq (lbl * mty) }.
 
-  Definition act_lty a L :=
-    if subject a == L.1
-    then
-      let L1 := match L.2 with
-                | l_rec L' => l_open 0 (l_rec L') L'
-                | _ => L.2
-                end
-      in match a, L1 with
-         | a_send p q lb t, l_msg l_send q' K =>
-           if q == q'
-           then match lookup lb K with
-                | Some (t', s) => if t == t' then Some s else None
-                | None => None
-                end
-           else None
-         | a_recv p q lb t, l_msg l_recv q' K =>
-           if q == q'
-           then match lookup lb K with
-                | Some (t', s) => if t == t' then Some s else None
-                | None => None
-                end
-           else None
-         | _, _ => None
-         end
-    else
-      None.
+  Definition enq (qs : {fmap (role * role) -> (seq (lbl * mty))}) k v :=
+    match qs.[? k] with
+    | Some vs => qs.[ k <- app vs [:: v] ]
+    | None => qs.[ k <- [:: v]]
+    end%fmap.
 
-  Fixpoint do_act (a : act) (e : PEnv) : option PEnv :=
-    match e with
-    | [::] => None
-    | h :: t => if h.1 == subject a
-                then
-                  match act_lty a h with
-                  | None => None
-                  | Some L =>
-                    if L == l_end then Some t
-                    else Some ((h.1, L) :: t)
-                  end
-                else
-                 match do_act a t with
-                  | None => None
-                  | Some t' => Some (h :: t')
-                  end
+  Definition deq (qs : {fmap (role * role) -> (seq (lbl * mty))}) k :=
+    match qs.[? k] with
+    | Some vs =>
+      match vs with
+      | v :: vs => if vs == [::] then Some (v, qs.[~ k])
+                   else Some (v, qs.[k <- vs])
+      | [::] => None
+      end
+    | None => None
+    end%fmap.
+
+  Definition get (P : renv) p :=
+    match P.[? p]%fmap with
+    | Some (l_rec Lp) => Some (l_open 0 Lp (l_rec Lp))
+    | r => r
     end.
 
-  (** lstep a Q P Q' P' is the 'step' relation <Q, P> ->^a <Q', P'> in Coq*)
-  Inductive lstep : act -> MsgQ * PEnv -> MsgQ * PEnv -> Prop :=
-  | ls_send t p q lb P Q P' Q' :
-      Q' == enqueue Q ((p, q), (lb, t)) ->
-      Some P' == do_act (a_send p q lb t) P ->
-      lstep (a_send p q lb t) (Q, P) (Q', P')
-  | ls_recv t p q lb P Q P' Q' :
-      Some ((lb, t), Q') == dequeue Q (p, q) ->
-      Some P' == do_act (a_recv p q lb t) P ->
-      lstep (a_recv p q lb t) (Q, P) (Q', P')
+  Definition do_act (P : renv) a p q l t :=
+    match get P p  with
+    | Some Lp =>
+      match Lp with
+      | l_msg a' q' Ks =>
+        match lookup l Ks with
+        | Some (t', Lp) =>
+          if (a == a') && (q == q') && (t == t')
+          then if Lp == l_end
+               then Some P.[~ p]
+               else Some P.[p <- Lp]
+          else None
+        | None => None
+        end
+      | _ => None
+      end
+    | None => None
+    end%fmap.
+
+  Lemma doact_send (E : renv) p q lb t KsL Lp :
+    (get E p = Some (l_msg l_send q KsL)) ->
+    (lookup lb KsL = Some (t, Lp)) ->
+    exists E', (do_act E l_send p q lb t = Some E').
+  Proof.
+    move=>H1 H2; rewrite /do_act H1 H2 !eq_refl/=.
+    case: ifP=> _.
+    - by (exists E.[~ p]%fmap).
+    - by exists E.[ p <- Lp]%fmap.
+  Qed.
+
+  Open Scope fmap_scope.
+  (** lstep a Q P Q' P' is the 'step' relation <P, Q> ->^a <P', Q'> in Coq*)
+  Inductive lstep : act -> renv * qenv -> renv * qenv -> Prop :=
+  | ls_send t p q lb (P P' : renv) (Q Q' : qenv) :
+      Q' == enq Q (p, q) (lb, t) ->
+      do_act P l_send p q lb t = Some P' ->
+      lstep (a_send p q lb t) (P, Q) (P', Q')
+  | ls_recv t p q lb (P P' : renv) (Q Q' : qenv) :
+      deq Q (p, q) == Some ((lb, t), Q') ->
+      do_act P l_recv q p lb t = Some P' ->
+      lstep (a_recv p q lb t) (P, Q) (P', Q')
   .
 
-  CoInductive l_lts : trace -> MsgQ * PEnv -> Prop :=
-  | lt_end : l_lts tr_end ([::], [::])
+  CoInductive l_lts : trace -> renv * qenv -> Prop :=
+  | lt_end : l_lts tr_end ([fmap], [fmap])
   | lt_next a t P P' :
       lstep a P P' ->
       l_lts t P' ->

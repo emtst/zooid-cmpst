@@ -150,7 +150,7 @@ Section Project.
     | g_var v => Some (l_var v)
     | g_rec G =>
       match project2 G r with
-      | Some L => if L == lbv 0 then None else Some (l_rec L)
+      | Some L => if L == lbv 0 then Some l_end else Some (l_rec L)
       | None => None
       end
     | g_msg a p q Ks =>
@@ -178,7 +178,17 @@ Section Project.
       end
     end.
 
-  Fixpoint queue_contents (g : rg_ty) (qs : MsgQ) : option MsgQ :=
+  Fixpoint prj_all2 (Ks : seq (lbl * (mty * rg_ty))) (r : role) :=
+    match Ks with
+    | [::] => Some [::]
+    | K::Ks =>
+      match project2 K.cnt r, prj_all2 Ks r with
+      | Some L, Some Ks => Some ((K.lbl, (K.mty, L)) :: Ks)
+      | _, _ => None
+      end
+    end.
+
+  Fixpoint queue_contents (g : rg_ty) qs :=
     match g with
     | g_end
     | g_rec _
@@ -190,7 +200,10 @@ Section Project.
            match Ks with
            | [::] => None
            | K::Ks => if K.lbl == l
-                      then queue_contents K.cnt (enqueue qs ((p,q), (l,K.mty)))
+                      then match queue_contents K.cnt qs with
+                           | Some Q => Some (enq Q (p,q) (l, K.mty))
+                           | None => None
+                           end
                       else contQueue Ks
            end) Ks
       | None => match Ks with
@@ -198,7 +211,7 @@ Section Project.
                 | K::_ => queue_contents K.cnt qs
                 end
       end
-    end.
+    end%fmap.
 
   Definition insert (E : role * l_ty) P :=
     match lookup E.1 P with
@@ -460,6 +473,40 @@ Section Project.
         rewrite -{1}(dualK S'); move=>/(fun_mergeall dualI)/eqP->/eqP-[<-].
         by rewrite dualK.
   Qed.
+
+  Fixpoint proj_ps (G : rg_ty) (ps : seq role) :=
+    match ps with
+    | [::] => Some [fmap]
+    | p :: ps =>
+      match project2 G p, proj_ps G ps with
+      | Some L, Some E => Some E.[p <- L]
+      | _, _ => None
+      end
+    end%fmap.
+
+  Definition proj_env G := proj_ps G (participants G).
+
+  Notation renv := {fmap role -> l_ty}.
+  Notation qenv := {fmap role * role -> seq (lbl * mty) }.
+  Notation ralt := {fmap role -> seq (lbl * (mty * l_ty))}.
+
+  Definition proj_cfg G : option (renv * qenv):=
+    match proj_env G, queue_contents G [fmap] with
+    | Some E, Some Q => Some (E, Q)
+    | _, _ => None
+    end%fmap.
+
+  Lemma proj_send p q KsG E :
+    proj_env (g_msg None p q KsG) == Some E ->
+    exists KsL, (prj_all2 KsG p == Some KsL)
+                  && (E.[? p]%fmap == Some (l_msg l_send q KsL)).
+  Admitted.
+
+  Lemma lookup_prjall lb Ks t (Gp : rg_ty) p KsL :
+    (lookup lb Ks == Some (t, Gp)) ->
+    (prj_all2 Ks p == Some KsL) ->
+    exists L, (project2 Gp p == Some L) && (lookup lb KsL == Some (t, L)).
+  Admitted.
 
   Close Scope mpst_scope.
 
