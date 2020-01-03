@@ -4,7 +4,7 @@
 theories/Forall.v
 theories/Atom.v
 theories/LNVar.v
-theories/Role.v
+theories/AtomSets.v
 theories/Actions.v
 theories/Global.v
 theories/Local.v

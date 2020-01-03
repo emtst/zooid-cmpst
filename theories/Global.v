@@ -5,7 +5,7 @@ Unset Strict Implicit.
 Import Prenex Implicits.
 
 Require Import MPST.Atom.
-Require Import MPST.Role.
+Require Import MPST.AtomSets.
 Require Import MPST.Forall.
 Require Import MPST.LNVar.
 Require Import MPST.Actions.

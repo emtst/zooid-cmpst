@@ -4,7 +4,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Require Import MPST.Role.
+Require Import MPST.AtomSets.
 Require Import MPST.Forall.
 
 Inductive l_act := l_send | l_recv.

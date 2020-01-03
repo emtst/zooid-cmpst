@@ -36,6 +36,9 @@ Section LNVar.
     | _ => fset0
     end.
 
+  (** fbvar: free 'bound' var, returns the (singleton) set of indices
+      that are free in v in a context with d binders.
+  *)
   Definition fbvar d v : {fset nat} :=
     match v with
     | bv n => if d <= n then [fset n - d] else fset0

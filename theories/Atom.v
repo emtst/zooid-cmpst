@@ -52,6 +52,7 @@ Module def_atom : Atom.
   Qed.
 End def_atom.
 
+(* Generative atom interface to create new kinds of atoms *)
 Module NewAtom (m : Atom) : Atom.
   Definition t := m.t.
   Definition fresh := m.fresh.
