@@ -4,8 +4,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Require Import MPST.Atom.
-
 (* FIXME: Should be a parameterised type Inductive lnvar t := ... *)
 Section LNVar.
   Variable A : choiceType.
