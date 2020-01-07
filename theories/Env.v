@@ -58,8 +58,9 @@ Module Type ENV (En : ENTRY).
   Parameter dom_add :
     forall (k : En.K) (v : En.V) (E : env),
       def (add k v E) -> dom (add k v E) =i predU (pred1 k) (mem (dom E)).
-  Parameter rem_add_id :
-    forall (k' : En.K) (v' : En.V) (D : env), def (add k' v' D) -> D = rem k' (add k' v' D).
+(*L to D and F: rem_add_idd is not true, see also later for environments as sequences*)
+(*  Parameter rem_add_id :
+    forall (k' : En.K) (v' : En.V) (D : env), def (add k' v' D) -> D = rem k' (add k' v' D).*)
   Parameter rem_add :
     forall (k k' : En.K) (v : En.V) (D : env), k != k' -> rem k' (add k v D) = add k v (rem k' D).
   Parameter add_rem_id :
@@ -172,6 +173,13 @@ Module Env (En : ENTRY) : ENV En.
   (*Lemma not_in_dom_nil x: x =*)
 
 
+  Lemma dom_cons k v (E : env): def ((k,v)::E) -> dom ((k,v)::E) = k::(dom E).
+  Proof.
+  unfold dom; case: ifP; rewrite //=.
+  move=> defcons ttt. case: ifP; rewrite //=.
+  move=> nottrue. move: (def_cons_def defcons). by rewrite nottrue //=.
+  Qed.
+
   Lemma in_dom_cons x T (E : env) : def ((x,T)::E) -> x \in dom ((x,T)::E).
   Proof. 
   unfold dom. case (@idP (def ((x,T)::E))); [simpl; intro; intro; apply mem_head | rewrite //].
@@ -181,6 +189,8 @@ Module Env (En : ENTRY) : ENV En.
   (* update if present *)
   Definition upd x t (E : env) :=
     map (fun en => if x == fst en then (x, t) else en) E.
+
+
 
   Lemma evennondef_upd_same_dom x T E: map fst (upd x T E) = map fst E .
   Proof. unfold upd. elim E; [by []| elim; move=> x0 T0 E0 hp; simpl; case: eqP; rewrite <-hp].
@@ -194,10 +204,9 @@ Module Env (En : ENTRY) : ENV En.
   Qed.
 
   Lemma upd_cons_nothead x t x0 t0 (E0 : env): 
-    x0<>x -> upd x t ((x0,t0)::E0) = (x0,t0) :: (upd x t E0).
+    x != x0 -> upd x t ((x0,t0)::E0) = (x0,t0) :: (upd x t E0).
   Proof.
-  unfold upd. rewrite map_cons. 
-  by case (@idP (x == (x0, t0).1)); [ simpl; intro eq; rewrite (eqP eq); rewrite // | rewrite //].
+  unfold upd. rewrite map_cons. by case: ifP; rewrite //=. 
   Qed.
 
 
@@ -209,6 +218,7 @@ Module Env (En : ENTRY) : ENV En.
   Proof.
   unfold add_upd; by rewrite //.
   Qed.*)
+
 
 
   Fixpoint look x (E : env) : option En.V :=
@@ -238,24 +248,54 @@ Module Env (En : ENTRY) : ENV En.
   Proof.
   unfold dom. rewrite //.  move=> defcons. rewrite defcons. rewrite map_cons.
   have defE: def E. apply: def_cons_def. by apply: defcons.
-  rewrite defE. by []. 
+  rewrite defE. by [].
   Qed.
 
   Lemma notin_dom_cons_eq x y t E : def ((y,t) :: E) -> 
     ( (x \notin dom ((y,t) :: E)) = (~~(x == y) && (x \notin dom E)) ).
-  Proof. 
-  intro defE; rewrite <-negb_or; rewrite (in_dom_cons_eq); by[].
+  Proof.
+  intro defE. rewrite <-negb_or. rewrite (in_dom_cons_eq); by[].
   Qed.
 
+  Lemma notin_dom_cons_head x y t E : def ((y,t) :: E) -> 
+    (x \notin dom ((y,t) :: E)) -> (x != y).
+  Proof.
+    move=> defcons notin.
+    have nconj: (x != y) /\ (x \notin dom E).
+      rewrite (rwP andP); rewrite <-(notin_dom_cons_eq _ defcons); by apply notin.
+    by apply (proj1 nconj).
+  Qed.
+
+  Lemma notin_dom_cons_tail x y t E : def ((y,t) :: E) -> 
+    (x \notin dom ((y,t) :: E)) -> (x \notin dom E).
+  Proof.
+    move=> defcons notin.
+    have nconj: ~ (x == y) /\ (x \notin dom E).
+      rewrite (rwP negP); rewrite (rwP andP); rewrite <-(notin_dom_cons_eq _ defcons); by apply notin.
+    by apply (proj2 nconj).
+  Qed.
+
+
   Lemma def_cons_not_head x y t E : def ((y,t) :: E) -> x \in dom E -> 
-    ~ x == y.
+    x != y.
   Proof.
   move=> defcons. unfold dom. rewrite (def_cons_def defcons). move: defcons.
   unfold def. rewrite map_cons. rewrite cons_uniq. simpl. case (@idP (x==y)); [ | by []].
-  move=>/eqP->. rewrite <-(rwP andP); elim. rewrite <-(rwP negP). congruence.
+  move=>/eqP->. rewrite <-(rwP andP); elim.  congruence.
   Qed.
 
 
+
+  Lemma notin_dom_upd_id x t (E : env) : def E -> x \notin dom E -> upd x t E = E.
+  Proof.
+    elim: E; [ by [] | elim].
+    move=> x0 t0 E0 ih defcons. rewrite (notin_dom_cons_eq _ defcons). move=>/andP.
+    elim; move=> diff notin. rewrite (upd_cons_nothead _ _ _ diff).
+    rewrite (ih (def_cons_def defcons) notin); by [].
+  Qed.
+
+(*this last lemma and some of the above can be proven without the environment being defined...
+is it worth to keep track of this second/stronger version?*)
 
 (*L to D and F: here I had to add an hypothesis, namely def E*)
   Lemma in_domP x E : def E -> reflect (exists v, look x E = Some v) (x \in dom E).
@@ -299,11 +339,15 @@ Module Env (En : ENTRY) : ENV En.
     case (def D)=>//.
   Qed.
 
+
+
+
   (* Properties of defined environments *)
   Lemma def_cons_notin_dom x T D: def ( (x, T) :: D) -> (x \notin dom D).
   Proof. unfold dom. case (def D); [| by []].
     unfold def; simpl. elim andP; [ elim; by [] | intro; by [] ]. 
   Qed.
+
 
   Lemma notin_dom_def_cons x T D: def D -> (x \notin dom D) -> def ((x,T)::D).
   Proof. 
@@ -320,9 +364,20 @@ Module Env (En : ENTRY) : ENV En.
   move=> x0 T0 E0 ih defcons. rewrite notin_dom_cons_eq; [| by apply defcons]. 
   move=>/andP. elim. move=>/negP. move=> neq notin. rewrite upd_cons_nothead;
   [ rewrite (ih (def_cons_def defcons) notin); by []
-  | rewrite (rwP eqP); rewrite eq_sym; by []
+  | rewrite <-(rwP negP) ; by []
   ].
   Qed.
+
+
+  Lemma add_upd_head x T T' D: 
+    def ((x,T) :: D) -> add_upd x T' ((x,T) :: D) = (x, T') :: D.
+  Proof.
+  unfold add_upd; move=> defcons. move: (in_dom_cons defcons). case: ifP; rewrite //=.
+  move=> indom ttt. rewrite eq_refl.
+  by rewrite 
+    (notin_dom_upd_id _ (def_cons_def defcons) (def_cons_notin_dom defcons)) //=.
+  Qed.
+
 
 
   Lemma def_iff_def_upd a T D: def D <-> def (upd a T D).
@@ -415,14 +470,13 @@ About negP.
       * have ainE0: a \in dom E0. move: indom. rewrite in_dom_cons_eq. 
           rewrite <-(rwP orP). by elim; [move: case_a; rewrite // | rewrite // ].
           by apply: (def_add_upd_def defadd).
-        rewrite upd_cons_nothead. rewrite look_cons. 
+        rewrite upd_cons_nothead; [| rewrite <-(rwP negP); by apply case_a ]. rewrite look_cons. 
           case (@idP (a==x0)); [intro H; contradict H; apply case_a | intro h; move: ih; elim].
           unfold add_upd. by case (@idP (a \in dom E0)); [rewrite // | move: ainE0; rewrite //].
           apply def_def_add_upd. by apply: (def_cons_def (in_dom_def indom)).
           move: defadd. unfold add_upd. 
             case: (@idP (a \in dom ((x0, T0) :: E0))); [ | intro H; contradict H; apply indom].
-            rewrite upd_cons_nothead; [ by [] | ]. rewrite (rwP eqP). rewrite eq_sym. by apply case_a.
-          rewrite (rwP eqP). rewrite eq_sym. by apply case_a.
+            rewrite upd_cons_nothead; [ by [] | ]. rewrite <-(rwP negP). by apply case_a.
     + unfold add_upd. case (@idP (a \in dom ((x0, T0) :: E0))); rewrite //. intro notindom. intro.
       rewrite look_cons.
       * by case (@idP (a==a)); rewrite //.
@@ -443,8 +497,8 @@ About negP.
   + move=> inE0 ih. rewrite (in_dom_cons_eq _ defcons). rewrite inE0. rewrite orbT. 
     rewrite upd_cons_nothead. move=> defupd.
     rewrite (look_cons _ defupd). rewrite (look_cons _ defcons). case: ifP; [ by [] | ].
-    move=> neq2. by rewrite (ih neq (def_cons_def defupd)) //. rewrite (rwP eqP).
-    rewrite eq_sym. by apply (def_cons_not_head defcons inE0).
+    move=> neq2. by rewrite (ih neq (def_cons_def defupd)) //.
+    by apply (def_cons_not_head defcons inE0).
   + case (@idP (a==x0)).
     * move=>/eqP-eqax0; rewrite eqax0. rewrite (in_dom_cons defcons).
       move=> ninE0 ih. rewrite upd_cons_head. rewrite not_indom_upd_id.
@@ -475,15 +529,204 @@ About negP.
   + move=> neq. apply in_dom_cons_eq. move: defadd. unfold add, add_upd; rewrite neq; by[].
   Qed.
 
-(*  Lemma rem_add_id k' v' D : def (add k' v' D) -> D = rem k' (add k' v' D).
-  Admitted. *)
-(*L to D and F, the above lemma is false, since we have that 
-  add and add_update are defined the same way.
-  The above lemma is true only in the case when 
-  our add actually adds and does not update.*)
+  Lemma rem_head k v D: rem k ((k, v) :: D) = rem k D.
+  Proof.
+  unfold rem. rewrite //=. by case: ifP; move=>/eqP; rewrite //=.
+  Qed.
 
-  Lemma rem_add k k' v D : k != k' -> rem k' (add k v D) = add k v (rem k' D).
-  Admitted.
+  Lemma rem_nothead_comm k' k v D: k' != k ->
+    rem k' ((k, v) :: D) = (k, v) :: rem k' D.
+  Proof.
+  unfold rem. simpl. by case eqP; rewrite //.
+  Qed.
+
+  Lemma notin_rem_id k' D: def D -> k' \notin dom D -> rem k' D = D.
+  Proof.
+  elim D; [rewrite // | elim]. 
+  move=> k v E ih defcons notin.
+  rewrite (rem_nothead_comm  ).
+  * by rewrite (ih (def_cons_def defcons) (notin_dom_cons_tail defcons notin)) //.
+  * by apply (notin_dom_cons_head defcons notin).
+  Qed.
+
+
+  Lemma rem_cons_id k v D : def ((k, v) :: D) -> rem k ((k,v) :: D) = D.
+  Proof.
+  unfold rem; simpl. case: eqP; rewrite //=. move=> triv defcons.
+  move: (@notin_rem_id k D (def_cons_def defcons) (def_cons_notin_dom defcons)). by [].
+  Qed.
+
+
+  Lemma def_def_rem k D : def D -> def (rem k D).
+  Proof.
+  by apply subseq_uniq, map_subseq, filter_subseq. 
+  Qed.
+
+
+  Lemma filter_pr_subseq E1 E2 a: subseq (E1 : env) E2
+    -> subseq (filter a E1) (filter a E2).
+  Proof.
+  elim: E2 E1; [ rewrite //=; move=> E1 /eqP->; by [] | ]. 
+  move=> e0 E0 ih E1. elim E1; [ rewrite //=; by rewrite sub0seq //= | ].
+  move=> e' E' ih'. rewrite //=. case: ifP.
+  + move=>/eqP-eqe. rewrite eqe. move=> sub. case: ifP; rewrite //=.
+    * case: ifP; [move=> triv holds; by apply ih, sub | rewrite eq_refl //=].
+    * move=> doesnt; by apply ih, sub.
+  + move=>/eqP-neqe sub. 
+    apply (@subseq_trans _ [seq x <- E0 | a x]).
+    * move: (ih _ sub). by [].
+    * case: ifP; [move=> holds; by apply subseq_cons| by rewrite //=].
+  Qed.
+
+
+
+  Lemma def_rem_cons k' k v D : def (rem k' ((k,v)::D)) -> def (rem k' D).
+  Proof.
+  unfold def, rem. by apply subseq_uniq, map_subseq, 
+    filter_pr_subseq, subseq_cons.
+  Qed.
+
+  Lemma indom_rem_indom k k' D: def D 
+    -> k \in dom (rem k' D) -> k \in dom D.
+  Proof.
+  move=>defD. unfold dom. rewrite def_def_rem //=. rewrite defD //=.
+  apply mem_subseq, map_subseq, filter_subseq. 
+  Qed.
+
+  Lemma dom_rem_rw k' D: def (rem k' D) -> 
+    dom (rem k' D) = filter (fun x => k' != x) (map fst (rem k' D)).
+  Proof.
+  elim D; [ by rewrite //= | elim ]. move=> k0 v0 D0 ih.
+  case (@idP (k0==k')). 
+  + move=>/eqP->. move=> defrem. rewrite //=. 
+    case: ifP; [rewrite <-(rwP negP); rewrite <-(rwP eqP); by [] |].
+    move=> triv. by apply (ih (def_rem_cons defrem)).
+  + move=>/negP-diff defrem. rewrite //=.
+    case: ifP; [ rewrite //=
+      | move=> falserw; move: diff; rewrite eq_sym; rewrite falserw; by []].
+    case: ifP; rewrite //=. 
+    rewrite dom_cons; [ 
+      | move: defrem; rewrite //=; case: ifP; move=> falserw;
+        move: diff; rewrite eq_sym; rewrite falserw; by []].
+    rewrite (ih (def_rem_cons defrem)) //=.
+  Qed.
+
+  Lemma notin_dom_rem k k' D: def D 
+    -> k \notin dom D -> k \notin dom (rem k' D).
+  Proof.
+  move=> defD. rewrite (dom_rem_rw (def_def_rem _ defD)). unfold dom.
+  move:defD. case: ifP; rewrite //=. elim D; rewrite //=. elim; rewrite //=.
+  move=> k0 v0 D0 ih defcons ttt notincons.
+  case: ifP; rewrite //=.
+  + case: ifP; rewrite //=. move=> diff ttt2.
+    move: notincons. rewrite! in_cons. rewrite! negb_or.
+   rewrite <-(rwP andP). elim; move=> diff2 knotin.
+    apply /andP; apply conj; [by apply diff2
+    | by apply (ih (def_cons_def defcons) ttt knotin)]. 
+  + move=> weirdeq. have eqk: k0 = k'. 
+     apply /eqP; rewrite eq_sym; by apply (negbFE weirdeq).
+    apply (ih (def_cons_def defcons) ttt).
+    move: notincons. rewrite in_cons.
+    rewrite negb_or; rewrite <-(rwP andP); elim; by rewrite //=.
+  Qed.
+
+
+
+
+  Lemma dom_rem_eq k' D: k' \notin dom (rem k' D).
+  Proof.
+  case (@idP (def (rem k' D))); unfold dom; case: ifP; rewrite //=.
+  elim D; rewrite //=. elim. rewrite //=. move=> k0 v0 D0 ih.
+  case: ifP; [| move=> triv def0 ttt; by apply (ih def0 ttt)].
+  move=> diff defcons ttt. rewrite //=. rewrite in_cons. 
+  rewrite negb_or. apply /andP; apply (conj diff).
+  by apply (ih (def_cons_def defcons) ttt).
+  Qed.
+
+
+  Lemma indom_diff_indom_rem k k' D: def D -> k != k'
+    -> k \in dom D -> k \in dom (rem k' D).
+  Proof.
+  move=> defD. rewrite dom_rem_rw; [ | by apply (def_def_rem _ defD)].
+  (*L to Everyone (Coq question): 
+    why does the above not work with composing dom_rem_rw with def_def_rem ecc.?*)
+  unfold dom. move=> diff. case: ifP; rewrite //=; elim.
+  elim D; rewrite //=. elim. rewrite //=. move=> k0 v0 D0 ih incons.
+  case: ifP; rewrite //=.
+  + case: ifP; rewrite //=. move=> diff0. elim. move: incons.
+    rewrite! in_cons //=. rewrite <-(rwP orP).
+    elim; rewrite <-(rwP orP); [ by apply or_introl | move=> kin].
+    apply or_intror. by apply (ih kin).
+  + move=> weirdeq. have eqk: k0 = k'. 
+     apply /eqP; rewrite eq_sym; by apply (negbFE weirdeq).
+    move: incons. rewrite eqk. rewrite in_cons.
+    rewrite <-(rwP orP); elim;
+    [move=>/eqP-eqfalse; move: diff; rewrite eqfalse; rewrite <-(rwP negP); by []
+    | apply ih].
+  Qed.
+
+(*def_cons_notin_dom*)
+
+(*The lemma:
+
+  Lemma rem_add_id k' v' D : def (add k' v' D) -> D = rem k' (add k' v' D).
+  Proof.
+  unfold add, add_upd. case: ifP.
+  Qed.
+
+is false. Uncomment and see the incomplete proof to get convinced. However the following versions are true.
+
+L to L : two lemmas one with hp k' notin dom D and the other def (k', v) :: D, but they really are property of add. 
+*)
+
+
+
+
+
+
+
+  Lemma rem_upd k k' v D: rem k' (upd k v D) = upd k v (rem k' D).
+  Proof.
+  elim D; [ by [] | elim; move=> k0 v0 D0 ih].
+  case (@idP (k0 == k')). 
+  + move=>/eqP->. rewrite rem_head. case (@idP (k'==k)).
+    - move=>/eqP-eqk. move: ih. rewrite eqk.
+      rewrite upd_cons_head; rewrite rem_head. by [].
+    - move=>/negP-diff. 
+      rewrite upd_cons_nothead; [ | by rewrite eq_sym //=].
+      rewrite rem_head. by rewrite //=.
+  + move=>/negP-diff. rewrite rem_nothead_comm; 
+    [ case (@idP (k'==k)) | rewrite eq_sym; by apply diff].
+    - move=>/eqP-eqk. move: ih diff. rewrite eqk (@eq_sym _ k0). move=> ih diff.
+      rewrite! (upd_cons_nothead _ _ _ diff)
+        ; rewrite (rem_nothead_comm _ _ diff).
+      rewrite ih; by [].
+    - move=>/negP-diff2. case (@idP (k==k0)). 
+      * move=>/eqP-eqk. move: ih. rewrite eqk. move=>ih. 
+        rewrite! upd_cons_head. rewrite rem_nothead_comm;
+          [ by rewrite ih //=| rewrite eq_sym; by apply diff].
+      * move=>/negP-diff3. rewrite! (upd_cons_nothead _ _ _ diff3).
+        rewrite rem_nothead_comm; [by rewrite ih //= 
+          | rewrite eq_sym; by apply diff].
+  Qed.
+
+  Lemma rem_add k k' v D : def D -> k != k' -> 
+    rem k' (add k v D) = add k v (rem k' D).
+  Proof.
+  unfold add, add_upd.
+  case: ifP.
+  + move=> indomD defD diff. 
+    move: (indom_diff_indom_rem defD diff indomD).
+    case: ifP; rewrite //=. by rewrite rem_upd //=.
+  + move=> weird defD diff.
+    have knotin: k \notin dom (rem k' D).
+      by apply (notin_dom_rem _ defD (negbT weird)).
+    move: knotin; rewrite <-(rwP negP).
+    case: ifP; rewrite //=.
+    move=> weird2 ttt. move: diff; rewrite eq_sym. 
+    by case: ifP; rewrite //=.
+  Qed.
+
 
   Lemma add_rem_id x v E : look x E == Some v -> add x v (rem x E) = E.
   Admitted.
