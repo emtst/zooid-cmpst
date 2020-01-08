@@ -383,7 +383,14 @@ Section IProject.
     forall K,
       member K Ks ->
       exists L, member (K.lbl, (K.mty, L)) Ks' /\ partial_proj K.cnt p = Some L.
-  Admitted.
+  Proof.
+    elim: Ks=>//= Kl Ks Ih in Ks' *.
+    case Kl_p: partial_proj=>[s|//].
+    case Ks_p: pprj_all=>[Ks0|//]; move: Ks_p=>/eqP/Ih-{Ih} Ih.
+    move=>/eqP-[<-] K [E|/Ih-{Ih}[s' [M Kp]]]{Ks'}.
+    - by move: E Kl_p=><- {Kl}; exists s; split=>//; left.
+    - by exists s'; split=>//; right.
+  Qed.
 
   Lemma pproj_var p q G Lq Sq :
     project G p == Some (lbv 0) ->
