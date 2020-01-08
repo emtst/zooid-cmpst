@@ -305,6 +305,40 @@ Section Syntax.
         move=>/in_maximum_leq-dG; move: (leq_trans dG dKs)=>{dG} {dKs}.
         by apply: Ih.
   Qed.
+
+  Fixpoint guarded d G :=
+    match G with
+    | g_end
+    | g_var _ => true
+    | g_rec G => if G is g_var (bv v)
+                 then v > d
+                 else guarded d.+1 G
+    | g_msg _ _ Ks => all (fun K => guarded 0 K.cnt) Ks
+    end.
+
+  Fixpoint unroll n G :=
+    match n with
+    | 0 => G
+    | m.+1 =>
+      match G with
+      | g_rec G' => unroll m (g_open 0 G G')
+      | _ => G
+      end
+    end.
+
+  Lemma guarded_unroll G :
+    guarded 0 G -> exists n, forall G', unroll n G != g_rec G'.
+  Proof.
+    move: 0.
+    elim/gty_ind1: G => [|v|G Ih| p q Ks Ih] n/=.
+    - by move=>_; exists 0.
+    - by move=>_; exists 0.
+    - case: G Ih=>[|[v'|v']|G'|p q Ks'] Ih.
+      * by move=> _; exists 1.
+      * by move=> _; exists 1=>G'.
+      * by move=> H; exists 1=>G'/=; move: H; case: ifP=>[/eqP<-|].
+  Admitted.
+
   Close Scope mpst_scope.
 End Syntax.
 
