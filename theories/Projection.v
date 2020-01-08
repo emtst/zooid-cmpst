@@ -583,25 +583,27 @@ Section CProject.
     = Some [seq (K.1, (K.2.1, l_open n l K.2.2)) | K <- Ks'].
   Proof.
     elim: Ks Ks' => [|K Ks Ih]; case=>[|K' Ks']//=.
-    - by case: (project K.2.2 r); case: (prj_all Ks r).
+    - by case: project; case: prj_all.
     - move=> H. move: (H K (or_introl erefl)).
-      case: (project K.2.2 r) =>// L /(_ L (eq_refl _))->.
+      case: project =>// L /(_ L (eq_refl _))->.
       move: H=>/(_ _ (or_intror _))-H; move: Ih => /(_ _ H) {H}.
-      by case: (prj_all Ks r)=>[Ksr|//] /(_ Ksr erefl)-> [<-<-]/=.
+      by case: prj_all => [Ksr|//] /(_ Ksr erefl)-> [<-<-]/=.
   Qed.
 
-  Lemma project_closed G r L :
+  (*
+  Lemma projclosed_rec G r L :
     project G r == Some L ->
     g_closed (g_rec G) ->
     ((L == l_var (bv _ 0)) = false) ->
     project (g_open 0 (g_rec G) G) r = Some (l_open 0 (l_rec L) L).
   Proof.
     move=> H C L0; move: (project_rec H L0) => Hr; move: 0 {L0} (g_rec G) C (l_rec L) Hr.
-    elim/gty_ind1: G L H =>[|v|G Ih|p q Ks Ih] L.
-    - by move=>/eqP-[<-].
-    - move=> H; move: H =>/eqP-[<-] /= n G' C L'.
+    elim/gty_ind1: G =>[|v|G Ih|p q Ks Ih] in L H *.
+    - by move: H=>/eqP-[<-].
+    - move: H =>/eqP-[<-] /= n G' C L'.
       by case: v G' C=>//= m; case: ifP.
-    - move:Ih=>/=;case Eq:(project G r)=>[Lr|//].
+    - move: H Ih=>/=.
+      move:Ih=>/=; case Eq:project=>[Lr|//=].
       move: Eq=> /eqP-Eq /(_ Lr (eq_refl _))-Ih.
       case:ifP=>//H/eqP-[<-] n g cg l prj.
       move: Ih=>/(_ n.+1 g cg l prj)->/=; move: prj=>/eqP-prj.
@@ -656,6 +658,7 @@ Section CProject.
 
   Lemma gunroll_not_rec G G': gunroll G != g_rec G'.
   *)
+  *)
 
   Lemma ic_proj r :
     forall iG iL cG cL,
@@ -672,12 +675,12 @@ Section CProject.
       by constructor.
     - case=>// v' cG cL _ _ GU.
       by case Eq: _ _ / GU.
-    - case Gr: (project G r) => [L|//]; move: Gr=>/eqP-Gr.
+    - case Gr: project => [L|//]; move: Gr=>/eqP-Gr.
       move=> iL cG cL clG; case: ifP=>[//|L_not_var /eqP-[<-] GU LU].
       move=>Eq; move: Eq Gr=>/eqP-> Gr /eqP-[<-]{L iL}.
       case EqG: _ _ /GU=>[//|G'' {cG}cG GU|//]; move: EqG GU=>[<-] GU {G''}.
       case EqL: _ _ /LU=>[//|L'' {cL}cL LU|//]; move: EqL LU=>[<-] LU {L''}.
-      move: Gr => /project_closed /(_ clG L_not_var)/eqP-Gr.
+      move: Gr => /projclosed_rec /(_ clG L_not_var)/eqP-Gr.
       case: cG GU => [GU|].
       case Eq: rg_end /GU =>[|G'' cG' GU|]//.
       admit.
