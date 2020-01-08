@@ -86,6 +86,61 @@ Proof.
   by elim: l => // a l Ih /=; rewrite fsetUC in_fsetU negb_or -(rwP andP) Ih.
 Qed.
 
+Lemma foldl_fsetU (A : choiceType) (K : {fset A}) Ks :
+  foldl fsetU K Ks = (K `|` foldl fsetU fset0 Ks)%fset.
+Proof.
+  rewrite -[in LHS](fset0U K); elim: Ks fset0=>[K'|K' Ks Ih K'']/=.
+  - by rewrite fsetUC.
+  - move: (Ih (K'' `|` K')%fset)=>{Ih}<-.
+    by rewrite -fsetUA [(K `|` K')%fset]fsetUC fsetUA.
+Qed.
+
+Lemma fsetUs_list (A : choiceType) (K : {fset A}) Ks :
+  fsetUs (K :: Ks) == fset0 = (K == fset0) && (fsetUs Ks == fset0).
+Proof.
+  by rewrite /fsetUs/= fset0U foldl_fsetU fsetU_eq0.
+Qed.
+
+Lemma fsetUs_fset0 (A : choiceType) (Ks : seq {fset A}) :
+  fsetUs Ks == fset0 <-> (forall K, member K Ks -> K == fset0).
+Proof.
+  elim: Ks=>// K Ks Ih/=; rewrite fsetUs_list -(rwP andP) Ih {Ih}; split.
+  - by move=>[/eqP-[-> H]] K' [->//|/H].
+  - by move=> H; split; [apply: H; left| move=>K' K'Ks; apply: H; right].
+Qed.
+
+Lemma fsetUs_cons (K : choiceType) (x : K) s L :
+  x \in fsetUs (s :: L) = (x \in s) || (x \in fsetUs L).
+Proof.
+  rewrite /fsetUs/=.
+  elim: L fset0 => [s'|s' L Ih s'']/=; first (by rewrite in_fsetU orbC).
+  by rewrite fsetUC fsetUA Ih fsetUC.
+Qed.
+
+
+Lemma member_map A B (P : B -> Prop) (f : A -> B) L :
+  (forall x, member x [seq f x | x <- L] -> P x) <->
+  (forall x, member x L -> P (f x)).
+Proof.
+  split=>H x M.
+  - apply: H; elim: L M=>// y L Ih [<-|]; first by left.
+    by rewrite -/(member _ _) => /Ih-H /=; right.
+  - elim: L H M=>// y L /=Ih H [->|H'].
+    + by apply: H; left.
+    + by apply: Ih=>// z M; apply: H; right.
+Qed.
+
+Lemma fsetUs_eq A (B : choiceType) (f g : A -> {fset B}) L :
+  (forall x, member x L -> f x = g x) ->
+  fsetUs [seq f x | x <- L] = fsetUs [seq g x | x <- L].
+Proof.
+  rewrite /fsetUs; elim: L {1 2}fset0 {1 3}fset0 (eq_refl (@fset0 B)).
+  - by move=> Sl Sr /eqP->{Sr}/=.
+  - move=> x L Ih S0 S1 /eqP-> H; apply/Ih; first by rewrite (H x _)//; left.
+    by move=> y H'; apply/H; right.
+Qed.
+
+
 
 (* Declare Scope mpst_scope. *)
 

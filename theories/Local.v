@@ -24,6 +24,14 @@ Section Syntax.
 
   Open Scope mpst_scope.
 
+  Fixpoint partsL (G : l_ty) :=
+    match G with
+    | l_end
+    | l_var _ => [::]
+    | l_rec G => partsL G
+    | l_msg a p Ks => p::flatten [seq partsL K.cnt | K <- Ks]
+    end.
+
   Lemma lty_ind :
     forall (P : l_ty -> Prop),
       P l_end ->
@@ -206,11 +214,38 @@ Section Syntax.
         move=>/in_maximum_leq-/=dG; move: (leq_trans dG D)=>{dG} {D}.
         by apply: Ih.
   Qed.
+
+  Definition l_closed (L : l_ty) :=
+    (l_fbvar 0 L == fset0) && (l_fvar L == fset0).
+
 End Syntax.
 
 Section Semantics.
 
-  Notation renv := {fmap role -> l_ty}.
+  CoInductive rl_ty :=
+  | rl_end
+  | rl_msg (a : l_act) (r : role) (Ks : seq (lbl * (mty * rl_ty)))
+  .
+
+  CoInductive LUnroll : l_ty -> rl_ty -> Prop :=
+  | lu_end : LUnroll l_end rl_end
+  | lu_rec G G' : LUnroll (l_open 0 (l_rec G) G) G' ->
+                 LUnroll (l_rec G) G'
+  | lu_msg a p Ks Ks' :
+      LUnrollAll Ks Ks' ->
+      LUnroll (l_msg a p Ks) (rl_msg a p Ks')
+  with LUnrollAll
+       : seq (lbl * (mty * l_ty)) ->
+         seq (lbl * (mty * rl_ty)) ->
+         Prop :=
+  | lu_nil : LUnrollAll [::] [::]
+  | lu_cons l t G G' Ks Ks' :
+      LUnroll G G' ->
+      LUnrollAll Ks Ks' ->
+      LUnrollAll ((l, (t, G)) :: Ks) ((l, (t, G')) :: Ks')
+  .
+
+  Notation renv := {fmap role -> rl_ty}.
   Notation qenv := {fmap role * role -> seq (lbl * mty) }.
 
   Definition enq (qs : {fmap (role * role) -> (seq (lbl * mty))}) k v :=
@@ -230,21 +265,15 @@ Section Semantics.
     | None => None
     end%fmap.
 
-  Definition get (P : renv) p :=
-    match P.[? p]%fmap with
-    | Some (l_rec Lp) => Some (l_open 0 Lp (l_rec Lp))
-    | r => r
-    end.
-
   Definition do_act (P : renv) a p q l t :=
-    match get P p  with
+    match P.[? p]  with
     | Some Lp =>
       match Lp with
-      | l_msg a' q' Ks =>
+      | rl_msg a' q' Ks =>
         match lookup l Ks with
         | Some (t', Lp) =>
           if (a == a') && (q == q') && (t == t')
-          then if Lp == l_end
+          then if Lp is rl_end
                then Some P.[~ p]
                else Some P.[p <- Lp]
           else None
@@ -256,12 +285,12 @@ Section Semantics.
     end%fmap.
 
   Lemma doact_send (E : renv) p q lb t KsL Lp :
-    (get E p = Some (l_msg l_send q KsL)) ->
+    (E.[? p]%fmap = Some (rl_msg l_send q KsL)) ->
     (lookup lb KsL = Some (t, Lp)) ->
     exists E', (do_act E l_send p q lb t = Some E').
   Proof.
     move=>H1 H2; rewrite /do_act H1 H2 !eq_refl/=.
-    case: ifP=> _.
+    case: Lp H2 =>[|a r Ks]; [|set (Lp := rl_msg _ _ _)].
     - by (exists E.[~ p]%fmap).
     - by exists E.[ p <- Lp]%fmap.
   Qed.
