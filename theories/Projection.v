@@ -355,7 +355,11 @@ Section IProject.
     project (g_msg r s Ks) p == Some (lbv 0) ->
     r != p /\ s != p /\ r != s /\
     (forall K, member K Ks -> project K.cnt p == Some (lbv 0)).
-  Admitted.
+  Proof.
+    rewrite project_msg; case Ksp: prj_all => [Ks'|//]; move: Ksp=>/eqP.
+    do ! case: ifP=>//; move=>s_ne_p r_ne_p r_ne_s.
+    by move=>/prjall_merge-H /H.
+  Qed.
 
   Lemma pprjall_merge p Ks KsL L :
     pprj_all Ks p == Some KsL ->
