@@ -396,23 +396,28 @@ Section IProject.
       rewrite project_msg; case Eq: prj_all=>[KsL|//]; move: Eq=>/eqP-Prj_Ks.
       rewrite (negPf r_ne_s); do ! case: ifP=>[_ /eqP-[<-]|_].
       * rewrite partialproj_all (negPf s_ne_p); case E: pprj_all=>[KsS|//] Mrg.
-        move: E=>/eqP-E.
-        admit.
-        (*
-        suff: exists K, member K Ks.
-        move=>[Kg M].
-        case: Ks Prj_Ks{Ksp Ih} M=>[|Kl Ks _]; last (by exists Kl; left).
-        admit.
-         *)
+        have [K KKs]: exists K, member K Ks
+            by move=>{Ih Ksp}; case: Ks Prj_Ks E Mrg;
+                       first (by move=>/eqP-[<-] [<-]);
+                       move=> K; exists K; left.
+        move: E Mrg Prj_Ks =>/eqP-E /(pprjall_merge E)-Mrg /prjall_some-Prj_Ks.
+        move:Prj_Ks Ksp =>/(_ K KKs)-[L [ML /eqP-KL]] /(_ K KKs)-Kp.
+        by move: Mrg Ih => /(_ _ ML)-Pprj /(_ _ KKs L Sq Kp KL Pprj).
       * rewrite partialproj_all (negPf r_ne_p); case E: pprj_all=>[KsS|//] Mrg.
-        admit.
+        have [K KKs]: exists K, member K Ks
+            by move=>{Ih Ksp}; case: Ks Prj_Ks E Mrg;
+                       first (by move=>/eqP-[<-] [<-]);
+                       move=> K; exists K; left.
+        move: E Mrg Prj_Ks =>/eqP-E /(pprjall_merge E)-Mrg /prjall_some-Prj_Ks.
+        move:Prj_Ks Ksp =>/(_ K KKs)-[L [ML /eqP-KL]] /(_ K KKs)-Kp.
+        by move: Mrg Ih => /(_ _ ML)-Pprj /(_ _ KKs L Sq Kp KL Pprj).
       * move=> Mrg PPrj.
         suff : exists K, member K Ks by
               move=>[K M]; move: Mrg=>/(prjall_merge Prj_Ks)-Ksq{Prj_Ks};
                       move: Ih=>/(_ K M _ _ (Ksp _ M) (Ksq _ M) PPrj)-Ih.
         case: Ks Prj_Ks {Ih Ksp}=>[//=|K Ks _]; last (by exists K; left).
         by move=>/eqP-[Eq]; move: Eq Mrg=><-.
-  Admitted.
+  Qed.
 
   Lemma all_compat G S S' p q :
     p != q ->
@@ -460,7 +465,6 @@ Section IProject.
         rewrite -{1}(dualK S'); move=>/(fun_mergeall dualI)/eqP->/eqP-[<-].
         by rewrite dualK.
   Qed.
-
 End IProject.
 
 Section CProject.
