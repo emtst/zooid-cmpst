@@ -366,19 +366,17 @@ Section IProject.
     merge_all [seq K0.cnt | K0 <- KsL] == Some L ->
     forall K, member K Ks -> partial_proj K.cnt p == Some L.
   Proof.
-    (*
     case: KsL=>//= Kl KsL; case: Ks=>//= Kg Ks.
-    case Kg_p: project => [Lp | //]; case Ks_p: prj_all => [Ksp | //]/=.
+    case Kg_p: partial_proj => [Lp | //]; case Ks_p: pprj_all => [Ksp | //]/=.
     move=> Eq; move: Eq Ks_p => /eqP-[<-->] /eqP-Prj Mrg {Kl Ksp}.
     move:Mrg (merge_some Mrg)=>/=Mrg Eq; move: Eq Mrg Kg_p=>->Mrg /eqP-Kg_p.
     move=> K [->//|]; move: Prj Mrg K {Lp Kg_p Kg}.
     elim: Ks KsL=>//= Kg Ks Ih KsL.
-    case Kg_p: project => [Lp | //]; case Ks_p: prj_all => [Ksp | //]/=.
+    case Kg_p: partial_proj => [Lp | //]; case Ks_p: pprj_all => [Ksp | //]/=.
     move=> Eq; move: Eq Ih Ks_p Kg_p=>/eqP-[<-]//= Ih /eqP-Prj.
     case: ifP=>[/eqP-> {Lp}|//] /eqP-Kg_p Mrg K [->//|].
     by move: Prj=>/Ih/(_ Mrg K).
-*)
-  Admitted.
+  Qed.
 
   Lemma pprjall_some p Ks Ks' :
     pprj_all Ks p == Some Ks' ->
