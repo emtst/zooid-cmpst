@@ -688,8 +688,25 @@ Section CProject.
     LUnroll l_end cL -> cL = rl_end.
   Proof. by move=> LU; case Eq: _ _ / LU. Qed.
 
-  Lemma notin_project_end r cG :
-    NotIn r cG -> Project r cG rl_end.
+  Lemma notin_project_end r G :
+    NotIn r G -> Project r G rl_end.
+  move: G; cofix Ch => G H.
+  case r_eq_r': r G / H => [r'|r' a p q Ks r_ne_p r_ne_q Ks_r].
+  - by constructor.
+  - apply/(prj_mrg (L:=rl_end) (KsL:=map (fun K => (K.1, (K.2.1, rl_end))) Ks) _ _ r_ne_p r_ne_q).
+    admit.
+    rewrite -r_eq_r' in r_ne_p r_ne_q Ks_r * => {r' r_eq_r'}.
+    move: Ks Ks_r; cofix Ch'; case.
+    - by constructor.
+    - move=> K Ks.
+      move: {-1}r (erefl r) {-1}(K::Ks) (erefl (K::Ks))=>r' rr' Ks' EKs' H.
+      move: H rr' EKs'.
+      case=>// r0 K0 Ks0 H0 H1 rr0 [KK0 KKs0].
+      move: rr0 KK0 KKs0 H0 H1=><-<-<- {r0 K0 Ks0} H0 H1.
+      case: K H0 => l [t G]//= H0.
+      move: (Ch' _ H1)=>H2.
+      move: (Ch _ H0)=> H3.
+      by constructor.
   Admitted.
 
   Lemma project_closed r iG iL :
@@ -739,6 +756,7 @@ Section CProject.
       + move: GU (unroll_guarded clG gG)=>/(GUnroll_ind (rec_depth (g_rec G))).
         move: LU (lunroll_guarded ciL giL)=>/(LUnroll_ind (lrec_depth (l_rec L))).
         move: (unroll (rec_depth _) _) (lunroll (lrec_depth _) _)=>G' L'.
+        (*
         SearchAbout unroll.
 
 
@@ -763,6 +781,8 @@ Section CProject.
       case EqL: _ _ /LU=>[//|L'' {cL}cL LU|//]; move: EqL LU=>[<-] LU {L''}.
       admit.
       apply: CIh.
+         *)
+  Admitted.
 
   (*
   CoFixpoint project2 (g : rg_ty) (r : role) : option rl_ty :=
