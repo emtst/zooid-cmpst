@@ -660,23 +660,91 @@ Section CProject.
   *)
   *)
 
+  Open Scope mpst_scope.
+  CoInductive NotIn : role -> rg_ty -> Prop :=
+  | NI_end r :
+      NotIn r rg_end
+  | NI_msg r a p q Ks :
+      r != p ->
+      r != q ->
+      NotInAll r Ks ->
+      NotIn r (rg_msg a p q Ks)
+  with NotInAll : role -> seq (lbl * (mty * rg_ty)) -> Prop :=
+  | NI_nil r :
+      NotInAll r [::]
+  | NI_cons r K Ks :
+      NotIn r K.cnt ->
+      NotInAll r Ks ->
+      NotInAll r (K::Ks).
+
+  Lemma notin_unroll r iG cG :
+    r \notin participants iG ->
+    GUnroll iG cG ->
+    NotIn r cG.
+  Proof.
+  Admitted.
+
+  Lemma lunroll_end cL :
+    LUnroll l_end cL -> cL = rl_end.
+  Proof. by move=> LU; case Eq: _ _ / LU. Qed.
+
+  Lemma notin_project_end r cG :
+    NotIn r cG -> Project r cG rl_end.
+  Admitted.
+
+  Lemma project_closed r iG iL :
+    g_closed iG ->
+    project iG r == Some iL ->
+    l_closed iL.
+  Proof.
+    rewrite /l_closed.
+  Admitted.
+
+  Lemma project_guarded r iG iL :
+    guarded 0 iG ->
+    project iG r == Some iL ->
+    lguarded 0 iL.
+  Proof.
+    rewrite /l_closed.
+  Admitted.
+
   Lemma ic_proj r :
     forall iG iL cG cL,
     g_closed iG ->
+    guarded 0 iG ->
     project iG r == Some iL ->
     GUnroll iG cG ->
     LUnroll iL cL ->
     Project r cG cL.
   Proof.
-    cofix CIh; case=>[|v|G|]/=.
-    - case=>// cG cL _ _ GU.
-      case Eq: _ _ / GU =>//; move => {Eq} LU.
+    cofix CIh.
+    move=> iG iL cG cL ciG giG iGiL.
+    move: (project_closed ciG iGiL) => ciL.
+    move: (project_guarded giG iGiL) => giL.
+    case: iG ciG giG iGiL =>[|[a|n]//=|G|].
+    - move=>_ _ /eqP-[<-] GU LU.
+      case Eq: _ _ / GU =>//; move => {Eq}.
       case Eq: _ _ / LU =>//; move => {Eq}.
       by constructor.
-    - case=>// v' cG cL _ _ GU.
-      by case Eq: _ _ / GU.
-    - case Gr: project => [L|//]; move: Gr=>/eqP-Gr.
-      move=> iL cG cL clG; case: ifP=>[//|L_not_var /eqP-[<-] GU LU].
+    - by rewrite /g_closed/= -cardfs_eq0 cardfs1.
+    - by rewrite /g_closed/= -cardfs_eq0 cardfs1.
+    - move=> clG gG /=; case Gr: project => [L|//]; move: Gr=>/eqP-Gr.
+      move=> H; move: H ciL giL; case: ifP=>[L_v|L_nv] /eqP-[<-] ciL giL GU LU.
+      + move: L_v Gr=>/eqP-> Gr.
+        move: LU=>/lunroll_end->{L iL cL}.
+        have rG: r \notin participants (g_rec G)
+          by apply/(project_var_notin _ Gr)=>//=.
+        move: (notin_unroll rG GU).
+        by apply/notin_project_end.
+      + move: GU (unroll_guarded clG gG)=>/(GUnroll_ind (rec_depth (g_rec G))).
+        move: LU (lunroll_guarded ciL giL)=>/(LUnroll_ind (lrec_depth (l_rec L))).
+        move: (unroll (rec_depth _) _) (lunroll (lrec_depth _) _)=>G' L'.
+        SearchAbout unroll.
+
+
+
+        About project_var_notin.
+      admit.
       move=>Eq; move: Eq Gr=>/eqP-> Gr /eqP-[<-]{L iL}.
       case EqG: _ _ /GU=>[//|G'' {cG}cG GU|//]; move: EqG GU=>[<-] GU {G''}.
       case EqL: _ _ /LU=>[//|L'' {cL}cL LU|//]; move: EqL LU=>[<-] LU {L''}.
