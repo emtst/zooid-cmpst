@@ -677,13 +677,24 @@ Section CProject.
       NotInAll r Ks ->
       NotInAll r (K::Ks).
 
-  Lemma notin_part_g_open r G:
-    r \notin participants (g_rec G) -> r \notin participants (g_open 0 (g_rec G) G).
+  Lemma same_notin_part_g_open d r G G': participants G' = participants G ->
+    r \notin participants G -> r \notin participants (g_open d G' G).
   Proof.
-    elim G.
-    + rewrite //=.
-    + rewrite //=. unfold open. (*About rvar.*)
-  Admitted.
+  (*elim: G d.
+why don't I have an induction hp for the fourth case?*)
+  move: d. elim/gty_ind1: G. 
+  + rewrite //=.
+  + rewrite //=. unfold open. move=> v; case v; rewrite //=.
+    move=> n d nonpart; elim. case: ifP; [by rewrite nonpart //= | by [] ].
+  + rewrite //=. by move=> G ih d; apply ih.
+  + move=>p q Ks Ih d. rewrite /= !in_cons -map_comp/comp/=. 
+Admitted.
+ 
+  Lemma notin_part_g_open r G: 
+    r \notin participants G -> r \notin participants (g_open 0 (g_rec G) G).
+  Proof.
+  by apply same_notin_part_g_open; rewrite //=.
+  Qed. 
 
   Lemma r_in_unroll r G :
     r \in participants (unroll (rec_depth G) G) -> r \in participants G.
@@ -814,7 +825,7 @@ Section CProject.
         move: LU=>/lunroll_end->{L iL cL}.
         have rG: r \notin participants (g_rec G)
           by apply/(project_var_notin _ Gr)=>//=.
-        move: (notin_unroll rG GU).
+        move: (notin_unroll clG gG rG GU).
         by apply/notin_project_end.
       + move: GU (unroll_guarded clG gG)=>/(GUnroll_ind (rec_depth (g_rec G))).
         move: LU (lunroll_guarded ciL giL)=>/(LUnroll_ind (lrec_depth (l_rec L))).
