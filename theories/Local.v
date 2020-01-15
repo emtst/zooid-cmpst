@@ -437,7 +437,7 @@ Section Syntax.
     forall v, {d ~> G} G' != lbv v.
   Proof. by case: G'=>//; case=>//n _ /(_ n)/eqP. Qed.
 
-  Lemma guarded_open d1 d2 G G' :
+  Lemma lguarded_open d1 d2 G G' :
     lguarded 0 G' ->
     l_closed G' ->
     lguarded d1 G ->
@@ -483,7 +483,7 @@ Section Syntax.
       rewrite (lguarded_recdepth G_ne_bv GG' (ltn0Sn 0) (l_rec G)) =>n_rd.
       apply/Ih=>//.
       + by apply/lopen_closed.
-      + by move: (guarded_open 0 GG CG GG')=>/lguarded_gt-H; apply/H.
+      + by move: (lguarded_open 0 GG CG GG')=>/lguarded_gt-H; apply/H.
   Qed.
 
 End Syntax.

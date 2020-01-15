@@ -677,38 +677,73 @@ Section CProject.
       NotInAll r Ks ->
       NotInAll r (K::Ks).
 
-  Lemma notin_part_g_open r G: 
+  Lemma notin_part_g_open r G:
     r \notin participants (g_rec G) -> r \notin participants (g_open 0 (g_rec G) G).
   Proof.
-    elim G. 
+    elim G.
     + rewrite //=.
     + rewrite //=. unfold open. (*About rvar.*)
   Admitted.
 
+  Lemma r_in_unroll r G :
+    r \in participants (unroll (rec_depth G) G) -> r \in participants G.
+  Admitted.
+
+  Lemma r_in_unroll_msg r G a p q Ks :
+    GUnroll G (rg_msg a p q Ks) ->
+    guarded 0 G ->
+    g_closed G ->
+    (r == p) || (r == q) ->
+    r \in participants G.
+  Proof.
+    move=> GU GG CG r_pq; apply/r_in_unroll.
+    move: (unroll_guarded CG GG) r_pq => H.
+    move: GU=>/(GUnroll_ind (rec_depth G)); move: H.
+    move: (unroll _ G) => [|v|G'|p' q' Ks'].
+    - move=> _; move: {-1}g_end (erefl g_end) => G'' E_G GU.
+      by move: GU E_G; case E:_/ =>//.
+    - move=> _; move: {-1}(g_var _) (erefl (g_var v)) => G'' E_G GU.
+      by move: GU E_G; case E:_/ =>//.
+    - by move=>/(_ G')/eqP.
+    - move=> _; move: {-1}(g_msg _ _ _) (erefl (g_msg p' q' Ks'))=>G' E_G GU.
+      move: GU E_G; case E:_/ =>[||p0 q0 Ks0 Ks0' _] //.
+      move=> E_G E_r; move: E E_G =>[_ <- <- _ _]//=.
+      by rewrite !in_cons orbA E_r.
+  Qed.
 
   Lemma notin_unroll r iG cG :
+    g_closed iG ->
+    guarded 0 iG ->
     r \notin participants iG ->
     GUnroll iG cG ->
     NotIn r cG.
   Proof.
-  move: iG cG. cofix ch. move=> iG cG; case: cG; [by constructor | ].
-  move=> a p q Ks r_nin_iG.
-  move: {-1}iG (erefl iG) {-1}(rg_msg _ _ _ _) (erefl (rg_msg a p q Ks)).
-  move=> iG' E_iG cG' E_cG UiG; move: UiG E_iG E_cG=>[]// {iG' cG'}.
-  - move=> iG' cG' GU E_iG.
-    move: E_iG r_nin_iG=>-> r_nin_iG {iG} E_cG.
-    move: E_cG GU=><- GU {cG'}. 
-    admit.
+    move: iG cG. cofix ch. move=> iG cG; case: cG; [by constructor | ].
+    move=> a p q Ks CiG GiG r_nin_iG.
+    move: {-1}iG (erefl iG) {-1}(rg_msg _ _ _ _) (erefl (rg_msg a p q Ks)).
+    move=> iG' E_iG cG' E_cG UiG; move: UiG E_iG E_cG=>[]// {iG' cG'}.
+    - move=> iG' cG' GU E_iG.
+      move: E_iG CiG GiG r_nin_iG=>-> CiG GiG r_nin_iG {iG} E_cG.
+      move: E_cG GU=><- GU {cG'}.
+      have GiG': guarded 0 (g_open 0 (g_rec iG') iG').
+      { apply: (guarded_gt (leqnn 1)); apply: guarded_open =>//.
+        move: GiG =>/guarded_match-[[n /andP-[/eqP->//]]|[//]].
+      }
+      move: CiG=>/gopen_closed-CiG.
+      move: r_nin_iG=>/notin_part_g_open-r_nin_iG.
+
+      About guarded_open.
+      SearchAbout guarded.
+      move: GiG =>/guarded_match.
+      SearchAbout guarded.
+      admit.
 
  (* L to D 15/01/2019: this morning we were discussing that here two lemmas are needed;
   one is altready stated above; the second one is not yet stated, but it is about r being different from p and q
   in the g_req case*)
-  
 
   Admitted.
 
-
-  
 
 
 
