@@ -18,9 +18,10 @@ Section TraceEquiv.
   Definition step_equiv G P :=
     forall a, (exists G', step a G G') <-> (exists P', lstep a P P').
 
-  Lemma g_stequiv G E Q :
+  Fail Lemma g_stequiv G E Q :
     proj_cfg G == Some (E, Q) ->
     step_equiv G (E, Q).
+  (*
   Proof.
     rewrite /step_equiv/proj_cfg.
     case G_E: (proj_env G) => [E'|//].
@@ -47,16 +48,18 @@ Section TraceEquiv.
          *)
     - admit.
   Admitted.
+   *)
 
+  (*
   Inductive Roll : renv -> renv -> Prop :=
   | RR : forall p P Q,
 
   Definition trace_equiv G P : Prop :=
     forall tr, g_lts tr G <-> l_lts tr P.
 
-  (*
    *)
-  Lemma g_trequiv G : forall P, proj_cfg G == Some P -> trace_equiv G P.
+  Fail Lemma g_trequiv G : forall P, proj_cfg G == Some P -> trace_equiv G P.
+  (*
   Proof.
     move=>[E Q]; rewrite /trace_equiv/proj_cfg.
     case G_E: (proj_env G) => [E'|//].
@@ -69,8 +72,7 @@ Section TraceEquiv.
       * rewrite /proj_env/= =>/eqP-[<-] /eqP-[<-] _; constructor.
       * move=> a t G0 G' step trc.
       * move=>/=. _.
-
-
+   *)
 
   Fail Definition q_projection G :=
     if is_valid G then q_project G (rg_parts G)
