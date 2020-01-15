@@ -677,12 +677,40 @@ Section CProject.
       NotInAll r Ks ->
       NotInAll r (K::Ks).
 
+  Lemma notin_part_g_open r G: 
+    r \notin participants (g_rec G) -> r \notin participants (g_open 0 (g_rec G) G).
+  Proof.
+    elim G. 
+    + rewrite //=.
+    + rewrite //=. unfold open. (*About rvar.*)
+  Admitted.
+
+
   Lemma notin_unroll r iG cG :
     r \notin participants iG ->
     GUnroll iG cG ->
     NotIn r cG.
   Proof.
+  move: iG cG. cofix ch. move=> iG cG; case: cG; [by constructor | ].
+  move=> a p q Ks r_nin_iG.
+  move: {-1}iG (erefl iG) {-1}(rg_msg _ _ _ _) (erefl (rg_msg a p q Ks)).
+  move=> iG' E_iG cG' E_cG UiG; move: UiG E_iG E_cG=>[]// {iG' cG'}.
+  - move=> iG' cG' GU E_iG.
+    move: E_iG r_nin_iG=>-> r_nin_iG {iG} E_cG.
+    move: E_cG GU=><- GU {cG'}. 
+    admit.
+
+ (* L to D 15/01/2019: this morning we were discussing that here two lemmas are needed;
+  one is altready stated above; the second one is not yet stated, but it is about r being different from p and q
+  in the g_req case*)
+  
+
   Admitted.
+
+
+  
+
+
 
   Lemma lunroll_end cL :
     LUnroll l_end cL -> cL = rl_end.
