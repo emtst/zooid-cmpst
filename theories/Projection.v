@@ -675,7 +675,7 @@ Section CProject.
   (*elim: G d.
 why don't I have an induction hp for the fourth case?*)
 (*
-  move: d. elim/gty_ind1: G G'. 
+  move: d. elim/gty_ind1: G G'.
   + rewrite //=.
   + rewrite //=. unfold open. move=> v; case v; rewrite //=.
     move=> G' n d nonpart; elim. case: ifP; [by rewrite nonpart //= | by [] ].
@@ -699,7 +699,7 @@ Admitted.
   Qed.
 
   Lemma r_in_unroll r G :
-    r \in participants (unroll (rec_depth G) G) -> r \in participants G.
+    r \in participants (n_unroll (rec_depth G) G) -> r \in participants G.
   Admitted.
 
   Lemma r_in_unroll_msg r G a p q Ks :
@@ -712,7 +712,7 @@ Admitted.
     move=> GU GG CG r_pq; apply/r_in_unroll.
     move: (unroll_guarded CG GG) r_pq => H.
     move: GU=>/(GUnroll_ind (rec_depth G)); move: H.
-    move: (unroll _ G) => [|v|G'|p' q' Ks'].
+    move: (n_unroll _ G) => [|v|G'|p' q' Ks'].
     - move=> _; move: {-1}g_end (erefl g_end) => G'' E_G GU.
       by move: GU E_G; case E:_/ =>//.
     - move=> _; move: {-1}(g_var _) (erefl (g_var v)) => G'' E_G GU.
@@ -814,12 +814,11 @@ Admitted.
     move=> iG iL cG cL ciG giG iGiL.
     move: (project_closed ciG iGiL) => ciL.
     move: (project_guarded giG iGiL) => giL.
-    case: iG ciG giG iGiL =>[|[a|n]//=|G|].
+    case: iG ciG giG iGiL =>[|n//=|G|].
     - move=>_ _ /eqP-[<-] GU LU.
       case Eq: _ _ / GU =>//; move => {Eq}.
       case Eq: _ _ / LU =>//; move => {Eq}.
       by constructor.
-    - by rewrite /g_closed/= -cardfs_eq0 cardfs1.
     - by rewrite /g_closed/= -cardfs_eq0 cardfs1.
     - move=> clG gG /=; case Gr: project => [L|//]; move: Gr=>/eqP-Gr.
       move=> H; move: H ciL giL; case: ifP=>[L_v|L_nv] /eqP-[<-] ciL giL GU LU.
@@ -831,7 +830,7 @@ Admitted.
         by apply/notin_project_end.
       + move: GU (unroll_guarded clG gG)=>/(GUnroll_ind (rec_depth (g_rec G))).
         move: LU (lunroll_guarded ciL giL)=>/(LUnroll_ind (lrec_depth (l_rec L))).
-        move: (unroll (rec_depth _) _) (lunroll (lrec_depth _) _)=>G' L'.
+        move: (n_unroll (rec_depth _) _) (lunroll (lrec_depth _) _)=>G' L'.
         (*
         SearchAbout unroll.
 
