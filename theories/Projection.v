@@ -669,28 +669,31 @@ Section CProject.
 (*
   Lemma in_flatten: *)
 
+
+
+  Lemma notin_part_g_open_strong d r G G': r \notin participants G ->
+    r \notin participants G'-> r \notin participants (g_open d G' G).
+  Proof.
+  move=> h1 rnG'; move: h1; apply: contra; elim/gty_ind1: G d.
+  + rewrite //=.
+  + rewrite //= => v d.
+    by case: ifP=>[_ F|//]; rewrite F in rnG'.
+  + rewrite //=. by move=> G ih d; apply ih.
+  + move=>p q Ks ih d. rewrite /= !in_cons -map_comp/comp/=.
+    move=>/orP-[->//|/orP-[->|]]; first by rewrite orbC.
+    move=> H.
+    do ! (apply/orP; right).
+    move: H=>/flatten_mapP-[K inKs inK].
+    apply/flatten_mapP.
+    exists K=>//.
+    by apply: (ih _ _ d); first by apply/memberP.
+  Qed.
+
   Lemma same_notin_part_g_open d r G G': participants G' = participants G ->
     r \notin participants G -> r \notin participants (g_open d G' G).
   Proof.
-  (*elim: G d.
-why don't I have an induction hp for the fourth case?*)
-(*
-  move: d. elim/gty_ind1: G G'.
-  + rewrite //=.
-  + rewrite //=. unfold open. move=> v; case v; rewrite //=.
-    move=> G' n d nonpart; elim. case: ifP; [by rewrite nonpart //= | by [] ].
-  + rewrite //=. by move=> G ih G' d; apply ih.
-  + move=>p q Ks Ih G' d. rewrite /= !in_cons -map_comp/comp/=.
-
-Print flatten.
-About flatten.
-Print foldr.
-Print cat.
-
-SearchAbout flatten.
-*)
-
-Admitted.
+  move=> hp1 hp2; apply: notin_part_g_open_strong; [by apply hp2 | by rewrite hp1 //=].
+  Qed.
 
   Lemma notin_part_g_open r G:
     r \notin participants G -> r \notin participants (g_open 0 (g_rec G) G).
