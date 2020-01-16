@@ -6,7 +6,6 @@ Import Prenex Implicits.
 
 Require Import MPST.AtomSets.
 Require Import MPST.Forall.
-Require Import MPST.LNVar.
 Require Import MPST.Global.
 Require Import MPST.Local.
 Require Import MPST.Session.
@@ -15,9 +14,6 @@ Require Import MPST.Actions.
 Section IProject.
 
   Open Scope mpst_scope.
-
-  Notation sfv a := (s_var (fv a)).
-  Notation sbv n := (s_var (bv _ n)).
 
   Fixpoint merge (A: eqType) (oL : A) (K : seq A) :=
     match K with
@@ -38,7 +34,7 @@ Section IProject.
     | l_var v => Some (s_var v)
     | l_rec L =>
       match partial_proj L r with
-      | Some s => Some (if s == sbv 0 then s_end else s_rec s)
+      | Some s => Some (if s == s_var 0 then s_end else s_rec s)
       | _ => None
       end
     | l_msg a p Ks =>
@@ -77,16 +73,13 @@ Section IProject.
       end.
   Proof. by []. Qed.
 
-  Notation Lfv a := (l_var (fv a)).
-  Notation lbv n := (l_var (bv _ n)).
-
   Fixpoint project (g : g_ty) (r : role) : option l_ty :=
     match g with
     | g_end => Some l_end
     | g_var v => Some (l_var v)
     | g_rec G =>
       match project G r with
-      | Some L => Some (if L == lbv 0 then l_end else l_rec L)
+      | Some L => Some (if L == l_var 0 then l_end else l_rec L)
       | None => None
       end
     | g_msg p q Ks =>
@@ -338,8 +331,8 @@ Section IProject.
     elim/gty_ind1: G => [|v'|G Ih|q r Ks Ih]// in L v *.
     - move: Ih=>/=; case: (project G p)=>[Lp|//] Ih.
       move=>/orP-[/eqP->|/eqP->]; case: ifP=>[/eqP-Lp_var|]//.
-      move: Lp_var Ih =>-> /(_ (lbv 0) (bv _ 0))-Ih _.
-      by apply:Ih; rewrite eq_refl // orbC.
+      move: Lp_var Ih=>-> /(_ (l_var 0) 0); rewrite eq_refl/==>Ih.
+      by apply: Ih.
     - rewrite project_msg; case E: (prj_all _ _)=>[KsL|//]; move: E=>/eqP-E/=.
       case: ifP=>[//|/(rwP negPf)-q_ne_r].
       case: ifP=>[/eqP->/orP-[/eqP->|/eqP->]//|/(rwP negPf)-q_ne_p].
@@ -352,9 +345,9 @@ Section IProject.
   Qed.
 
   Lemma projectmsg_var p r s Ks :
-    project (g_msg r s Ks) p == Some (lbv 0) ->
+    project (g_msg r s Ks) p == Some (l_var 0) ->
     r != p /\ s != p /\ r != s /\
-    (forall K, member K Ks -> project K.cnt p == Some (lbv 0)).
+    (forall K, member K Ks -> project K.cnt p == Some (l_var 0)).
   Proof.
     rewrite project_msg; case Ksp: prj_all => [Ks'|//]; move: Ksp=>/eqP.
     do ! case: ifP=>//; move=>s_ne_p r_ne_p r_ne_s.
@@ -393,10 +386,10 @@ Section IProject.
   Qed.
 
   Lemma pproj_var p q G Lq Sq :
-    project G p == Some (lbv 0) ->
+    project G p == Some (l_var 0) ->
     project G q == Some Lq ->
     partial_proj Lq p == Some Sq ->
-    Sq = sbv 0.
+    Sq = s_var 0.
   Proof.
     elim/gty_ind1: G =>[//|v//=|G Ih//=|r s Ks Ih] in Lq Sq *.
     - by move=>/eqP-[->]/eqP-[<-]/=/eqP-[<-].
@@ -534,7 +527,7 @@ Section CProject.
 
   Lemma project_rec G r L :
     project G r == Some L ->
-    ((L == l_var (bv _ 0)) = false) ->
+    ((L == l_var 0) = false) ->
     project (g_rec G) r = Some (l_rec L).
   Proof. by move=>/=/eqP-[->] ->. Qed.
 
@@ -545,31 +538,28 @@ Section CProject.
   Proof.
     rewrite /g_closed/l_closed; elim/gty_ind1: G L 0 =>[|v|G Ih|p q Ks Ih] L n.
     - by move=> _ /eqP-[<-].
-    - case: v=> [a|m /andP-[]]//=; first by rewrite -cardfs_eq0 cardfs1.
-      case: ifP; first by rewrite -cardfs_eq0 cardfs1.
-      by move=> H _ _ /eqP-[<-]/=; rewrite H.
+    - move=> /=; case: ifP; first by rewrite -cardfs_eq0 cardfs1.
+      by move=> H _ /eqP-[<-]/=; rewrite H.
     - move: Ih=>/=; case Eq: (project G r) =>[Lr|//].
       move=> /(_ Lr n.+1)-Ih; move=>/Ih/(_ (eq_refl _)).
       by case: ifP=>// _ H /eqP-[<-].
-    - rewrite project_msg=>/=/andP-[H1 H2].
+    - rewrite project_msg=>H1.
       case Eq: (prj_all Ks r) => [Ks'|//]; case: ifP=>[//|p_neq_q]/=.
       move: Eq=>/eqP-Eq.
       case: ifP=>[p_eq_r /eqP-[<-]/=|p_neq_r].
-      * apply/andP; rewrite !fsetUs_fset0 !member_map in H1 H2 *=> H1 H2.
-        apply/all_and2 => K; apply/all_and2=> M; apply/andP.
-        move: (prjall_some2 Eq M) =>[G [M' /eqP-PrjG]].
+      * rewrite !fsetUs_fset0 !member_map in H1 * => H1.
+        move=> K M; move: (prjall_some2 Eq M)=>[G [M' /eqP-PrjG]].
         by apply: (Ih _ M'); first by rewrite H1 // H2.
       * case: ifP=>[q_eq_r /eqP-[<-]|q_neq_r /eqP].
-        + apply/andP; rewrite !fsetUs_fset0 !member_map in H1 H2 *=> H1 H2.
-          apply/all_and2 => K; apply/all_and2=> M; apply/andP.
+        + rewrite !fsetUs_fset0 !member_map in H1 *=> H1 K M.
           move: (prjall_some2 Eq M) =>[G [M' /eqP-PrjG]].
           by apply: (Ih _ M'); first by rewrite H1 // H2.
         + case: Ks' Eq=>// Kl Ks' Eq /eqP/merge_some<- /=.
-          case: Ks Eq Ih H1 H2=>//= Kg Ks.
+          case: Ks Eq Ih H1=>//= Kg Ks.
           case Eqg: (project Kg.2.2 r)=>[Lk|//].
           case EqKs: (prj_all Ks r)=>[Ks''|//].
-          rewrite !fsetUs_list=> /eqP-[[<- H2]] Ih /andP-[H3 H4] /andP-[H5 H6].
-          by apply: (Ih Kg)=>//=; [left|rewrite H3 H5|apply/eqP].
+          rewrite !fsetUs_list => /eqP-[[<- H2]] Ih /andP-[H3 H4].
+          by apply: (Ih Kg)=>//=; [left|apply/eqP].
   Qed.
 
   Lemma prjall_open r n g l Ks Ks' :
@@ -682,19 +672,19 @@ Section CProject.
   Proof.
   (*elim: G d.
 why don't I have an induction hp for the fourth case?*)
-  move: d. elim/gty_ind1: G. 
+  move: d. elim/gty_ind1: G.
   + rewrite //=.
   + rewrite //=. unfold open. move=> v; case v; rewrite //=.
     move=> n d nonpart; elim. case: ifP; [by rewrite nonpart //= | by [] ].
   + rewrite //=. by move=> G ih d; apply ih.
-  + move=>p q Ks Ih d. rewrite /= !in_cons -map_comp/comp/=. 
+  + move=>p q Ks Ih d. rewrite /= !in_cons -map_comp/comp/=.
 Admitted.
- 
-  Lemma notin_part_g_open r G: 
+
+  Lemma notin_part_g_open r G:
     r \notin participants G -> r \notin participants (g_open 0 (g_rec G) G).
   Proof.
   by apply same_notin_part_g_open; rewrite //=.
-  Qed. 
+  Qed.
 
   Lemma r_in_unroll r G :
     r \in participants (unroll (rec_depth G) G) -> r \in participants G.

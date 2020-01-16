@@ -7,14 +7,13 @@ Import Prenex Implicits.
 Require Import MPST.Atom.
 Require Import MPST.AtomSets.
 Require Import MPST.Forall.
-Require Import MPST.LNVar.
 Require Import MPST.Actions.
 
 Section Session.
 
   Inductive s_ty :=
   | s_end
-  | s_var (v : rvar)
+  | s_var (v : nat)
   | s_rec (S : s_ty)
   | s_msg (a: l_act) (K : seq (lbl * (mty * s_ty))).
 
@@ -70,38 +69,19 @@ Section Session.
   Fixpoint s_open (d : nat) (S2 : s_ty) (S1 : s_ty) :=
     match S1 with
     | s_end => S1
-    | s_var v => open s_var d S2 v
+    | s_var v => if v == d then S2 else S1
     | s_rec s => s_rec (s_open d.+1 S2 s)
     | s_msg a K => s_msg a [seq (lS.lbl, (lS.mty, s_open d S2 lS.cnt)) | lS <- K]
     end.
-  Notation sfv a := (s_var (fv a)).
-  Notation sbv n := (s_var (bv n)).
   Notation "{ k '~>' v } s":= (s_open k v s) (at level 30, right associativity).
-  Notation "L '^' v":= (s_open 0 (sfv v) L) (at level 30, right associativity).
+  Notation "L '^' v":= (s_open 0 (s_var v) L) (at level 30, right associativity).
 
-  Fixpoint s_close (v : atom) (d : nat) (L1 : s_ty) :=
-    match L1 with
-    | s_end => L1
-    | s_var lv => s_var (close v d lv)
-    | s_rec L => s_rec (s_close v d.+1 L)
-    | s_msg a K => s_msg a [seq (lL.lbl, (lL.mty, s_close v d lL.cnt)) | lL <- K]
-    end.
-  Notation "{ k '<~' v } L":= (s_close v k L) (at level 30, right associativity).
-
-  Fixpoint s_fvar (L : s_ty) : {fset atom} :=
+  Fixpoint s_fidx (d : nat) (L : s_ty) : {fset nat} :=
     match L with
     | s_end => fset0
-    | s_var v => fvar v
-    | s_rec L => s_fvar L
-    | s_msg _ K => fsetUs [seq s_fvar lL.cnt | lL <- K]
-    end.
-
-  Fixpoint s_fbvar (d : nat) (L : s_ty) : {fset nat} :=
-    match L with
-    | s_end => fset0
-    | s_var v => fbvar d v
-    | s_rec L => s_fbvar d.+1 L
-    | s_msg _ K => fsetUs [seq s_fbvar d lL.cnt | lL <- K]
+    | s_var v => if v >= d then [fset v - d]%fset else fset0
+    | s_rec L => s_fidx d.+1 L
+    | s_msg _ K => fsetUs [seq s_fidx d lL.cnt | lL <- K]
     end.
 
   Lemma sty_ind :
@@ -120,27 +100,6 @@ Section Session.
     + by apply: P_msg; elim: K.
   Qed.
 
-  Lemma s_open_close X L n : X \notin s_fvar L -> {n <~ X}{n ~> sfv X}L = L.
-  Proof.
-    elim/sty_ind: L n=>[|v|L Ih|a K Ih] n /=Fv//;
-      try (by rewrite Ih).
-    + by move: Fv; rewrite open_fun/= =>H; rewrite open_close.
-    + move: Ih=>/Fa_lift/(_ n)-Ih; move: Fv => /notin_unions/Fa_map-Fv.
-      move: (Fa_app (Fa_conj Ih Fv)) => {Ih Fv}Ih; rewrite -map_comp /comp/=.
-      by elim: K Ih=>// [[l [t L]] K Ih/= [-> /Ih-[->]]].
-  Qed.
-
-  Lemma s_close_open n X L : n \notin s_fbvar 0 L -> {n ~> sfv X}{n <~ X}L = L.
-  Proof.
-    move: {1 3}n (add0n n)=>n0; elim/sty_ind: L 0 n =>///=.
-    - by move=>v n n1;rewrite addnC open_fun=><-H;rewrite close_open.
-    - by move=>G Ih n n1 Eq/= H; rewrite (Ih n.+1 n1.+1) // -Eq.
-    - move=> a K /Fa_lift-Ih n n1 Eq /notin_unions/Fa_map-H.
-      move:Ih=>/(_ n)/Fa_lift/(_ n1)/Fa_lift/(_ Eq)/Fa_conj/( _ H)/Fa_app-Ih{H}.
-      congr s_msg; rewrite -map_comp/comp/=; elim: K Ih=>[//|[l[t S]] K Ih /=].
-      by move=>[->/Ih->].
-  Qed.
-
   Fixpoint depth_sty L :=
     match L with
     | s_end
@@ -148,34 +107,6 @@ Section Session.
     | s_rec L => (depth_sty L).+1
     | s_msg _ K  => (maximum [seq depth_sty l.cnt | l <- K]).+1
     end.
-
-  Lemma s_depth_open L X : depth_sty L = depth_sty (L^X).
-  Proof.
-    move: 0; elim/sty_ind: L=>/=//.
-    + by move=>v n; rewrite open_fun.
-    + by move=> L Ih n; rewrite (Ih n.+1).
-    + move=> a K Ih n; rewrite -map_comp /comp/=.
-      by move: Ih => /Fa_lift/(_ n)/Fa_map_eq<-.
-  Qed.
-
-  Lemma sty_ind1 :
-    forall (P : s_ty -> Prop),
-      P s_end ->
-      (forall v, P (s_var v)) ->
-      (forall s, (forall X (A : {fset atom}), X \notin A -> P (s ^ X)) ->
-                 P (s_rec s)) ->
-      (forall a Ks, (forall K, K \in Ks -> P K.cnt) -> P (s_msg a Ks)) ->
-      forall s : s_ty, P s.
-  Proof.
-    move => P P_end P_var P_rec P_msg L.
-    move: {-1}(depth_sty L) (leqnn (depth_sty L))=> n; move: n L; elim.
-    + by case.
-    + move=>n Ih; case=>/=//.
-      - by move=>L D; apply:P_rec=>X S _;apply: Ih;rewrite -(s_depth_open L X).
-      - move=> a K D;apply: P_msg =>L /(map_f (fun X => depth_sty X.cnt)).
-        move=>/in_maximum_leq-/=dG; move: (leq_trans dG D)=>{dG} {D}.
-        by apply: Ih.
-  Qed.
 
   Fixpoint dual (L : s_ty) : s_ty :=
     match L with
