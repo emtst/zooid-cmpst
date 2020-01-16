@@ -666,18 +666,37 @@ Section CProject.
       NotIn r K.cnt ->
       NotInAll r Ks ->
       NotInAll r (K::Ks).
+(*
+  Lemma in_flatten: *)
 
   Lemma same_notin_part_g_open d r G G': participants G' = participants G ->
     r \notin participants G -> r \notin participants (g_open d G' G).
   Proof.
   (*elim: G d.
 why don't I have an induction hp for the fourth case?*)
+<<<<<<< Updated upstream
   move: d. elim/gty_ind1: G.
   + rewrite //=.
   + rewrite //=. unfold open. move=> v; case v; rewrite //=.
     move=> n d nonpart; elim. case: ifP; [by rewrite nonpart //= | by [] ].
   + rewrite //=. by move=> G ih d; apply ih.
   + move=>p q Ks Ih d. rewrite /= !in_cons -map_comp/comp/=.
+=======
+  move: d. elim/gty_ind1: G G'. 
+  + rewrite //=.
+  + rewrite //=. unfold open. move=> v; case v; rewrite //=.
+    move=> G' n d nonpart; elim. case: ifP; [by rewrite nonpart //= | by [] ].
+  + rewrite //=. by move=> G ih G' d; apply ih.
+  + move=>p q Ks Ih G' d. rewrite /= !in_cons -map_comp/comp/=.
+
+Print flatten.
+About flatten.
+Print foldr.
+Print cat.
+
+SearchAbout flatten.
+
+>>>>>>> Stashed changes
 Admitted.
 
   Lemma notin_part_g_open r G:
