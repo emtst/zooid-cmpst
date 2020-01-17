@@ -703,7 +703,15 @@ Section CProject.
 
   Lemma r_in_unroll r G :
     r \in participants (n_unroll (rec_depth G) G) -> r \in participants G.
-  Admitted.
+  Proof.
+    move: {-2}(rec_depth G) (erefl (rec_depth G)) => n. elim: n => [| n ih] in G *.
+    admit.
+  admit.
+  (*apply: contraLR; move=> inG; elim: (rec_depth G); rewrite //=.
+  move=> n; move :inG. case: G; rewrite //=.*)
+ Admitted.
+
+
 
   Lemma r_in_unroll_msg r G a p q Ks :
     GUnroll G (rg_msg a p q Ks) ->
