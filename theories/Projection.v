@@ -701,15 +701,16 @@ Section CProject.
   by apply same_notin_part_g_open; rewrite //=.
   Qed.
 
-  Lemma r_in_unroll r G :
-    r \in participants (n_unroll (rec_depth G) G) -> r \in participants G.
+  Lemma r_in_unroll r G n:
+    r \in participants (n_unroll n (*rec_depth G*) G) -> r \in participants G.
   Proof.
-    move: {-2}(rec_depth G) (erefl (rec_depth G)) => n. elim: n => [| n ih] in G *.
-    admit.
-  admit.
-  (*apply: contraLR; move=> inG; elim: (rec_depth G); rewrite //=.
-  move=> n; move :inG. case: G; rewrite //=.*)
- Admitted.
+  apply: contraLR.
+  (*move: {-2}(rec_depth G) (erefl (rec_depth G)) => n.*)
+  elim: n => [rewrite //= | n ih] in G *; case G; rewrite //=. 
+  move=> G0 notinpart; apply ih.
+  unfold unroll; apply notin_part_g_open; by [].
+  Qed.
+
 
 
 
