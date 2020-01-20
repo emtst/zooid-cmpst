@@ -702,7 +702,7 @@ Section CProject.
   Qed.
 
   Lemma r_in_unroll r G n:
-    r \in participants (n_unroll n (*rec_depth G*) G) -> r \in participants G.
+    r \in participants (n_unroll n G) -> r \in participants G.
   Proof.
   apply: contraLR.
   (*move: {-2}(rec_depth G) (erefl (rec_depth G)) => n.*)
@@ -711,8 +711,9 @@ Section CProject.
   unfold unroll; apply notin_part_g_open; by [].
   Qed.
 
-
-
+  Lemma r_in_unroll_rec_depth r G:
+    r \in participants (n_unroll (rec_depth G) G) -> r \in participants G.
+  Proof. by apply r_in_unroll. Qed.
 
   Lemma r_in_unroll_msg r G a p q Ks :
     GUnroll G (rg_msg a p q Ks) ->
@@ -721,7 +722,7 @@ Section CProject.
     (r == p) || (r == q) ->
     r \in participants G.
   Proof.
-    move=> GU GG CG r_pq; apply/r_in_unroll.
+    move=> GU GG CG r_pq; apply/(r_in_unroll_rec_depth).
     move: (unroll_guarded CG GG) r_pq => H.
     move: GU=>/(GUnroll_ind (rec_depth G)); move: H.
     move: (n_unroll _ G) => [|v|G'|p' q' Ks'].
