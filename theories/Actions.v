@@ -141,13 +141,10 @@ Proof.
     by move=> y H'; apply/H; right.
 Qed.
 
-
-
 (* Declare Scope mpst_scope. *)
 
 Definition alt (x : Type) := (lbl * (mty * x))%type.
 
-Open Scope mpst_scope.
 Notation "K .lbl" := (K.1)   (at level 2, left associativity, format "K .lbl") : mpst_scope.
 Notation "K .mty" := (K.2.1) (at level 2, left associativity, format "K .mty") : mpst_scope.
 Notation "K .cnt" := (K.2.2) (at level 2, left associativity, format "K .cnt") : mpst_scope.
@@ -155,6 +152,7 @@ Notation "K .cnt" := (K.2.2) (at level 2, left associativity, format "K .cnt") :
 Reserved Notation "x '/->' y" (at level 99, right associativity, y at level 200).
 Notation "x '/->' y" := (x -> option y) : mpst_scope.
 
+Open Scope mpst_scope.
 Definition empty A : (lbl /-> mty * A) := fun=> None.
 Definition extend A (L : lbl) (X : A) f :=
   fun L' => if L == L' then Some X else f L'.
