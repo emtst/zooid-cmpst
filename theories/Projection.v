@@ -580,16 +580,6 @@ Section CProject.
       by case: prj_all => [Ksr|//] /(_ Ksr erefl)-> [<-<-]/=.
   Qed.
 
-  Inductive In : role -> rg_ty -> Prop :=
-  | In_here r a p q Ks :
-      (r == p) || (r == q) ->
-      In r (rg_msg a p q Ks)
-  | In_msg r a p q Ks L :
-      (exists Lb Ty, Ks Lb = Some (Ty, L)) ->
-      In r L ->
-      In r (rg_msg a p q Ks)
-  .
-
   Lemma notin_part_g_open_strong d r G G': r \notin participants G ->
     r \notin participants G'-> r \notin participants (g_open d G' G).
   Proof.
@@ -679,72 +669,56 @@ Section CProject.
     by apply/H/gopen_closed.
   Qed.
 
-  (* TODO FIXME: refactor into correct place *)
-  Lemma l_guarded_unroll n iL :
-    l_closed iL -> lguarded 0 iL -> lguarded 0 (lunroll n iL).
+  (* FIXME: refactor into correct place *)
+  Lemma l_guarded_unroll iG :
+    l_closed (l_rec iG) -> lguarded 0 (l_rec iG) ->
+    lguarded 0 (l_open 0 (l_rec iG) iG).
   Proof.
-  Admitted.
-
-  (* TODO *)
-  Lemma l_closed_unroll n iL :
-    l_closed iL -> l_closed (lunroll n iL).
-  Proof.
-  Admitted.
-
-  Lemma notin_unroll r iG cG :
-    g_closed iG ->
-    guarded 0 iG ->
-    r \notin participants iG ->
-    GUnroll iG cG ->
-    ~ In r cG.
-  Proof.
-    move=>H1 H2 H3 H4 H5; move: H5 iG H1 H2 H3 H4.
-    elim/In_ind.
-    - move=> r0 a p q C E iG CiG GiG r0_iG.
-
-      (* FIXME, avoid repetition below *)
-      move/(GUnroll_ind (rec_depth iG)).
-      move: (contra (fun b => r_in_unroll (n:=rec_depth iG) b) r0_iG).
-      move: (g_guarded_nunroll (rec_depth iG) CiG GiG).
-      move: (unroll_guarded CiG GiG) (g_closed_unroll (rec_depth iG) CiG).
-      move: (n_unroll (rec_depth iG) iG) => {iG CiG GiG r0_iG} iG H CG GG r0G.
-      move=>/gunroll_unfold-U.
-      case CE: _/ U H CG GG r0G=>[|IG CG _| F T iC cC U]//; first by move=>/(_ IG)/eqP.
-      (* FIXME, avoid repetition above *)
-
-      move: CE U => [_ <-<-<-] {F T cC a} _ _ _ _.
-      by rewrite !in_cons orbA negb_or=>/andP-[H _]; move: E H=>->.
-    - move=>r0 a p q C L [Lb [Ty [E In_L]]] Ih iG CiG GiG r0_iG.
-
-      (* FIXME, avoid repetition below *)
-      move/(GUnroll_ind (rec_depth iG)).
-      move: (contra (fun b => r_in_unroll (n:=rec_depth iG) b) r0_iG).
-      move: (g_guarded_nunroll (rec_depth iG) CiG GiG).
-      move: (unroll_guarded CiG GiG) (g_closed_unroll (rec_depth iG) CiG).
-      move: (n_unroll (rec_depth iG) iG) => {iG CiG GiG r0_iG} iG H CG GG r0G.
-      move=>/gunroll_unfold-U.
-      case CE: _/ U H CG GG r0G=>[|IG CG _| F T iC cC U]//; first by move=>/(_ IG)/eqP.
-      (* FIXME, avoid repetition above *)
-
-      move: CE U=>[_<-<-<-] {F T cC a} U _; rewrite/g_closed/=.
-      elim: U E=>// Lb0 Ty0 IG CG iC0 cC0 [U|//] UA IhC.
-      move=>E; rewrite fsetUs_list -/(g_closed _).
-      move=>/=/andP-[CIG CC0] /andP-[GIG GC0].
-      do ! (rewrite ?in_cons ?mem_cat negb_or).
-      rewrite !andbA=>/andP-[/andP-[N H] F] .
-      move: E; rewrite /extend; case: ifP=>[/eqP|_ /IhC/(_ CC0 GC0)-HF].
-      * by move=> _ E; move: E U=>[_ ->]; apply: Ih.
-      * by apply: HF; do ! (rewrite in_cons negb_or); rewrite andbA N F.
+    move=> C GG; have GG': (lguarded 1 iG) by move:GG C=>/=; case: iG.
+    by move: (lguarded_open 0 GG C GG')=>/lguarded_depth_gt/(_ (lopen_closed C)).
   Qed.
 
-  (* TODO FIXME: refactor lemmas below *)
+  (* FIXME: refactor into correct place *)
+  Lemma l_guarded_nunroll n iL :
+    l_closed iL -> lguarded 0 iL -> lguarded 0 (lunroll n iL).
+  Proof.
+    elim: n iL=>[|n Ih]//;case=>// iG CG /(l_guarded_unroll CG)/Ih-H/=.
+    by apply/H/lopen_closed.
+  Qed.
+
+  (* FIXME: refactor *)
+  Lemma l_closed_unroll n iL :
+    l_closed iL -> l_closed (lunroll n iL).
+  Proof. by elim: n iL=>[|n Ih]//=; case=>//= iG /lopen_closed/Ih. Qed.
+
+  (* FIXME: refactor lemmas below *)
   Lemma project_closed r iG iL :
     g_closed iG ->
     project iG r == Some iL ->
     l_closed iL.
   Proof.
-    rewrite /l_closed.
-  Admitted.
+    rewrite /l_closed/g_closed.
+    elim/gty_ind1: iG iL 0 =>//.
+    - by move=> iL n _ /eqP-[<-].
+    - move=> v iL n /=; case: ifP; first by rewrite -cardfs_eq0 cardfs1.
+      by move=>F _ /eqP-[<-]/=; rewrite F.
+    - move=> G Ih iL n /=.
+      case Prj: project=>[iL'|]// cG; case: ifP; first by move=> _ /eqP-[<-].
+      by move: Prj; move=> /eqP-Prj F /eqP-[<-]/=; apply/Ih.
+    - move=>p q Ks Ih iL n; rewrite project_msg=>/=/fsetUs_fset0/member_map-cKs.
+      case PrjAll: prj_all => [KsL|]//; case: ifP=>// p_n_q.
+      move: PrjAll=>/eqP/prjall_some2-PrjAll.
+      case: ifP=>[p_r|p_n_r]; last case: ifP=>[q_r|q_n_r].
+      + move=>/eqP-[<-]/=; apply/fsetUs_fset0/member_map=>K M.
+        move: (PrjAll _ M)=> [G [MG /eqP-PrjG]].
+        by apply/(Ih _ MG)=>//; apply/cKs.
+      + move=>/eqP-[<-]/=; apply/fsetUs_fset0/member_map=>K M.
+        move: (PrjAll _ M)=> [G [MG /eqP-PrjG]].
+        by apply/(Ih _ MG)=>//; apply/cKs.
+      + case: KsL PrjAll=>//=K KsL PrjAll M; move: (merge_some M)=><-.
+        move: (PrjAll K (or_introl erefl))=>[G [MG /eqP-PrjG]].
+        by apply: (Ih _ MG)=>//; apply/cKs.
+  Qed.
 
   (* TODO *)
   Lemma project_guarded r iG iL :
@@ -914,7 +888,7 @@ Section CProject.
     move: (g_guarded_nunroll (rec_depth iG) ciG giG)=>guiG.
     move: (g_closed_unroll (rec_depth iG) ciG)=>cuiG.
     move=> {ciG giG iGiL}.
-    move: (l_guarded_unroll (rec_depth iG) ciL giL)=>guiL.
+    move: (l_guarded_nunroll (rec_depth iG) ciL giL)=>guiL.
     move: (l_closed_unroll (rec_depth iG) ciL)=>cuiL.
     move=>{ciL giL}.
     by apply/(project_nonrec CIH cuiL) =>//.
