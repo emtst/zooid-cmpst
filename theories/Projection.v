@@ -702,7 +702,7 @@ Section CProject.
   Proof.
   apply: contraLR.
   (*move: {-2}(rec_depth G) (erefl (rec_depth G)) => n.*)
-  elim: n => [rewrite //= | n ih] in G *; case G; rewrite //=. 
+  elim: n => [rewrite //= | n ih] in G *; case G; rewrite //=.
   move=> G0 notinpart; apply ih.
   unfold unroll; apply notin_part_g_open; by [].
   Qed.
@@ -780,7 +780,7 @@ Section CProject.
 
       (* FIXME, avoid repetition below *)
       move/(GUnroll_ind (rec_depth iG)).
-      move: (contra (fun b => r_in_unroll b) r0_iG).
+      move: (contra (fun b => r_in_unroll (n:=rec_depth iG) b) r0_iG).
       move: (g_guarded_nunroll (rec_depth iG) CiG GiG).
       move: (unroll_guarded CiG GiG) (g_closed_unroll (rec_depth iG) CiG).
       move: (n_unroll (rec_depth iG) iG) => {iG CiG GiG r0_iG} iG H CG GG r0G.
@@ -794,7 +794,7 @@ Section CProject.
 
       (* FIXME, avoid repetition below *)
       move/(GUnroll_ind (rec_depth iG)).
-      move: (contra (fun b => r_in_unroll b) r0_iG).
+      move: (contra (fun b => r_in_unroll (n:=rec_depth iG) b) r0_iG).
       move: (g_guarded_nunroll (rec_depth iG) CiG GiG).
       move: (unroll_guarded CiG GiG) (g_closed_unroll (rec_depth iG) CiG).
       move: (n_unroll (rec_depth iG) iG) => {iG CiG GiG r0_iG} iG H CG GG r0G.
