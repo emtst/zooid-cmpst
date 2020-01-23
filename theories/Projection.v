@@ -654,18 +654,11 @@ Section CProject.
   | In_here r a p q Ks :
       (r == p) || (r == q) ->
       In r (rg_msg a p q Ks)
-  | In_msg r a p q Ks :
-      (exists Lb Ty L, Ks Lb = Some (Ty, L) /\ In r L) ->
+  | In_msg r a p q Ks L :
+      (exists Lb Ty, Ks Lb = Some (Ty, L)) ->
+      In r L ->
       In r (rg_msg a p q Ks)
   .
-  Lemma In_ind1 :
-    forall P : role -> rg_ty -> Prop,
-      (forall r a p q C, (r == p) || (r == q) -> P r (rg_msg a p q C)) ->
-      (forall r a p q C,
-          (exists Lb Ty L, C Lb = Some (Ty, L) /\ In r L /\ P r L) -> P r (rg_msg a p q C)) ->
-      forall (s : role) (r : rg_ty), In s r -> P s r.
-  Proof.
-  Admitted.
 
   Lemma notin_part_g_open_strong d r G G': r \notin participants G ->
     r \notin participants G'-> r \notin participants (g_open d G' G).
@@ -775,7 +768,7 @@ Section CProject.
     ~ In r cG.
   Proof.
     move=>H1 H2 H3 H4 H5; move: H5 iG H1 H2 H3 H4.
-    elim/In_ind1.
+    elim/In_ind.
     - move=> r0 a p q C E iG CiG GiG r0_iG.
 
       (* FIXME, avoid repetition below *)
@@ -790,7 +783,7 @@ Section CProject.
 
       move: CE U => [_ <-<-<-] {F T cC a} _ _ _ _.
       by rewrite !in_cons orbA negb_or=>/andP-[H _]; move: E H=>->.
-    - move=>r0 a p q C [Lb [Ty [L [E [In_L Ih]]]]] iG CiG GiG r0_iG.
+    - move=>r0 a p q C L [Lb [Ty [E In_L]]] Ih iG CiG GiG r0_iG.
 
       (* FIXME, avoid repetition below *)
       move/(GUnroll_ind (rec_depth iG)).
