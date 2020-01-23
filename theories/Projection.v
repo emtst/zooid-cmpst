@@ -885,9 +885,25 @@ Section CProject.
         (PRJ : prj_all CONT FROM = Some KsL)
     : R_all (upaco2 (Proj_ FROM) r0) CC C.
   Proof.
-    rewrite /R_all=> Lb Ty G G' CC_Lb C_Lb.
-    right.
-  Admitted.
+    rewrite /R_all=> Lb Ty G G' CC_Lb C_Lb; right.
+    elim: GU CC_Lb cG gG KsL C C_Lb LU PRJ =>//.
+    move=>/= Lb' Ty' IG CG Ks CCG [UIG UA|//] Ih E_CCG cG gG.
+    case Prj: project=>[L|]//; case PAll: prj_all=>[KsL'|]// KsL C C_Lb LU E.
+    move: Prj E LU=> /eqP-Prj [<-]{KsL} LU.
+    case Eq: _ _/ LU C_Lb Ih  => [|Lb0 Ty0 L0 cL0 KsL CL [UL|//] UAL]// {C}.
+    move: Eq UL UAL =>[<-<-<-<-] {Lb0 Ty0 L0 KsL} UL UAL.
+    rewrite /extend; case: ifP.
+    + move=>E; move: E E_CCG cG gG=>/eqP->{Lb'} E_CCG cG gG [ETy].
+      move: E_CCG; rewrite /extend eq_refl=>[[_ ECG]].
+      move: ETy cG gG=>->{Ty'} cG gG <-{G'} _.
+      move: (cG _ (or_introl erefl))=>/= /CIH-{CIH}CIH.
+      move: (gG _ (or_introl erefl))=>/= /CIH/(_ Prj UIG UL).
+      move: (gG _ (or_introl erefl))=>/= /CIH-{CIH}CIH.
+      by move: ECG=>->.
+    + move=>N CL_Lb Ih; move: E_CCG; rewrite /extend N=>/Ih-{Ih}Ih.
+      move: cG gG=>/(_ _ (or_intror _))-cG /(_ _ (or_intror _))-gG.
+      by move: (Ih cG gG) CL_Lb =>{Ih}Ih /Ih/(_ UAL PAll).
+  Qed.
 
   Lemma lunroll_merge r L CL CONT Ks
         (LU : LUnroll L CL)
