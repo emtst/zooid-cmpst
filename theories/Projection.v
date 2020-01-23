@@ -580,76 +580,6 @@ Section CProject.
       by case: prj_all => [Ksr|//] /(_ Ksr erefl)-> [<-<-]/=.
   Qed.
 
-  (*
-  Lemma projclosed_rec G r L :
-    project G r == Some L ->
-    g_closed (g_rec G) ->
-    ((L == l_var (bv _ 0)) = false) ->
-    project (g_open 0 (g_rec G) G) r = Some (l_open 0 (l_rec L) L).
-  Proof.
-    move=> H C L0; move: (project_rec H L0) => Hr; move: 0 {L0} (g_rec G) C (l_rec L) Hr.
-    elim/gty_ind1: G =>[|v|G Ih|p q Ks Ih] in L H *.
-    - by move: H=>/eqP-[<-].
-    - move: H =>/eqP-[<-] /= n G' C L'.
-      by case: v G' C=>//= m; case: ifP.
-    - move: H Ih=>/=.
-      move:Ih=>/=; case Eq:project=>[Lr|//=].
-      move: Eq=> /eqP-Eq /(_ Lr (eq_refl _))-Ih.
-      case:ifP=>//H/eqP-[<-] n g cg l prj.
-      move: Ih=>/(_ n.+1 g cg l prj)->/=; move: prj=>/eqP-prj.
-      case: ifP=>//; move: (gclosed_lclosed cg prj) => cl.
-      case: Lr {Eq} H=>//=; case=>//= m; case: ifP; last by move=> _ ->.
-      move=> _ _ H; case: l cl {prj} H=>// v.
-      (*
-      rewrite /l_closed/=; case: v=>//= s /andP-[].
-      by rewrite -cardfs_eq0 cardfs1.
-       *)
-      admit.
-      admit.
-      admit.
-      admit.
-      admit.
-    - rewrite project_msg.
-      case Ksr: (prj_all Ks r) =>[Ks'|//].
-      case: ifP=>[//|p_neq_q].
-      case: ifP=>[/eqP-p_eq_r|p_neq_r].
-      * move=>/eqP-[<-]{L} n g cg l prj_g_l.
-        rewrite /g_open -/g_open  /l_open -/l_open.
-        rewrite project_msg p_neq_q p_eq_r eq_refl.
-        move: Ih => /(_ _ _ _ _ n g cg l prj_g_l)-Ih.
-        by move: (prjall_open Ih Ksr)=>->.
-      * case: ifP=>[/eqP-q_eq_r|q_neq_r].
-        + move=>/eqP-[<-]{L} n g cg l prj_g_l.
-          rewrite /g_open -/g_open  /l_open -/l_open.
-          rewrite project_msg p_neq_q p_neq_r q_eq_r eq_refl.
-          move: Ih => /(_ _ _ _ _ n g cg l prj_g_l)-Ih.
-          by move: (prjall_open Ih Ksr)=>->.
-        + move=> Mrg n g cg l prj; rewrite /g_open-/g_open project_msg.
-          rewrite p_neq_q p_neq_r q_neq_r.
-          move: Ih=>/(_ _ _ _ _ n g cg l prj)-Ih.
-          move: (prjall_open Ih Ksr)=>->; rewrite -map_comp/comp/=.
-          move: Mrg=>{Ksr}; case: Ks'=>//=K Ks'.
-          elim: Ks'=>//=; first by move=>/eqP-[->].
-          by move=> K' Ks' IhKs; case: ifP=>// /eqP->; rewrite eq_refl=>/IhKs.
-  Admitted.
-
-  (*
-  Fixpoint gunrollings n G :=
-    match n with
-    | n.+1 =>
-      match G with
-      | g_rec G => gunrollings n (g_open 0 (g_rec G) G)
-      | _ => G
-      end
-    | 0 => G
-    end.
-
-  Definition gunroll G := gunrollings (depth_gty G) G.
-
-  Lemma gunroll_not_rec G G': gunroll G != g_rec G'.
-  *)
-  *)
-
   Inductive In : role -> rg_ty -> Prop :=
   | In_here r a p q Ks :
       (r == p) || (r == q) ->
@@ -749,12 +679,13 @@ Section CProject.
     by apply/H/gopen_closed.
   Qed.
 
-  (* FIXME: refactor into correct place *)
+  (* TODO FIXME: refactor into correct place *)
   Lemma l_guarded_unroll n iL :
     l_closed iL -> lguarded 0 iL -> lguarded 0 (lunroll n iL).
   Proof.
   Admitted.
 
+  (* TODO *)
   Lemma l_closed_unroll n iL :
     l_closed iL -> l_closed (lunroll n iL).
   Proof.
@@ -806,7 +737,7 @@ Section CProject.
       * by apply: HF; do ! (rewrite in_cons negb_or); rewrite andbA N F.
   Qed.
 
-  (* FIXME: refactor lemmas below *)
+  (* TODO FIXME: refactor lemmas below *)
   Lemma project_closed r iG iL :
     g_closed iG ->
     project iG r == Some iL ->
@@ -815,6 +746,7 @@ Section CProject.
     rewrite /l_closed.
   Admitted.
 
+  (* TODO *)
   Lemma project_guarded r iG iL :
     guarded 0 iG ->
     project iG r == Some iL ->
@@ -827,28 +759,7 @@ Section CProject.
     LUnroll l_end cL -> cL = rl_end.
   Proof. by move=> /lu_unfold-LU; case Eq: _ _ / LU. Qed.
 
-  Lemma notin_project_end r G :
-    ~ In r G -> Project r G rl_end.
-  Proof.
-  (* move: G; cofix Ch => G H. *)
-  (* case r_eq_r': r G / H => [r'|r' a p q Ks r_ne_p r_ne_q Ks_r]. *)
-  (* - by constructor. *)
-  (* - apply/(prj_mrg (L:=rl_end) (KsL:=map (fun K => (K.1, (K.2.1, rl_end))) Ks) _ _ r_ne_p r_ne_q). *)
-  (*   admit. *)
-  (*   rewrite -r_eq_r' in r_ne_p r_ne_q Ks_r * => {r' r_eq_r'}. *)
-  (*   move: Ks Ks_r; cofix Ch'; case. *)
-  (*   - by constructor. *)
-  (*   - move=> K Ks. *)
-  (*     move: {-1}r (erefl r) {-1}(K::Ks) (erefl (K::Ks))=>r' rr' Ks' EKs' H. *)
-  (*     move: H rr' EKs'. *)
-  (*     case=>// r0 K0 Ks0 H0 H1 rr0 [KK0 KKs0]. *)
-  (*     move: rr0 KK0 KKs0 H0 H1=><-<-<- {r0 K0 Ks0} H0 H1. *)
-  (*     case: K H0 => l [t G]//= H0. *)
-  (*     move: (Ch' _ H1)=>H2. *)
-  (*     move: (Ch _ H0)=> H3. *)
-  (*     by constructor. *)
-  Admitted.
-
+  (* TODO *)
   Lemma project_unroll G r L :
     project G r == Some L ->
     g_closed G ->
@@ -858,18 +769,19 @@ Section CProject.
 
   Lemma EqL_refl CL : EqL CL CL.
   Proof.
-    move: CL; pcofix CIH; move=>CL; apply/paco2_fold.
+    move: CL {-1 3}CL (erefl CL).
+    apply/paco2_acc=> r0 _ CIH CL CL'<- {CL'}.
+    apply/paco2_fold.
     case: CL=>//a R C; constructor.
     - by move=> Lb Ty; split=>[[CL ->]|[CL ->]]; exists CL.
-    - by move=> Lb Ty CG CG'-> [->]; right.
+    - by move=> Lb Ty CG CG'-> [->]; right; apply: CIH.
   Qed.
   Hint Resolve EqL_refl.
-
   (* FIXME: abstract all g_closed && guarded ... as "wf" to simplify statements
    *)
 
   Lemma cproj_all (r0 : proj_rel) FROM CONT CC KsL C
-        (CIH : forall iG iL cG cL,
+        (CIH : forall cG cL iG iL,
             g_closed iG ->
             guarded 0 iG ->
             project iG FROM == Some iL ->
@@ -922,7 +834,7 @@ Section CProject.
   Qed.
 
   Lemma project_nonrec (r0 : proj_rel ) r CL CG L G
-        (CIH : forall iG iL cG cL,
+        (CIH : forall cG cL iG iL,
             g_closed iG ->
             guarded 0 iG ->
             project iG r == Some iL ->
@@ -982,8 +894,18 @@ Section CProject.
     LUnroll iL cL ->
     Project r cG cL.
   Proof.
-    pcofix CIh.
-    move=> iG iL cG cL ciG giG iGiL GU LU.
+    move=> iG iL cG cL CG GG Prj GU LU.
+    move: (conj CG (conj GG (conj Prj (conj GU LU)))) => {CG GG Prj GU LU}.
+    move => /(ex_intro (fun iL=> _) iL) {iL}.
+    move => /(ex_intro (fun iG=> _) iG) {iG}.
+    move: cG cL; apply/paco2_acc=> r0 _ CIH.
+    move: CIH=>/(_ _ _ (ex_intro _ _ _)).
+    move =>/(_ _ _ _ (ex_intro _ _ _)).
+    move =>/(_ _ _ _ _ (conj _ _)).
+    move =>/(_ _ _ _ _ _ (conj _ _)).
+    move =>/(_ _ _ _ _ _ _ (conj _ _)).
+    move =>/(_ _ _ _ _ _ _ _ (conj _ _))-CIH.
+    move=> cG cL [iG [cG' [ciG [giG [iGiL [GU LU]]]]]].
     move: (project_closed ciG iGiL) => ciL.
     move: (project_guarded giG iGiL) => giL.
     move : GU (unroll_guarded ciG giG)=>/(GUnroll_ind (rec_depth iG))=>GU nrG.
@@ -995,189 +917,6 @@ Section CProject.
     move: (l_guarded_unroll (rec_depth iG) ciL giL)=>guiL.
     move: (l_closed_unroll (rec_depth iG) ciL)=>cuiL.
     move=>{ciL giL}.
-    by apply/(project_nonrec CIh cuiL) =>//.
+    by apply/(project_nonrec CIH cuiL) =>//.
   Qed.
-
-  (*
-  CoFixpoint project2 (g : rg_ty) (r : role) : option rl_ty :=
-   *)
-
 End CProject.
-
-(*
-  Fixpoint project2 (g : rg_ty) (r : role) : option l_ty :=
-    match g with
-    | g_end => Some l_end
-    | g_var v => Some (l_var v)
-    | g_rec G =>
-      match project2 G r with
-      | Some L => if L == lbv 0 then Some l_end else Some (l_rec L)
-      | None => None
-      end
-    | g_msg a p q Ks =>
-      match (fix proj_all Ks p :=
-               match Ks with
-               | [::] => Some [::]
-               | K::Ks =>
-                 match project2 K.cnt p, proj_all Ks p with
-                 | Some L, Some Ks => Some ((K.lbl, (K.mty, L)) :: Ks)
-                 | _, _ => None
-                 end
-               end
-            ) Ks r with
-      | Some Ks =>
-        if p == q then None
-        else if a is Some l
-             then if lookup l Ks is Some (_, L)
-                  then if q == r then Some (l_msg l_recv p Ks)
-                       else Some L
-                  else None
-             else if p == r then Some (l_msg l_send q Ks)
-                  else if q == r then Some (l_msg l_recv p Ks)
-                       else merge_all [seq K.cnt | K <- Ks]
-      | None => None
-      end
-    end.
-
-  Fixpoint prj_all2 (Ks : seq (lbl * (mty * rg_ty))) (r : role) :=
-    match Ks with
-    | [::] => Some [::]
-    | K::Ks =>
-      match project2 K.cnt r, prj_all2 Ks r with
-      | Some L, Some Ks => Some ((K.lbl, (K.mty, L)) :: Ks)
-      | _, _ => None
-      end
-    end.
-
-  Fixpoint queue_contents (g : rg_ty) qs :=
-    match g with
-    | g_end
-    | g_rec _
-    | g_var _ => Some qs
-    | g_msg a p q Ks =>
-      match a with
-      | Some l =>
-        (fix contQueue Ks :=
-           match Ks with
-           | [::] => None
-           | K::Ks => if K.lbl == l
-                      then match queue_contents K.cnt qs with
-                           | Some Q => Some (enq Q (p,q) (l, K.mty))
-                           | None => None
-                           end
-                      else contQueue Ks
-           end) Ks
-      | None => match Ks with
-                | [::] => None
-                | K::_ => queue_contents K.cnt qs
-                end
-      end
-    end%fmap.
-
-  Definition insert (E : role * l_ty) P :=
-    match lookup E.1 P with
-    | Some _ => P
-    | None => E :: P
-    end.
-
-  Fixpoint project_all (g : g_ty) (r : seq role) : option (seq (role * l_ty)) :=
-    match r with
-    | [::] => Some [::]
-    | h :: t => match project g h, project_all g t with
-                | Some L, Some E => Some (insert (h, L) E)
-                | _, _ => None
-                end
-    end.
-
-  Definition projection (g : g_ty) : option (seq (role * l_ty)) :=
-    project_all g (participants g).
-
-  Lemma mergeall_some (T : eqType) (Ks : seq (lbl * (mty * T))) (A : T)
-    : merge_all [seq K.cnt | K <- Ks] == Some A ->
-      forall K, member K Ks -> K.cnt = A.
-  Proof.
-    case: Ks=> [|K Ks]//=; elim: Ks => [|K' Ks Ih] in K *.
-    - by move=> /eqP-[<-] K' [->|//].
-    - rewrite /=; case: ifP=>// /eqP-KK' H K0 [K0K | [K0K' | Next]].
-      + by apply: (Ih K)=>//; left.
-      + by apply: (Ih K')=>//; first (by rewrite KK'); left.
-      + by apply: (Ih K)=>//; right.
-  Qed.
-
-  Lemma option_comm A B C (x : option A) (f : A -> option B) (g : B -> C) z z' :
-    match
-      match x with
-      | Some y => f y
-      | None => z
-      end
-    with
-    | Some y => g y
-    | None => z'
-    end =
-    match x with
-    | Some y => match f y with
-                    | Some y => g y
-                    | None => z'
-                end
-    | None => match z with
-              | Some y => g y
-              | None => z'
-              end
-    end.
-  Proof. by case: x. Qed.
-
-  Lemma fulproj_some_neq a p q r s Ks L
-    : full_project (g_msg a r s Ks) p q = Some L ->
-      r != s.
-  Proof.
-    rewrite /full_project project_msg.
-    case Ksp: (prj_all Ks p) =>[Lp|//].
-    by case: ifP.
-  Qed.
-
-  Lemma mergeall_merge (A : eqType) S (Ks : seq (lbl * (mty * A)))
-    : merge_all [seq K.cnt | K <- Ks] == Some S ->
-      merge S [seq K.cnt | K <- Ks] == Some S.
-  Proof.
-    case: Ks=>[| K Ks /= H]//=.
-    move: (merge_some H)=>/eqP; case: ifP=>///eqP-K_S.
-    by move: K_S H=>->.
-  Qed.
-
-  Fixpoint proj_ps (G : rg_ty) (ps : seq role) :=
-    match ps with
-    | [::] => Some [fmap]
-    | p :: ps =>
-      match project2 G p, proj_ps G ps with
-      | Some L, Some E => Some E.[p <- L]
-      | _, _ => None
-      end
-    end%fmap.
-
-  Definition proj_env G := proj_ps G (participants G).
-
-  Notation renv := {fmap role -> l_ty}.
-  Notation qenv := {fmap role * role -> seq (lbl * mty) }.
-  Notation ralt := {fmap role -> seq (lbl * (mty * l_ty))}.
-
-  Definition proj_cfg G : option (renv * qenv):=
-    match proj_env G, queue_contents G [fmap] with
-    | Some E, Some Q => Some (E, Q)
-    | _, _ => None
-    end%fmap.
-
-  Close Scope mpst_scope.
-
-
-  Lemma proj_send p q KsG E :
-    proj_env (g_msg None p q KsG) == Some E ->
-    exists KsL, (prj_all2 KsG p == Some KsL)
-                  && (E.[? p]%fmap == Some (l_msg l_send q KsL)).
-  Admitted.
-
-  Lemma lookup_prjall lb Ks t (Gp : rg_ty) p KsL :
-    (lookup lb Ks == Some (t, Gp)) ->
-    (prj_all2 Ks p == Some KsL) ->
-    exists L, (project2 Gp p == Some L) && (lookup lb KsL == Some (t, L)).
-  Admitted.
-*)
