@@ -4,5 +4,6 @@ build:
   script:
     - opam install -y coq-mathcomp-ssreflect
     - opam install -y coq-mathcomp-finmap
+    - opam install -y coq-paco
     - ./generateMakefile
     - make
