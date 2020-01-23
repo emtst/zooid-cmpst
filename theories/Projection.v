@@ -864,7 +864,12 @@ Section CProject.
   Admitted.
 
   Lemma EqL_refl CL : EqL CL CL.
-  Admitted.
+  Proof.
+    move: CL; pcofix CIH; move=>CL; apply/paco2_fold.
+    case: CL=>//a R C; constructor.
+    - by move=> Lb Ty; split=>[[CL ->]|[CL ->]]; exists CL.
+    - by move=> Lb Ty CG CG'-> [->]; right.
+  Qed.
   Hint Resolve EqL_refl.
 
   (* FIXME: abstract all g_closed && guarded ... as "wf" to simplify statements
