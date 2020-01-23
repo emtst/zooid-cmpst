@@ -316,7 +316,7 @@ Section Syntax.
         by rewrite -Ih.
   Qed.
 
-  Lemma lty_not_var G (b1 : nat -> bool) (b2 : bool) :
+  Lemma lty_not_var A G (b1 : nat -> A) (b2 : A) :
     (forall v : nat, G != l_var v) ->
     match G with | l_var v => b1 v | _ => b2 end = b2.
   Proof. by case: G =>[|n /(_ n)/eqP||]. Qed.
@@ -332,7 +332,7 @@ Section Syntax.
       + by rewrite -cardfs_eq0 cardfs1.
       + move=>/(rwP negPf); rewrite -leqNgt => m_leq_n dG'_le_m.
         by move: (leq_ltn_trans n_le_dG' dG'_le_m); rewrite ltnNge m_leq_n.
-    - by move=>/lty_not_var/=->; apply: Ih.
+    - by move=>/(@lty_not_var bool)/=->; apply: Ih.
   Qed.
 
   Lemma lclosed_not_var G :
@@ -362,7 +362,7 @@ Section Syntax.
       + move: EG=>->/=; case: ifP=>[/eqP _ _|//].
         rewrite (lty_not_var _ _ (lclosed_not_var CG')).
         by apply/(lguarded_depth_gt _ GG' CG').
-      + move=> H; move: (lopen_not_var d2.+1 CG' H)=>/lty_not_var->.
+      + move=> H; move: (lopen_not_var d2.+1 CG' H)=>/(@lty_not_var bool)->.
         by apply/Ih.
     - move=> GG' CG'; elim: Ks=>[|K Ks IhK]//= in Ih *.
       move: (Ih K); rewrite in_cons eq_refl=>/(_ is_true_true _ _ GG' CG')-H.
@@ -378,7 +378,7 @@ Section Syntax.
     elim/lty_ind2: G=>[|n|G Ih|p q Ks Ih]//= in d d' *.
     move=> d'_lt_d /lguarded_match-[[v /andP-[/eqP->]]|[]].
     - by move=>/(ltn_trans d'_lt_d).
-    - by move/lty_not_var=>->; apply: Ih.
+    - by move/(@lty_not_var bool)=>->; apply: Ih.
   Qed.
 
   Lemma lunroll_guarded G :
