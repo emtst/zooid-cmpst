@@ -1,5 +1,6 @@
 From mathcomp.ssreflect Require Import all_ssreflect seq.
 From mathcomp Require Import finmap.
+From Paco Require Import paco2.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
@@ -144,6 +145,26 @@ Qed.
 
 (* Declare Scope mpst_scope. *)
 
+Definition alt (x : Type) := (lbl * (mty * x))%type.
+
+Declare Scope mpst_scope.
+Open Scope mpst_scope.
 Notation "K .lbl" := (K.1)   (at level 2, left associativity, format "K .lbl") : mpst_scope.
 Notation "K .mty" := (K.2.1) (at level 2, left associativity, format "K .mty") : mpst_scope.
 Notation "K .cnt" := (K.2.2) (at level 2, left associativity, format "K .cnt") : mpst_scope.
+
+Reserved Notation "x '/->' y" (at level 99, right associativity, y at level 200).
+Notation "x '/->' y" := (x -> option y) : mpst_scope.
+
+Definition empty A : (lbl /-> mty * A) := fun=> None.
+Definition extend A (L : lbl) (X : A) f :=
+  fun L' => if L == L' then Some X else f L'.
+
+Definition same_dom T (C C' : lbl /-> mty * T) :=
+  forall L Ty, (exists G, C L = Some (Ty, G)) <-> (exists G', C' L = Some (Ty, G')).
+
+Definition R_all T T' (R : rel2 T (fun=>T'))
+           (C : lbl /-> mty * T) (C' : lbl /-> mty * T'):=
+  forall L Ty G G',
+    C L = Some (Ty, G) -> C' L = Some (Ty, G') -> R G G'.
+Close Scope mpst_scope.

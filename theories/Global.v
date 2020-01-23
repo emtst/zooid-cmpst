@@ -1,5 +1,8 @@
 From mathcomp.ssreflect Require Import all_ssreflect seq.
 From mathcomp Require Import finmap.
+
+From Paco Require Import paco paco2.
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
@@ -10,15 +13,14 @@ Require Import MPST.Forall.
 Require Import MPST.Actions.
 
 Section Syntax.
-
   (**
    * Global Types
    *)
   Inductive g_ty :=
   | g_end
-  | g_var (v : nat)
-  | g_rec (G : g_ty)
-  | g_msg (p : role) (q : role) (Ks : seq (lbl * (mty * g_ty))).
+  | g_var (VAR : nat)
+  | g_rec (GT : g_ty)
+  | g_msg (FROM TO : role) (CONT : seq (lbl * (mty * g_ty))).
 
   Open Scope mpst_scope.
 
@@ -430,91 +432,106 @@ End Syntax.
 
 Section Semantics.
 
+  Open Scope mpst_scope.
   CoInductive rg_ty :=
   | rg_end
-  | rg_msg (a : option lbl) (p : role) (q : role) (Ks : seq (lbl * (mty * rg_ty))).
+  | rg_msg (ST : option lbl)
+           (FROM TO : role)
+           (CONT : lbl /-> mty * rg_ty).
 
-  CoInductive GUnroll : g_ty -> rg_ty -> Prop :=
-  | gu_end : GUnroll g_end rg_end
-  | gu_rec G G' : GUnroll (g_open 0 (g_rec G) G) G' -> GUnroll (g_rec G) G'
-  | gu_msg p q Ks Ks' : GUnrollAll Ks Ks' ->
-                        GUnroll (g_msg p q Ks) (rg_msg None p q Ks')
-  with GUnrollAll
-       : seq (lbl * (mty * g_ty)) -> seq (lbl * (mty * rg_ty)) -> Prop :=
-  | gu_nil : GUnrollAll [::] [::]
-  | gu_cons l t G G' Ks Ks' :
-      GUnroll G G' ->
-      GUnrollAll Ks Ks' ->
-      GUnrollAll ((l, (t, G)) :: Ks) ((l, (t, G')) :: Ks')
-  .
-  Open Scope mpst_scope.
+  Inductive g_unroll (r : rel2 g_ty (fun=>rg_ty)) : rel2 g_ty (fun=>rg_ty) :=
+  | gu_end : @g_unroll r g_end rg_end
+  | gu_rec IG CG : r (g_open 0 (g_rec IG) IG) CG -> @g_unroll r (g_rec IG) CG
+  | gu_msg FROM TO iCONT cCONT :
+      @unroll_all r iCONT cCONT ->
+      @g_unroll r (g_msg FROM TO iCONT) (rg_msg None FROM TO cCONT)
+  with unroll_all (r : rel2 g_ty (fun=>rg_ty))
+       : rel2 (seq (lbl * (mty * g_ty))) (fun=>lbl /-> mty * rg_ty) :=
+  | gu_nil : @unroll_all r [::] (empty _)
+  | gu_cons L T IG CG iCONT cCONT :
+      r IG CG ->
+      @unroll_all r iCONT cCONT ->
+      @unroll_all r ((L, (T, IG)) :: iCONT) (extend L (T, CG) cCONT).
+  Definition GUnroll IG CG : Prop := paco2 g_unroll bot2 IG CG.
+  Hint Constructors g_unroll.
+  Hint Constructors unroll_all.
+
+  Lemma gunroll_monotone : monotone2 g_unroll.
+  Proof.
+    move=> IG CG r r' U H; move: IG CG U.
+    elim/gty_ind1=>[|V|G IH|F T C IH] CG;
+      case E:_ _/ =>[|G' CG' R|F' T' C' CC U]//.
+    - by move: E R=>[<-]{G'} /H; constructor.
+    - move: E U=>[<-<-<-]{F' T' C'} U; constructor; move: U IH.
+      elim=>[|L Ty IG CG' iCONT cCONT /H-R U /=IH1 IH2]; constructor=>//.
+      by apply/IH1=> K M; apply/IH2; right.
+  Qed.
+  Hint Resolve gunroll_monotone.
+
+  Lemma gunroll_unfold iG cG
+    : GUnroll iG cG -> @g_unroll (upaco2 g_unroll bot2) iG cG.
+  Proof. by move/(paco2_unfold gunroll_monotone). Qed.
 
   Lemma GUnroll_ind n iG cG :
     GUnroll iG cG <-> GUnroll (n_unroll n iG) cG.
   Proof.
     split.
-    - elim: n =>// n Ih in iG cG *; case=>/=; try by constructor.
-      move=> iG' cG'; by apply: Ih.
     - elim: n =>// n Ih in iG cG *.
-      by case: iG=>//= G H1; constructor; move: H1; apply/Ih.
+      move=> /gunroll_unfold-[]//=.
+      + by apply/paco2_fold.
+      + by move=>IG CG [/Ih|].
+      + by move=>F T IC CC /(gu_msg F T)-H; apply/paco2_fold.
+    - elim: n =>// n Ih in iG cG *.
+      by case: iG=>//= G H1; apply/paco2_fold; constructor; left; apply/Ih.
   Qed.
+
+  Definition R_only (R : rel2 rg_ty (fun=>rg_ty))
+             L0 (C C' : lbl /-> mty * rg_ty) :=
+    (forall L1 K, L0 != L1 -> C L1 = Some K <-> C' L1 = Some K)
+    /\ exists Ty G0 G1,
+      C L0 = Some (Ty, G0)
+      /\ C' L0 = Some (Ty, G1)
+      /\ R G0 G1.
 
   Inductive step : act -> rg_ty -> rg_ty -> Prop :=
   (* Basic rules *)
-  | st_send lb p q Ks t G :
-      lookup lb Ks = Some (t, G) ->
-      step (a_send p q lb t) (rg_msg None p q Ks) (rg_msg (Some lb) p q Ks)
-  | st_recv lb p q Ks t G :
-      lookup lb Ks = Some (t, G) ->
-      step (a_recv p q lb t) (rg_msg (Some lb) p q Ks) G
+  | st_send L F T C Ty G :
+      C L = Some (Ty, G) ->
+      step (a_send F T L Ty) (rg_msg None F T C) (rg_msg (Some L) F T C)
+  | st_recv L F T C Ty G :
+      C L = Some (Ty, G) ->
+      step (a_recv F T L Ty) (rg_msg (Some L) F T C) G
   (* Struct *)
-  | st_amsg1 a p q Ks Ks' :
-      subject a != p ->
-      subject a != q ->
-      step_all a Ks Ks' ->
-      step a (rg_msg None p q Ks) (rg_msg None p q Ks')
-  | st_amsg2 l a p q Ks Ks' :
-      subject a != q ->
-      step_only l a Ks Ks' ->
-      step a (rg_msg (Some l) p q Ks) (rg_msg (Some l) p q Ks')
-  with
-  step_all : act ->
-             seq (lbl * (mty * rg_ty)) ->
-             seq (lbl * (mty * rg_ty)) ->
-             Prop :=
-  | step_a1 a : step_all a [::] [::]
-  | step_a2 a G G' Ks Ks' l t :
-      step a G G' ->
-      step_all a Ks Ks' ->
-      step_all a ((l, (t, G)) :: Ks) ((l, (t, G')) :: Ks')
-  with
-  step_only : lbl ->
-              act ->
-              seq (lbl * (mty * rg_ty)) ->
-              seq (lbl * (mty * rg_ty)) ->
-              Prop :=
-  | step_o1 l a G G' t Ks :
-      step a G G' ->
-      step_only l a ((l, (t, G)) :: Ks) ((l, (t, G')) :: Ks)
-  | step_o2  l a Ks Ks' K :
-      l != K.lbl ->
-      step_only l a Ks Ks' ->
-      step_only l a (K :: Ks) (K :: Ks')
+  | st_amsg1 a F T C0 C1 :
+      subject a != F ->
+      subject a != T ->
+      same_dom C0 C1 ->
+      R_all (step a) C0 C1 ->
+      step a (rg_msg None F T C0) (rg_msg None F T C1)
+  | st_amsg2 a L F T C0 C1 :
+      subject a != T ->
+      same_dom C0 C1 ->
+      R_only (step a) L C0 C1 ->
+      step a (rg_msg (Some L) F T C0) (rg_msg (Some L) F T C1)
   .
 
   Derive Inversion step_inv with (forall a G G', step a G G') Sort Prop.
 
-  Scheme step_ind1 := Induction for step Sort Prop
-  with stepall_ind1 := Induction for step_all Sort Prop
-  with steponly_ind1 := Induction for step_only Sort Prop.
+  Scheme step_ind1 := Induction for step Sort Prop.
 
-  CoInductive g_lts : trace -> rg_ty -> Prop :=
-  | eg_end : g_lts tr_end rg_end
+  Inductive g_lts_ (r : rel2 trace (fun=>rg_ty)) : rel2 trace (fun=>rg_ty) :=
+  | eg_end : @g_lts_ r tr_end rg_end
   | eg_trans a t G G' :
       step a G G' ->
-      g_lts t G' ->
-      g_lts (tr_next a t) G.
+      r t G' ->
+      @g_lts_ r (tr_next a t) G.
+  Hint Constructors g_lts_.
+  Definition g_lts t g := paco2 g_lts_ bot2 t g.
 
-  Derive Inversion glts_inv with (forall tr G, g_lts tr G) Sort Prop.
+  Lemma g_lts_monotone : monotone2 g_lts_.
+  Proof. pmonauto. Qed.
+  Hint Resolve g_lts_monotone.
+
+  Close Scope mpst_scope.
 
 End Semantics.

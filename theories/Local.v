@@ -1,5 +1,7 @@
 From mathcomp.ssreflect Require Import all_ssreflect seq.
 From mathcomp Require Import finmap.
+
+From Paco Require Import paco paco2.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
@@ -123,18 +125,6 @@ Section Syntax.
   Lemma map2_zip A B C (f : B -> C) (K : seq (A * B)) :
     zip (unzip1 K) [seq f x | x <- unzip2 K] = [seq (x.1, f x.2) | x <- K].
   Proof. by rewrite unzip2_lift (unzip1_map2 f) zip_unzip. Qed.
-
-  (*
-  Lemma lclose_send_zip v d p K :
-    l_close v d (l_send p K)
-    = l_send p (zip (unzip1 K) (zip (unzip1 (unzip2 K)) [seq l_close v d x | x <- unzip2 (unzip2 K)])).
-  Proof. by rewrite /= unzip2_lift (unzip1_map2 (l_close v d)) zip_unzip. Qed.
-
-  Lemma lclose_sel_zip v d p K :
-    l_close v d (l_sel p K)
-    = l_sel p (zip (unzip1 K) [seq l_close v d x | x <- unzip2 K]).
-  Proof. by rewrite /= unzip2_lift (unzip1_map2 (l_close v d)) zip_unzip. Qed.
-   *)
 
   Fixpoint l_fidx (d : nat) (L : l_ty) : {fset nat} :=
     match L with
@@ -413,37 +403,62 @@ End Syntax.
 
 Section Semantics.
 
+  Open Scope mpst_scope.
+
   CoInductive rl_ty :=
   | rl_end
-  | rl_msg (a : l_act) (r : role) (Ks : seq (lbl * (mty * rl_ty)))
+  | rl_msg (a : l_act) (R : role) (C : lbl /-> mty * rl_ty)
   .
 
-  CoInductive LUnroll : l_ty -> rl_ty -> Prop :=
-  | lu_end : LUnroll l_end rl_end
-  | lu_rec G G' : LUnroll (l_open 0 (l_rec G) G) G' ->
-                 LUnroll (l_rec G) G'
-  | lu_msg a p Ks Ks' :
-      LUnrollAll Ks Ks' ->
-      LUnroll (l_msg a p Ks) (rl_msg a p Ks')
-  with LUnrollAll
+  Definition lty_rel := rel2 l_ty (fun=>rl_ty).
+  Inductive l_unroll (r : lty_rel) : lty_rel :=
+  | lu_end :
+      @l_unroll r l_end rl_end
+  | lu_rec G G' :
+      r (l_open 0 (l_rec G) G) G' ->
+      @l_unroll r (l_rec G) G'
+  | lu_msg a p Ks C :
+      l_unroll_all r Ks C ->
+      @l_unroll r (l_msg a p Ks) (rl_msg a p C)
+  with l_unroll_all (r : lty_rel)
        : seq (lbl * (mty * l_ty)) ->
-         seq (lbl * (mty * rl_ty)) ->
+         (lbl /-> mty * rl_ty) ->
          Prop :=
-  | lu_nil : LUnrollAll [::] [::]
-  | lu_cons l t G G' Ks Ks' :
-      LUnroll G G' ->
-      LUnrollAll Ks Ks' ->
-      LUnrollAll ((l, (t, G)) :: Ks) ((l, (t, G')) :: Ks')
+  | lu_nil : l_unroll_all r [::] (empty _)
+  | lu_cons l t G G' Ks C' :
+      r G G' ->
+      l_unroll_all r Ks C' ->
+      l_unroll_all r ((l, (t, G)) :: Ks) (extend l (t, G') C')
   .
+  Hint Constructors l_unroll.
+  Hint Constructors l_unroll_all.
+
+  Scheme lunroll_ind := Induction for l_unroll Sort Prop
+  with lunrollall_ind := Induction for l_unroll_all Sort Prop.
+
+  Lemma l_unroll_monotone : monotone2 l_unroll.
+  Proof.
+    move=>IL CL r r' U H; move: IL CL U.
+    elim/lty_ind2=>[|V|L IH|a F Ks IH] CL//=;
+      case E:_ _/ =>[|G G' R|a' F' Ks' C U]//.
+    - by move: E R => [<-] /H; constructor.
+    - constructor; move: E U=>[_ _<-] {a' F' Ks'}.
+      by elim=>[|l t G G' Ks0 C' /H-R U Ih1]; constructor.
+  Qed.
+  Hint Resolve l_unroll_monotone.
+
+  Definition LUnroll IL CL := paco2 l_unroll bot2 IL CL.
+
+  Definition lu_unfold := paco2_unfold l_unroll_monotone.
 
   Lemma LUnroll_ind n iG cG :
     LUnroll iG cG <-> LUnroll (lunroll n iG) cG.
   Proof.
     split.
-    - elim: n =>// n Ih in iG cG *; case=>/=; try by constructor.
-      move=> iG' cG'; by apply: Ih.
-    - elim: n =>// n Ih in iG cG *.
-      by case: iG=>//= G H1; constructor; move: H1; apply/Ih.
+    - elim: n =>[//|n Ih] in iG cG *; case: iG=>//= iL /lu_unfold.
+      by case E: _ _/ => [|L L' [|]|]//; move: E=>[->]; apply/Ih.
+    - elim: n =>// n Ih in iG cG *; case: iG=>//= G /Ih-H1.
+      by apply/paco2_fold; constructor; left.
   Qed.
 
   Notation renv := {fmap role -> rl_ty}.
@@ -471,7 +486,7 @@ Section Semantics.
     | Some Lp =>
       match Lp with
       | rl_msg a' q' Ks =>
-        match lookup l Ks with
+        match Ks l with
         | Some (t', Lp) =>
           if (a == a') && (q == q') && (t == t')
           then if Lp is rl_end
@@ -487,7 +502,7 @@ Section Semantics.
 
   Lemma doact_send (E : renv) p q lb t KsL Lp :
     (E.[? p]%fmap = Some (rl_msg l_send q KsL)) ->
-    (lookup lb KsL = Some (t, Lp)) ->
+    (KsL lb = Some (t, Lp)) ->
     exists E', (do_act E l_send p q lb t = Some E').
   Proof.
     move=>H1 H2; rewrite /do_act H1 H2 !eq_refl/=.
@@ -509,13 +524,18 @@ Section Semantics.
       lstep (a_recv p q lb t) (P, Q) (P', Q')
   .
 
-  CoInductive l_lts : trace -> renv * qenv -> Prop :=
-  | lt_end : l_lts tr_end ([fmap], [fmap])
+  Definition rel_trc := rel2 trace (fun=> renv*qenv)%type.
+  Inductive l_lts_ (r : rel_trc) : rel_trc :=
+  | lt_end : @l_lts_ r tr_end ([fmap], [fmap])
   | lt_next a t P P' :
       lstep a P P' ->
-      l_lts t P' ->
-      l_lts (tr_next a t) P.
+      r t P' ->
+      @l_lts_ r (tr_next a t) P.
+  Hint Constructors l_lts_.
+  Lemma l_lts_monotone : monotone2 l_lts_.
+  Proof. pmonauto. Qed.
 
+  Definition l_lts t L := paco2 l_lts_ bot2 t L.
   Derive Inversion llts_inv with (forall tr G, l_lts tr G) Sort Prop.
 
 End Semantics.
