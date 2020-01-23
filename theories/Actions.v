@@ -147,7 +147,6 @@ Qed.
 
 Definition alt (x : Type) := (lbl * (mty * x))%type.
 
-Declare Scope mpst_scope.
 Open Scope mpst_scope.
 Notation "K .lbl" := (K.1)   (at level 2, left associativity, format "K .lbl") : mpst_scope.
 Notation "K .mty" := (K.2.1) (at level 2, left associativity, format "K .mty") : mpst_scope.
