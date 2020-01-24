@@ -850,20 +850,6 @@ Section CProject.
     end = g.
   Proof. by case: G=>// GT /(_ GT)/eqP. Qed.
 
-  (* TODO *)
-  (* Lemma project_depth_lt d G r L : *)
-  (*   project d G r == Some L -> *)
-  (*   lrec_depth L <= rec_depth G. *)
-  (* Proof. *)
-  (*   elim/gty_ind1: G =>[|v|G Ih|p q Ks Ih] in d L *. *)
-  (*   - by move=>/eqP-[<-]. *)
-  (*   - by move=>/eqP-[<-]. *)
-  (*   - move=>/=; case Prj: project=>[L'|//]; move: Prj=>/eqP-Prj. *)
-  (*     case: (v_lty L')=>[[v->]|]; first (by case: ifP; by move=> _/eqP-[<-]). *)
-  (*     move=>/(@lty_not_var l_ty)-> /eqP-[<-]/=. *)
-  (*     by apply/Ih/Prj. *)
-  (* Admitted. *)
-
   Lemma rd_zero G :
     (forall G' : g_ty, G != g_rec G') ->
     rec_depth G = 0.
@@ -897,33 +883,35 @@ Section CProject.
     (forall v : nat, l_open n L' L != l_var v).
   Proof. by case: L=>//v /(_ v)/eqP. Qed.
 
-  Lemma project_open d n r G1 G2 L1 L2 :
+  Lemma project_open d r G1 G2 L1 L2 :
     g_fidx d.+1 G1 == fset0 ->
     g_fidx d G2 == fset0 ->
-    n <= d ->
     project d.+1 G1 r == Some L1 ->
     project d G2 r == Some L2 ->
-    project d (g_open n G2 G1) r = Some (l_open n L2 L1).
+    project d (g_open d G2 G1) r == Some (l_open d L2 L1).
   Proof.
-    elim/gty_ind1: G1 =>[|v1|G1 Ih/=|p q Ks1 Ih] in d n L1 *.
-    - by move=>_ _ _ /eqP-[<-].
-    - by move=>_ _ _ /eqP-[<-]/=; case: ifP=>// _ /eqP.
-      (*
+    elim/gty_ind1: G1 =>[|v1|G1 Ih/=|p q Ks1 Ih]// in d L1 *.
+    - by move=>_ _ /eqP-[<-].
+    - by move=>_ _ /eqP-[<-]/=; case: ifP=>// _ /eqP.
     - case Prj1: project=>[L1'|//]; move: Prj1=>/eqP-Prj1.
       case Prj2: project=>[L2'|//]; move: Prj2=>/eqP-Prj2.
-      move=>/eqP-[EL1] FvG2 /eqP-[EL2].
+      move=>FvG1 FvG2 /eqP-[EL1] /eqP-[EL2].
+      move: (gclosed_lclosed FvG1 Prj1)=>FvL1.
       move: EL2 Prj2 (gclosed_lclosed FvG2 Prj2)=>->{L2'}Prj2 FvL2.
       move: Prj2=>/(project_depth FvG2)-Prj2.
       move: FvG2 => /gfbvar_next/eqP-FvG2.
-      move: (Ih n.+1 _ _ Prj1 FvG2 Prj2) => Prj3.
+      move: (Ih d.+1 _ FvG1 FvG2 Prj1 Prj2) => /eqP-Prj3.
       rewrite Prj3/=; move: EL1=><-.
-      case: (v_lty L1')=>[[v'->]|H].
-      + rewrite fun_if/=; case: ifP=>v'n.
+      case: (v_lty L1')=>[[v' EL1']|H].
+      + rewrite EL1' in Prj1 FvL1 Prj3 *; move=>{L1' EL1'}.
+        rewrite fun_if/=.
+        move: FvL1=>/=; case: ifP=>/=; first by rewrite -cardfs_eq0 cardfs1.
+        rewrite ltnNge=>/(rwP negPf); rewrite negbK.
+        case: ifP=>[/eqP->->|].
+        admit.
         admit.
       + by rewrite (@lty_not_var l_ty _ _ _ H)/=
                    (@lty_not_var l_ty _ _ _ (open_notvar _ _ H)).
-    -
-       *)
   Admitted.
 
   Lemma project_open_notvar d r G L :
