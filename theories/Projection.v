@@ -599,16 +599,16 @@ Section CProject.
   (* Proof. move=>/=/eqP->; case: L=>//=. by move=>/=/eqP-[->] ->. Qed. *)
 
   Lemma gclosed_lclosed d G r L :
-    g_closed G ->
+    g_fidx d G == fset0 ->
     project d G r == Some L ->
-    l_closed L.
+    l_fidx d L == fset0.
   Proof.
-    rewrite /g_closed/l_closed; elim/gty_ind1: G d L 0 =>[|v|G Ih|p q Ks Ih] d L n.
+    elim/gty_ind1: G =>[|v|G Ih|p q Ks Ih] in d L *.
     - by move=> _ /eqP-[<-].
     - move=> /=; case: ifP; first by rewrite -cardfs_eq0 cardfs1.
       by move=> H _ /eqP-[<-]/=; rewrite H.
     - move: Ih=>/=; case Eq: project =>[Lr|//]; move: Eq=>/eqP-Eq.
-      move=> /(_ d.+1 Lr n.+1)-Ih;move=>/Ih/(_ Eq) {Eq Ih}.
+      move=> /(_ d.+1 Lr)-Ih;move=>/Ih/(_ Eq) {Eq Ih}.
       case: Lr=>[|v|Lr|p q Ks]//= H /eqP-[<-]//=.
       by case: ifP=>//.
     - rewrite project_msg=>H1.
@@ -838,12 +838,117 @@ Section CProject.
     LUnroll l_end cL -> cL = rl_end.
   Proof. by move=> /lu_unfold-LU; case Eq: _ _ / LU. Qed.
 
+  Lemma rec_gty G :
+    (exists G', G = g_rec G') \/ (forall G', G != g_rec G').
+  Proof. by case:G; try (by right); move=> GT; left; exists GT. Qed.
+
+  Lemma matchGrec A G (f : g_ty -> A) g :
+    (forall G', G != g_rec G') ->
+    match G with
+    | g_rec G' => f G'
+    | _ => g
+    end = g.
+  Proof. by case: G=>// GT /(_ GT)/eqP. Qed.
+
   (* TODO *)
-  Lemma project_unroll d G r L :
+  (* Lemma project_depth_lt d G r L : *)
+  (*   project d G r == Some L -> *)
+  (*   lrec_depth L <= rec_depth G. *)
+  (* Proof. *)
+  (*   elim/gty_ind1: G =>[|v|G Ih|p q Ks Ih] in d L *. *)
+  (*   - by move=>/eqP-[<-]. *)
+  (*   - by move=>/eqP-[<-]. *)
+  (*   - move=>/=; case Prj: project=>[L'|//]; move: Prj=>/eqP-Prj. *)
+  (*     case: (v_lty L')=>[[v->]|]; first (by case: ifP; by move=> _/eqP-[<-]). *)
+  (*     move=>/(@lty_not_var l_ty)-> /eqP-[<-]/=. *)
+  (*     by apply/Ih/Prj. *)
+  (* Admitted. *)
+
+  Lemma rd_zero G :
+    (forall G' : g_ty, G != g_rec G') ->
+    rec_depth G = 0.
+  Proof. by case: G=>// GT /(_ GT)/eqP. Qed.
+
+  Lemma project_depth d G r L :
+    g_fidx d G == fset0 ->
     project d G r == Some L ->
-    g_closed G ->
-    project d (n_unroll (rec_depth G) G) r
-    = Some (lunroll (rec_depth G) L).
+    project d.+1 G r == Some L.
+  Proof.
+    elim/gty_ind1: G=>[|v|G Ih|p q Ks Ih]// in d L *.
+    - move=>/=; case Prj: project=>[L'|//]; move: Prj=>/eqP-Prj Fv.
+      move: (Ih _ _ Fv Prj) (gclosed_lclosed Fv Prj)=>/eqP->.
+      case: (v_lty L')=>[[v'->]|/(@lty_not_var l_ty)-H]; last by rewrite ! H.
+      move=>/=; case: ifP=>v_d; first by rewrite -cardfs_eq0 cardfs1.
+      move: v_d; rewrite ltnNge=>/(rwP negPf); rewrite negbK=> H _.
+      by rewrite H (leqW H).
+    - rewrite !project_msg/==>/fsetUs_fset0/member_map-Fvs.
+      case Prj: prj_all =>[KsL|//]; move: Prj=>/eqP-Prj.
+      case: ifP=>// p_neq_q; suff: prj_all d.+1 Ks r == Some KsL by move=>/eqP->.
+      elim: Ks =>[|K Ks IhKs]//= in KsL Ih Fvs Prj *.
+      move: Prj; case Prj: project=>[Lk|//]; move: Prj=>/eqP-Prj.
+      move: (Ih K (or_introl erefl) d Lk (Fvs K (or_introl erefl)) Prj)=>/eqP->.
+      move: Ih Fvs=>/(_ _ (or_intror _))-Ih /(_ _ (or_intror _))-Fvs.
+      move: Ih=> /IhKs/(_ Fvs); case: prj_all=>[KsL'|//] Ih /eqP-[E].
+      by move: Ih=>/(_ KsL' (eq_refl _))/eqP->; move: E=><-.
+  Qed.
+
+  Lemma open_notvar n L L' :
+    (forall v : nat, L != l_var v) ->
+    (forall v : nat, l_open n L' L != l_var v).
+  Proof. by case: L=>//v /(_ v)/eqP. Qed.
+
+  Lemma project_open d n r G1 G2 L1 L2 :
+    g_fidx d.+1 G1 == fset0 ->
+    g_fidx d G2 == fset0 ->
+    n <= d ->
+    project d.+1 G1 r == Some L1 ->
+    project d G2 r == Some L2 ->
+    project d (g_open n G2 G1) r = Some (l_open n L2 L1).
+  Proof.
+    elim/gty_ind1: G1 =>[|v1|G1 Ih/=|p q Ks1 Ih] in d n L1 *.
+    - by move=>_ _ _ /eqP-[<-].
+    - by move=>_ _ _ /eqP-[<-]/=; case: ifP=>// _ /eqP.
+      (*
+    - case Prj1: project=>[L1'|//]; move: Prj1=>/eqP-Prj1.
+      case Prj2: project=>[L2'|//]; move: Prj2=>/eqP-Prj2.
+      move=>/eqP-[EL1] FvG2 /eqP-[EL2].
+      move: EL2 Prj2 (gclosed_lclosed FvG2 Prj2)=>->{L2'}Prj2 FvL2.
+      move: Prj2=>/(project_depth FvG2)-Prj2.
+      move: FvG2 => /gfbvar_next/eqP-FvG2.
+      move: (Ih n.+1 _ _ Prj1 FvG2 Prj2) => Prj3.
+      rewrite Prj3/=; move: EL1=><-.
+      case: (v_lty L1')=>[[v'->]|H].
+      + rewrite fun_if/=; case: ifP=>v'n.
+        admit.
+      + by rewrite (@lty_not_var l_ty _ _ _ H)/=
+                   (@lty_not_var l_ty _ _ _ (open_notvar _ _ H)).
+    -
+       *)
+  Admitted.
+
+  Lemma project_open_notvar d r G L :
+    (forall v : nat, L != l_var v) ->
+    project d.+1 G r == Some L ->
+    project d (unroll G) r = Some (l_open 0 (l_rec L) L).
+  Admitted.
+
+  (* TODO *)
+  Lemma project_unroll d m G r L :
+    project d G r == Some L ->
+    (* g_closed G -> *)
+    exists n,
+    project d (n_unroll m G) r = Some (lunroll n L).
+  Proof.
+    move=> Prj; elim: m => [|m Ih]//= in d G L Prj *.
+    - by (exists 0; apply/eqP).
+    - move: Prj; case:(rec_gty G) => [[G'->]/=|/(@matchGrec g_ty)->/eqP->];
+        last by exists 0.
+      case Prj: project=>[L'|]//; move: Prj=>/eqP; case: (v_lty L')=>[[v->]|].
+      + case: ifP=> vd Prj /eqP-[<-].
+        * admit.
+        SearchAbout project.
+      (* + move=>L'v; rewrite (@lty_not_var l_ty _ _ _ L'v). *)
+      (*   by move=>/(project_open L'v)/eqP/Ih=>[[n->]] /eqP-[<-]; exists n.+1. *)
   Admitted.
 
   Lemma EqL_refl CL : EqL CL CL.
@@ -988,14 +1093,16 @@ Section CProject.
     move: (project_closed ciG iGiL) => ciL.
     move: (project_guarded giG iGiL) => giL.
     move : GU (unroll_guarded ciG giG)=>/(GUnroll_ind (rec_depth iG))=>GU nrG.
-    move: LU =>/(LUnroll_ind (rec_depth iG))=>LU.
-    move: (project_unroll iGiL ciG) => proj.
+    move: (project_unroll (rec_depth iG) iGiL) => [U proj].
+    move: LU =>/(LUnroll_ind U)=>LU.
     move: (g_guarded_nunroll (rec_depth iG) ciG giG)=>guiG.
     move: (g_closed_unroll (rec_depth iG) ciG)=>cuiG.
     move=> {ciG giG iGiL}.
-    move: (l_guarded_nunroll (rec_depth iG) ciL giL)=>guiL.
-    move: (l_closed_unroll (rec_depth iG) ciL)=>cuiL.
+    move: (l_guarded_nunroll U ciL giL)=>guiL.
+    move: (l_closed_unroll U ciL)=>cuiL.
     move=>{ciL giL}.
     by apply/(project_nonrec CIH cuiL) =>//.
   Qed.
 End CProject.
+
+Print Assumptions ic_proj.
