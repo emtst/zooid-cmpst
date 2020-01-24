@@ -992,7 +992,6 @@ Section CProject.
       move: ETy cG gG=>->{Ty'} cG gG <-{G'} _.
       move: (cG _ (or_introl erefl))=>/= /CIH-{CIH}CIH.
       move: (gG _ (or_introl erefl))=>/= /CIH/(_ Prj UIG UL).
-      move: (gG _ (or_introl erefl))=>/= /CIH-{CIH}CIH.
       by move: ECG=>->.
     + move=>N CL_Lb Ih; move: E_CCG; rewrite /extend N=>/Ih-{Ih}Ih.
       move: cG gG=>/(_ _ (or_intror _))-cG /(_ _ (or_intror _))-gG.
