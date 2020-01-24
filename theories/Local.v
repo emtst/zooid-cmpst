@@ -371,13 +371,13 @@ Section Syntax.
   Qed.
 
   Lemma lguarded_gt d d' G :
-    d > d' ->
+    d >= d' ->
     lguarded d G ->
     lguarded d' G.
   Proof.
     elim/lty_ind2: G=>[|n|G Ih|p q Ks Ih]//= in d d' *.
     move=> d'_lt_d /lguarded_match-[[v /andP-[/eqP->]]|[]].
-    - by move=>/(ltn_trans d'_lt_d).
+    - by move=>/(leq_trans _)-H; apply/H.
     - by move/(@lty_not_var bool)=>->; apply: Ih.
   Qed.
 
