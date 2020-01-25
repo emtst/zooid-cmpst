@@ -342,26 +342,52 @@ Section IProject.
     by move: Prj=>/Ih/(_ Mrg K).
   Qed.
 
-  (* Lemma project_var_notin d p G v L : *)
-  (*   (L == l_end) || (L == l_var v) -> *)
-  (*   project d G p == Some L -> *)
-  (*   p \notin participants G. *)
-  (* Proof. *)
-  (*   elim/gty_ind1: G => [|v'|G Ih|q r Ks Ih]// in d L v *. *)
-  (*   - move: Ih=>/=; case: project =>[Lp|//] Ih. *)
-  (*     move=>/orP-[/eqP->|/eqP->]; case: ifP=>[/eqP-Lp_var|]//. *)
-  (*     move: Lp_var Ih=>-> /(_ (l_var 0) 0); rewrite eq_refl/==>Ih. *)
-  (*     by apply: Ih. *)
-  (*   - rewrite project_msg; case E: (prj_all _ _)=>[KsL|//]; move: E=>/eqP-E/=. *)
-  (*     case: ifP=>[//|/(rwP negPf)-q_ne_r]. *)
-  (*     case: ifP=>[/eqP->/orP-[/eqP->|/eqP->]//|/(rwP negPf)-q_ne_p]. *)
-  (*     case: ifP=>[/eqP->/orP-[/eqP->|/eqP->]//|/(rwP negPf)-r_ne_p]. *)
-  (*     do 2 rewrite in_cons negb_or; move=> L_end_var M_some. *)
-  (*     do 2 rewrite eq_sym ?q_ne_p /= ?r_ne_p /=; move: M_some. *)
-  (*     move: E=>/prjall_merge-E /E-Prjall. *)
-  (*     apply/flatten_mapP=>[[Kg /memberP-M]]. *)
-  (*     by apply/negP; apply: (Ih _ M L v L_end_var); apply: Prjall. *)
-  (* Qed. *)
+  Lemma notin_flatten (A: eqType) (p : A) Ks :
+    (forall K, member K Ks -> p \notin K) ->
+    p \notin flatten Ks.
+  Proof.
+    elim: Ks=>//=K Ks Ih H; rewrite mem_cat negb_or (H _ (or_introl erefl)) Ih//.
+    by move=> K0 M; apply/H; right.
+  Qed.
+
+  Lemma l_binds_notin Lp p G
+        (Ep : project G p = Some Lp)
+        (BLp : l_binds 0 Lp)
+    : p \notin participants G.
+  Proof.
+    elim/gty_ind1: G 0 =>[|v|G Ih|q r Ks Ih] n//= in Lp BLp Ep *.
+    - move: Ep Ih; case Prj: project=>[L|//]; move: Prj=>/eqP-Prj; case: ifP.
+      + move=> B [E]; move: E BLp=><- _.
+        by move=>/(_ _ _ B erefl).
+      + by move=>_ [E]; move: E BLp=><-/= BLp /(_ _ _ BLp erefl).
+    - move: Ep; move: (project_msg q r Ks p)=>/=->.
+      case Prj: prj_all=>[Ks'|//]; case: ifP=>// Eqr.
+      case: ifP=>Eqp; first by move=> [E]; move: E BLp=><-.
+      case: ifP=>Erp; first by move=> [E]; move: E BLp=><-.
+      rewrite !in_cons eq_sym Eqp eq_sym Erp /==>M.
+      apply/notin_flatten/member_map=> K Mm; apply/(Ih _ Mm _ _ BLp).
+      by move: Prj M=>/eqP-Prj /eqP-M; move: (prjall_merge Prj M)=>/(_ _ Mm)/eqP.
+  Qed.
+
+  Lemma project_var_notin p G v L :
+    (L == l_end) || (L == l_var v) ->
+    project G p == Some L ->
+    p \notin participants G.
+  Proof.
+    elim/gty_ind1: G => [|v'|G Ih|q r Ks Ih]// in L v *.
+    - move: Ih=>/=; case Prj: project =>[Lp|//] Ih.
+      move=>/orP-[/eqP->|/eqP->]; case: ifP=>[Lp_var|]//.
+      by move: (l_binds_notin Prj Lp_var).
+    - rewrite project_msg; case E: (prj_all _ _)=>[KsL|//]; move: E=>/eqP-E/=.
+      case: ifP=>[//|/(rwP negPf)-q_ne_r].
+      case: ifP=>[/eqP->/orP-[/eqP->|/eqP->]//|/(rwP negPf)-q_ne_p].
+      case: ifP=>[/eqP->/orP-[/eqP->|/eqP->]//|/(rwP negPf)-r_ne_p].
+      do 2 rewrite in_cons negb_or; move=> L_end_var M_some.
+      do 2 rewrite eq_sym ?q_ne_p /= ?r_ne_p /=; move: M_some.
+      move: E=>/prjall_merge-E /E-Prjall.
+      apply/flatten_mapP=>[[Kg /memberP-M]].
+      by apply/negP; apply: (Ih _ M L v L_end_var); apply: Prjall.
+  Qed.
 
   Lemma projectmsg_var n p r s Ks :
     project (g_msg r s Ks) p == Some (l_var n) ->
@@ -477,14 +503,6 @@ Section IProject.
     (forall v : nat, dual G != s_var v).
   Proof. by case: G=>//. Qed.
 
-  Lemma notin_flatten (A: eqType) (p : A) Ks :
-    (forall K, member K Ks -> p \notin K) ->
-    p \notin flatten Ks.
-  Proof.
-    elim: Ks=>//=K Ks Ih H; rewrite mem_cat negb_or (H _ (or_introl erefl)) Ih//.
-    by move=> K0 M; apply/H; right.
-  Qed.
-
   Lemma flatten_notin (A: eqType) (p : A) Ks :
     p \notin flatten Ks ->
     (forall K, member K Ks -> p \notin K).
@@ -492,24 +510,6 @@ Section IProject.
     elim: Ks=>//=K Ks Ih; rewrite mem_cat negb_or=>/andP-[pK pKs] K' [->//|].
     by move: K'; apply/Ih.
   Qed.
-
-  (* Lemma l_binds_notin Lp p G *)
-  (*       (Ep : project G p = Some Lp) *)
-  (*       (BLp : l_binds 0 Lp) *)
-  (*   : p \notin participants G. *)
-  (* Proof. *)
-  (*   elim/gty_ind1: G 0 =>[|v|G Ih|q r Ks Ih] n//= in Lp BLp Ep *. *)
-  (*   - move: Ep Ih; case Prj: project=>[L|//]; move: Prj=>/eqP-Prj; case: ifP. *)
-  (*     + move=> _ [E]; move: E BLp=><-. *)
-  (*     + by move=>_ [E]; move: E BLp=><-/= BLp /(_ _ _ BLp erefl). *)
-  (*   - move: Ep; move: (project_msg q r Ks p)=>/=->. *)
-  (*     case Prj: prj_all=>[Ks'|//]; case: ifP=>// Eqr. *)
-  (*     case: ifP=>Eqp; first by move=> [E]; move: E BLp=><-. *)
-  (*     case: ifP=>Erp; first by move=> [E]; move: E BLp=><-. *)
-  (*     rewrite !in_cons eq_sym Eqp eq_sym Erp /==>M. *)
-  (*     apply/notin_flatten/member_map=> K Mm; apply/(Ih _ Mm _ _ BLp). *)
-  (*     by move: Prj M=>/eqP-Prj /eqP-M; move: (prjall_merge Prj M)=>/(_ _ Mm)/eqP. *)
-  (* Qed. *)
 
   (* Lemma notin_parts_project Lp p G *)
   (*       (Ep : project G p = Some Lp) *)
@@ -1014,13 +1014,26 @@ Section CProject.
 
   Lemma project_var_parts G v r :
     project G r == Some (l_var v) -> r \notin participants G.
-  Proof.
-  Admitted.
+  Proof. by apply/project_var_notin/orP/or_intror/eq_refl. Qed.
 
-  Lemma project_notin_end r G :
-    g_closed G ->
+  SearchAbout participants.
+
+  Lemma project_notin_end r n G L :
+    g_fidx n G == fset0 ->
     r \notin participants G ->
-    project G r == Some l_end.
+    project G r = Some L ->
+    l_binds n L.
+  Proof.
+    rewrite /g_closed.
+    elim/gty_ind1: G=>[|v|G Ih|p q Ks Ih]// in n L *.
+    - by move=>_ _ [<-].
+    - move=>/=; case: ifP=>//; first by rewrite -cardfs_eq0 cardfs1.
+      by move=>/negP/negP; rewrite -ltnNge => /leqW-H _ _ [<-]/=.
+    - move=>/=.
+      move=>/=/Ih-H /H-{H}; case Prj: project=>[Lp|]// /(_ Lp erefl).
+      case: ifP=>//; first by move=> _ _ [<-].
+      by move=> _ H [<-]/=.
+    - rewrite project_msg /=.
   Admitted.
 
   Lemma notin_nunroll r n G :
@@ -1051,7 +1064,10 @@ Section CProject.
         last (by exists 0).
       case Prj: project=>[L'|]//=.
       case: ifP=>//.
-      + move=> Bnds /eqP-[<-].
+      + move: Prj => /eqP-Prj Bnds /eqP-[<-]; rewrite /g_closed/= => Fv.
+        SearchAbout l_binds.
+        admit.
+      +
 
   (*                      `; move: Prj=>/eqP; case: (v_lty L')=>[[v->]|]. *)
   (*     * move=> Prj. *)
