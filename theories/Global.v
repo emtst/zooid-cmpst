@@ -205,49 +205,44 @@ Section Syntax.
 
   Fixpoint guarded d G :=
     match G with
-    | g_end
-    | g_var _ => true
-    | g_rec G => if G is g_var v
-                 then v > d
-                 else guarded d.+1 G
+    | g_end => true
+    | g_var v => v >= d
+    | g_rec G => guarded d.+1 G
     | g_msg _ _ Ks => all (fun K => guarded 0 K.cnt) Ks
     end.
 
-  Inductive Guarded : nat -> g_ty -> Prop :=
-  | G_end d :
-      Guarded d g_end
-  | G_var d v :
-      Guarded d (g_var v)
-  | G_rec_var d v :
-      v > d ->
-      Guarded d (g_rec (g_var v))
-  | G_rec d G :
-      (forall v, G != g_var v) ->
-      Guarded d.+1 G ->
-      Guarded d (g_rec G)
-  | G_msg d p q Ks :
-      AllGuarded Ks ->
-      Guarded d (g_msg p q Ks)
-  with AllGuarded : seq (lbl * (mty * g_ty)) -> Prop :=
-  | G_nil :
-      AllGuarded [::]
-  | G_cons K Ks :
-      Guarded 0 K.cnt ->
-      AllGuarded Ks ->
-      AllGuarded (K :: Ks)
-  .
+  (* Inductive Guarded : nat -> g_ty -> Prop := *)
+  (* | G_end d : *)
+  (*     Guarded d g_end *)
+  (* | G_var d v : *)
+  (*     v >= d -> *)
+  (*     Guarded d (g_var v) *)
+  (* | G_rec d G : *)
+  (*     Guarded d.+1 G -> *)
+  (*     Guarded d (g_rec G) *)
+  (* | G_msg d p q Ks : *)
+  (*     AllGuarded Ks -> *)
+  (*     Guarded d (g_msg p q Ks) *)
+  (* with AllGuarded : seq (lbl * (mty * g_ty)) -> Prop := *)
+  (* | G_nil : *)
+  (*     AllGuarded [::] *)
+  (* | G_cons K Ks : *)
+  (*     Guarded 0 K.cnt -> *)
+  (*     AllGuarded Ks -> *)
+  (*     AllGuarded (K :: Ks) *)
+  (* . *)
 
-  Lemma grec_not_guarded d G' :
-    ~ Guarded d.+1 G' ->
-    (forall v : nat, G' != g_var v) ->
-    ~ Guarded d (g_rec G').
-  Proof.
-    move=> N_GG' Ne; move: {-1}d (eq_refl d) {-1}(g_rec G') (eq_refl (g_rec G')).
-    move=> d' d_d' G Eq_G H; case: H d_d' Eq_G=>//.
-    + by move=> d0 v _ _; move: Ne; rewrite !eqE/==>/(_ v)-N E;move:E N=>->.
-    + move=> d0 G0 _ GG' /eqP-E1; rewrite !eqE/==>/eqP-E2.
-      by move: E1 E2 GG'=><-<-/N_GG'.
-  Qed.
+  (* Lemma grec_not_guarded d G' : *)
+  (*   ~ Guarded d.+1 G' -> *)
+  (*   (forall v : nat, G' != g_var v) -> *)
+  (*   ~ Guarded d (g_rec G'). *)
+  (* Proof. *)
+  (*   move=> N_GG' Ne; move: {-1}d (eq_refl d) {-1}(g_rec G') (eq_refl (g_rec G')). *)
+  (*   move=> d' d_d' G Eq_G H; case: H d_d' Eq_G=>//. *)
+  (*   + by move=> d0 v _ _; move: Ne; rewrite !eqE/==>/(_ v)-N E;move:E N=>->. *)
+  (*   + move=> d0 G0 _ GG' /eqP-E1; rewrite !eqE/==>/eqP-E2. *)
+  (*     by move: E1 E2 GG'=><-<-/N_GG'. *)
+  (* Qed. *)
 
   Lemma alt_eq p1 q1 Ks1 p2 q2 Ks2 :
     ((g_msg p1 q1 Ks1) == (g_msg p2 q2 Ks2)) =
@@ -263,33 +258,37 @@ Section Syntax.
     match G with | g_var v => f v | _ => k end = k.
   Proof. by case: G =>// v /(_ v)/eqP. Qed.
 
-  Lemma guardedP d G : reflect (Guarded d G) (guarded d G).
-  Proof.
-    move: G d; fix Ih 1; case=> [|v|G|p q Ks] d/=; try do ! constructor.
-    - have [[v->]|]: (sig (fun v => G = g_var v) + (forall v, G != g_var v))%type
-        by case: G=>[|v||]; try (by right); by (left; exists v).
-      * case: (boolP (d < v))=>[d_lt_n|d_ge_n]; do ! constructor =>//.
-        move=> GG; case E:_/GG d_ge_n=>[||d' v' H|d' G' H|]//.
-        + by move: E H=>[<-] ->.
-        + by move: E H=>[<-] /(_ v)/eqP.
-      * move=> H; rewrite (gty_not_var _ _ H); case: Ih; do ! constructor=>//.
-        move=> GG; case E:_/GG n=>[||d' v' F|d' G' _ F|]//.
-        + by move: E H=>[->] /(_ v')/eqP.
-        + by move: E F=>[->] F /(_ F).
-    - elim: Ks=>[|K Ks]//=; try do ! constructor=>//.
-      case: (Ih K.cnt 0)=>[GK [GG|N_GG]|N_GK]/=; do ! constructor=>//.
-      * case Eq: (g_msg p q Ks) / GG=>// [d' p' q' Ks' GKs].
-        move: Eq=>/eqP; rewrite alt_eq =>/andP-[_ Eq].
-        by move: Eq GKs=>/eqP<-.
-      * move=> NGG; case Eq: (g_msg _ _ _) / NGG=>// [d' p' q' Ks' GKs].
-        move: Eq=>/eqP; rewrite alt_eq =>/andP-[_ Eq].
-        move: Eq GKs=>/eqP<- H; case Eq: (K::Ks) / H =>// [K' Ks'' _ GKs].
-        by move: Eq GKs=>[_ <-] /(G_msg d p q)/N_GG.
-      * move=> NGG; case Eq: (g_msg _ _ _) / NGG=>// [d' p' q' Ks' GKs].
-        move: Eq=>/eqP; rewrite alt_eq =>/andP-[_ Eq].
-        move: Eq GKs=>/eqP<-H'; case Eq: (K::Ks) / H' =>// [K' Ks'' GK0 _].
-        by move: Eq GK0=>[<- _] /N_GK.
-  Qed.
+  (* Lemma guardedP d G : reflect (Guarded d G) (guarded d G). *)
+  (* Proof. *)
+  (*   move: G d; fix Ih 1; case=> [|v|G|p q Ks] d/=; try do ! constructor. *)
+  (*   - case: (boolP (d <= v)); do ! constructor=>//. *)
+  (*     move=> H; move: H i; case E: _ / =>[|v' v'' H||]//. *)
+  (*     by move: E H=>[<-]->. *)
+  (*   - case: Ih; do ! constructor=>//. *)
+  (*   - have [[v->]|]: (sig (fun v => G = g_var v) + (forall v, G != g_var v))%type *)
+  (*       by case: G=>[|v||]; try (by right); by (left; exists v). *)
+  (*     * case: (boolP (d < v))=>[d_lt_n|d_ge_n]; do ! constructor =>//. *)
+  (*       move=> GG; case E:_/GG d_ge_n=>[||d' v' H|d' G' H|]//. *)
+  (*       + by move: E H=>[<-] ->. *)
+  (*       + by move: E H=>[<-] /(_ v)/eqP. *)
+  (*     * move=> H; rewrite (gty_not_var _ _ H); case: Ih; do ! constructor=>//. *)
+  (*       move=> GG; case E:_/GG n=>[||d' v' F|d' G' _ F|]//. *)
+  (*       + by move: E H=>[->] /(_ v')/eqP. *)
+  (*       + by move: E F=>[->] F /(_ F). *)
+  (*   - elim: Ks=>[|K Ks]//=; try do ! constructor=>//. *)
+  (*     case: (Ih K.cnt 0)=>[GK [GG|N_GG]|N_GK]/=; do ! constructor=>//. *)
+  (*     * case Eq: (g_msg p q Ks) / GG=>// [d' p' q' Ks' GKs]. *)
+  (*       move: Eq=>/eqP; rewrite alt_eq =>/andP-[_ Eq]. *)
+  (*       by move: Eq GKs=>/eqP<-. *)
+  (*     * move=> NGG; case Eq: (g_msg _ _ _) / NGG=>// [d' p' q' Ks' GKs]. *)
+  (*       move: Eq=>/eqP; rewrite alt_eq =>/andP-[_ Eq]. *)
+  (*       move: Eq GKs=>/eqP<- H; case Eq: (K::Ks) / H =>// [K' Ks'' _ GKs]. *)
+  (*       by move: Eq GKs=>[_ <-] /(G_msg d p q)/N_GG. *)
+  (*     * move=> NGG; case Eq: (g_msg _ _ _) / NGG=>// [d' p' q' Ks' GKs]. *)
+  (*       move: Eq=>/eqP; rewrite alt_eq =>/andP-[_ Eq]. *)
+  (*       move: Eq GKs=>/eqP<-H'; case Eq: (K::Ks) / H' =>// [K' Ks'' GK0 _]. *)
+  (*       by move: Eq GK0=>[<- _] /N_GK. *)
+  (* Qed. *)
 
   Fixpoint rec_depth G :=
     match G with
@@ -320,32 +319,23 @@ Section Syntax.
   Qed.
 
   Lemma guarded_recdepth d G m :
-    (forall v : nat, G != g_var v) ->
     guarded d G ->
     m < d ->
     forall G', rec_depth G = rec_depth ({m ~> G'} G).
   Proof.
     elim/gty_ind1: G=>[|n|G Ih|p q Ks Ih]//= in d m *.
-    - by move=>/(_ n)/eqP.
-    - move=> _ /guarded_match-[[n /andP-[/eqP->]/=]|[]].
-      + move=> dn md G'; move: dn md; case: ifP=>[/eqP-> d_lt_n n_le_d|//].
-        by move: (leq_trans d_lt_n n_le_d); rewrite ltnn.
-      + move=>/(Ih d.+1)-{Ih}Ih /Ih-{Ih}Ih m_le_d G'.
-        by rewrite -Ih.
+    - move=>dn md G; case: ifP=>[/eqP-E|ne//].
+      by move: E dn md=>-> /leq_ltn_trans-H /H; rewrite ltnn.
+    - by move=> GG md G'; rewrite (Ih _ m.+1 GG _ G').
   Qed.
 
-  Lemma guarded_depth_gt dG dG' G :
-    guarded dG' G -> g_closed G -> guarded dG G.
+  Lemma guarded_depth_gt n dG dG' G :
+    n <= dG' ->
+    guarded dG' G -> g_fidx n G == fset0 -> guarded dG G.
   Proof.
-    rewrite /g_closed=> H H'; move: 0 (leq0n dG') H H'.
-    elim/gty_ind1: G =>[|[a|n]|G Ih|p q Ks Ih]// in dG dG' *.
-    move=> n n_le_dG'.
-    move=>/guarded_match-[[m /andP-[/eqP->]]|[]].
-    - rewrite /=; case: ifP=>//=.
-      + by rewrite -cardfs_eq0 cardfs1.
-      + move=>/(rwP negPf); rewrite -leqNgt => m_leq_n dG'_le_m.
-        by move: (leq_ltn_trans n_le_dG' dG'_le_m); rewrite ltnNge m_leq_n.
-    - by move=>/(gty_not_var _ _)/=->; apply: Ih.
+    elim/gty_ind1: G =>[|m|G Ih|p q Ks Ih]// in n dG dG' *.
+    - by move=> /leq_trans-H /= /H->; rewrite -cardfs_eq0 cardfs1.
+    - by move=>/= LE; apply/Ih.
   Qed.
 
   Lemma gopen_closed G :
@@ -384,14 +374,8 @@ Section Syntax.
     guarded d1 ({d2 ~> G'} G).
   Proof.
     elim/gty_ind1: G=>[|n|G Ih|p q Ks Ih]//= in d1 d2 *.
-    - by case: ifP=>// _ /guarded_depth_gt-H /H-{H}H.
-    - move=>GG' CG'.
-      move=> /guarded_match-[[v /andP-[/eqP-EG]]/=|[]].
-      + move: EG=>->/=; case: ifP=>[/eqP _ _|//].
-        rewrite (gty_not_var _ _ (closed_not_var CG')).
-        by apply/(guarded_depth_gt _ GG' CG').
-      + move=> H; move: (open_not_var d2.+1 CG' H)=>/(gty_not_var _ _)->.
-        by apply/Ih.
+    - by case: ifP=>// _ /(guarded_depth_gt d1 (leq0n 0))-H /H-{H}H.
+    - by apply/Ih.
     - move=> GG' CG'; elim: Ks=>[|K Ks IhK]//= in Ih *.
       move=>/andP-[GK GKs].
       move: (Ih K (or_introl (erefl _)) 0 d2 GG' CG' GK)=>->//=.
@@ -399,14 +383,13 @@ Section Syntax.
   Qed.
 
   Lemma guarded_gt d d' G :
-    d > d' ->
+    d >= d' ->
     guarded d G ->
     guarded d' G.
   Proof.
-    elim/gty_ind1: G=>[|[a|n]|G Ih|p q Ks Ih]//= in d d' *.
-    move=> d'_lt_d /guarded_match-[[v /andP-[/eqP->]]|[]].
-    - by move=>/(ltn_trans d'_lt_d).
-    - by move/(gty_not_var _ _)=>->; apply: Ih.
+    elim/gty_ind1: G=>[|n|G Ih|p q Ks Ih]//= in d d' *.
+    - by move=>/leq_trans-H /H.
+    - by move=> H; apply/Ih.
   Qed.
 
   Lemma unroll_guarded G :
@@ -417,14 +400,10 @@ Section Syntax.
     move: {-2}(rec_depth G) (eq_refl (rec_depth G)) => n.
     elim: n => [|n Ih]/= in G *; case: G=>// G n_rd CG GG; move: n_rd.
     rewrite eqE/=-eqE => n_rd.
-    have: (guarded 0 (g_rec G)) by [].
-    move=> /guarded_match-[[x /andP-[/eqP-G_v x_ne0]]|].
-    - move: G_v n_rd=>-> /eqP->/= G'; rewrite /unroll/=.
-      by move: x_ne0; case: ifP=>[/eqP->|].
-    - move=>[G_ne_bv GG']; move: n_rd.
-      rewrite (guarded_recdepth G_ne_bv GG' (ltn0Sn 0) (g_rec G)) =>n_rd.
-      apply/Ih=>//; first by apply/gopen_closed.
-      by move: (guarded_open 0 GG CG GG')=>/guarded_gt-H; apply/H.
+    have/=GG': (guarded 0 (g_rec G)) by [].
+    move: n_rd; rewrite (guarded_recdepth GG' (ltn0Sn 0) (g_rec G))=>n_rd.
+    apply/Ih=>//; first by apply/gopen_closed.
+    by apply/guarded_open=>//; apply/guarded_gt; last by apply/GG'.
   Qed.
 
   Close Scope mpst_scope.
