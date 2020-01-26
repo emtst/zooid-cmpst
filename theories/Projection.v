@@ -1025,25 +1025,25 @@ Section CProject.
     project G r == Some (l_var v) -> r \notin participants G.
   Proof. by apply/project_var_notin/orP/or_intror/eq_refl. Qed.
 
-  SearchAbout participants.
+  (* SearchAbout participants. *)
 
-  Lemma project_notin_end r n G L :
-    g_fidx n G == fset0 ->
-    r \notin participants G ->
-    project G r = Some L ->
-    l_binds n L.
-  Proof.
-    rewrite /g_closed.
-    elim/gty_ind1: G=>[|v|G Ih|p q Ks Ih]// in n L *.
-    - by move=>_ _ [<-].
-    - move=>/=; case: ifP=>//; first by rewrite -cardfs_eq0 cardfs1.
-      by move=>/negP/negP; rewrite -ltnNge => /leqW-H _ _ [<-]/=.
-    - move=>/=.
-      move=>/=/Ih-H /H-{H}; case Prj: project=>[Lp|]// /(_ Lp erefl).
-      case: ifP=>//; first by move=> _ _ [<-].
-      by move=> _ H [<-]/=.
-    - rewrite project_msg /=.
-  Admitted.
+  (* Lemma project_notin_end r n G L : *)
+  (*   g_fidx n G == fset0 -> *)
+  (*   r \notin participants G -> *)
+  (*   project G r = Some L -> *)
+  (*   l_binds n L. *)
+  (* Proof. *)
+  (*   rewrite /g_closed. *)
+  (*   elim/gty_ind1: G=>[|v|G Ih|p q Ks Ih]// in n L *. *)
+  (*   - by move=>_ _ [<-]. *)
+  (*   - move=>/=; case: ifP=>//; first by rewrite -cardfs_eq0 cardfs1. *)
+  (*     by move=>/negP/negP; rewrite -ltnNge => /leqW-H _ _ [<-]/=. *)
+  (*   - move=>/=. *)
+  (*     move=>/=/Ih-H /H-{H}; case Prj: project=>[Lp|]// /(_ Lp erefl). *)
+  (*     case: ifP=>//; first by move=> _ _ [<-]. *)
+  (*     by move=> _ H [<-]/=. *)
+  (*   - rewrite project_msg /=. *)
+  (* Admitted. *)
 
   Lemma notin_nunroll r n G :
     r \notin participants G ->
