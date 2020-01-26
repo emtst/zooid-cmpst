@@ -86,11 +86,20 @@ Section IProject.
 
   Fixpoint l_binds d s :=
     match s with
-    | l_end  => true
     | l_var v => v <= d
     | l_rec s => l_binds d.+1 s
     | _ => false
     end.
+
+  (* If binds does not include l_end, then the one below holds *)
+  (* Goal forall s d L, lguarded (s + d) (l_rec L) -> ~~ l_binds s L. *)
+  (* move=> s d L /=. *)
+  (* elim/lty_ind2: L=>[|v|L Ih|a p Ks Ih]// in s d *. *)
+  (* - move=>/=. *)
+  (*   rewrite -ltnNge. *)
+  (*   by move=> /(leq_ltn_trans (leq_addr d s)). *)
+  (* - by rewrite /= -[(s + d).+2]/(s.+1 + d).+1; apply/Ih. *)
+  (* Qed. *)
 
   Fixpoint project (g : g_ty) (r : role) : option l_ty :=
     match g with
@@ -562,7 +571,7 @@ Section IProject.
   Proof.
     elim/lty_ind2: L=>[|v|L Ih|a q Ks Ih]//= in n S BL PRJ *.
     - by move: PRJ=>[<-].
-    - by move: PRJ=>[<-].
+    (* - by move: PRJ=>[<-]. *)
     - move: PRJ; case PRJ:partial_proj =>[S'|//] [<-{S}].
       by move: (Ih _ _ BL PRJ); case: ifP.
   Qed.
@@ -595,8 +604,8 @@ Section IProject.
       case:ifP=>//= BS; first by move=> [<-].
       move=>[<-]/=.
       apply/(Ih _ _ _ _ PPRJ _ PRJp PRJq).
-      move: BLp; case: ifP=>//= C _.
-      by move: (Ih _ _ _ _ PPRJ C PRJp PRJq); rewrite BS.
+      by move: BLp; case: ifP=>//= C _.
+      (* by move: (Ih _ _ _ _ PPRJ C PRJp PRJq); rewrite BS. *)
     - move: PRJp PRJq; rewrite !project_msg.
       case PRJp: prj_all=>[KSp'|//]; case PRJq: prj_all=>[KSq'|//].
       do 3 case: ifP=>//; try (by move=>_ _ _ [ELp]; move: ELp BLp=><-).
