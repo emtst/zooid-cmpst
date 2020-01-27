@@ -753,27 +753,27 @@ Section CProject.
 
   Definition proj_rel := rg_ty -> rl_ty -> Prop.
   Inductive Proj_ (p : role) (r : proj_rel) : proj_rel :=
-  | prj_end : @Proj_ p r rg_end rl_end
+  | prj_end : Proj_ p r rg_end rl_end
   | prj_send1 q KsG KsL :
       p != q ->
       R_all r KsG KsL ->
-      @Proj_ p r (rg_msg None p q KsG) (rl_msg l_send q KsL)
+      Proj_ p r (rg_msg None p q KsG) (rl_msg l_send q KsL)
   | prj_send2 l t q KsG KsL L :
       p != q ->
       R_all r KsG KsL ->
       KsL l = Some (t, L) ->
-      @Proj_ p r (rg_msg (Some l) p q KsG) L
+      Proj_ p r (rg_msg (Some l) p q KsG) L
   | prj_recv o q KsG KsL :
       p != q ->
       R_all r KsG KsL ->
-      @Proj_ p r (rg_msg o q p KsG) (rl_msg l_recv q KsL)
+      Proj_ p r (rg_msg o q p KsG) (rl_msg l_recv q KsL)
   | prj_mrg o q s KsG KsL L :
       q != s ->
       p != q ->
       p != s ->
       R_all r KsG KsL ->
       Merge KsL L ->
-      @Proj_ p r (rg_msg o q s KsG) L
+      Proj_ p r (rg_msg o q s KsG) L
   .
   Hint Constructors Proj_.
   Lemma Proj_monotone p : monotone2 (Proj_ p).
