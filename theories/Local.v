@@ -389,7 +389,7 @@ Section Semantics.
   .
 
   Definition lty_rel := rel2 l_ty (fun=>rl_ty).
-  Inductive l_unroll (r : lty_rel) : lty_rel :=
+  Inductive l_unroll (r : lty_rel) : l_ty -> rl_ty -> Prop :=
   | lu_end :
       @l_unroll r l_end rl_end
   | lu_rec G G' :
@@ -502,7 +502,7 @@ Section Semantics.
       lstep (a_recv p q lb t) (P, Q) (P', Q')
   .
 
-  Definition rel_trc := rel2 trace (fun=> renv*qenv)%type.
+  Definition rel_trc := trace -> renv*qenv -> Prop.
   Inductive l_lts_ (r : rel_trc) : rel_trc :=
   | lt_end : @l_lts_ r tr_end ([fmap], [fmap])
   | lt_next a t P P' :

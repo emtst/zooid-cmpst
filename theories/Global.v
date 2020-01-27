@@ -418,13 +418,15 @@ Section Semantics.
            (FROM TO : role)
            (CONT : lbl /-> mty * rg_ty).
 
-  Inductive g_unroll (r : rel2 g_ty (fun=>rg_ty)) : rel2 g_ty (fun=>rg_ty) :=
+  Definition grel := g_ty -> rg_ty -> Prop.
+
+  Inductive g_unroll (r : grel) : grel :=
   | gu_end : @g_unroll r g_end rg_end
   | gu_rec IG CG : r (g_open 0 (g_rec IG) IG) CG -> @g_unroll r (g_rec IG) CG
   | gu_msg FROM TO iCONT cCONT :
       @unroll_all r iCONT cCONT ->
       @g_unroll r (g_msg FROM TO iCONT) (rg_msg None FROM TO cCONT)
-  with unroll_all (r : rel2 g_ty (fun=>rg_ty))
+  with unroll_all (r : grel)
        : rel2 (seq (lbl * (mty * g_ty))) (fun=>lbl /-> mty * rg_ty) :=
   | gu_nil : @unroll_all r [::] (empty _)
   | gu_cons L T IG CG iCONT cCONT :
@@ -498,7 +500,8 @@ Section Semantics.
 
   Scheme step_ind1 := Induction for step Sort Prop.
 
-  Inductive g_lts_ (r : rel2 trace (fun=>rg_ty)) : rel2 trace (fun=>rg_ty) :=
+  Definition gtrc_rel := trace -> rg_ty -> Prop.
+  Inductive g_lts_ (r : gtrc_rel) : gtrc_rel :=
   | eg_end : @g_lts_ r tr_end rg_end
   | eg_trans a t G G' :
       step a G G' ->

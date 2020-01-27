@@ -33,9 +33,15 @@ Section IProject.
 
   Fixpoint s_binds d s :=
     match s with
-    | s_end => true
-    | s_var v => v <= d
+    | s_var v => v == d
     | s_rec s => s_binds d.+1 s
+    | _ => false
+    end.
+
+  Fixpoint s_isend s :=
+    match s with
+    | s_end => true
+    | s_rec s => s_isend s
     | _ => false
     end.
 
@@ -86,20 +92,21 @@ Section IProject.
 
   Fixpoint l_binds d s :=
     match s with
-    | l_var v => v <= d
+    | l_var v => v == d
     | l_rec s => l_binds d.+1 s
     | _ => false
     end.
 
-  (* If binds does not include l_end, then the one below holds *)
-  (* Goal forall s d L, lguarded (s + d) (l_rec L) -> ~~ l_binds s L. *)
-  (* move=> s d L /=. *)
-  (* elim/lty_ind2: L=>[|v|L Ih|a p Ks Ih]// in s d *. *)
-  (* - move=>/=. *)
-  (*   rewrite -ltnNge. *)
-  (*   by move=> /(leq_ltn_trans (leq_addr d s)). *)
-  (* - by rewrite /= -[(s + d).+2]/(s.+1 + d).+1; apply/Ih. *)
-  (* Qed. *)
+  Lemma lguarded_binds d L
+    : lguarded d (l_rec L) -> forall s, s <= d -> ~~ l_binds s L.
+  elim/lty_ind2: L=>[|v|L /= Ih|a p Ks Ih]// in d *.
+  - move=>/= vd s sd; move: (leq_ltn_trans sd vd).
+    by rewrite eq_sym ltn_neqAle=>/andP-[].
+  - by rewrite /==>/Ih-{Ih}Ih s Lsd; apply/Ih.
+  Qed.
+
+  (* Lemma lguarded_next L n m *)
+  (*   : lguarded m L -> (forall s, s <= n -> ~~ l_binds n L) -> lguarded n (l_rec L). *)
 
   Fixpoint project (g : g_ty) (r : role) : option l_ty :=
     match g with
@@ -564,16 +571,24 @@ Section IProject.
   (* l_binds 0 Lq = false -> *)
   (* l_binds 0 Lp -> *)
 
+  (* Lemma sbinds_lt m n S : s_binds n S -> n <= m -> s_binds m S. *)
+  (* Proof. *)
+  (*   elim/sty_ind: S=>[|v|S Ih|a Ks Ih]//= in n m *. *)
+  (*   - by move/leq_trans=> H /H. *)
+  (*   - by move/Ih=>H Le; apply/H. *)
+  (* Qed. *)
+
   Lemma pproj_sbinds n L p S
         (BL : l_binds n L)
         (PRJ : partial_proj L p = Some S)
-    : s_binds n S.
+    : s_isend S || s_binds n S.
   Proof.
     elim/lty_ind2: L=>[|v|L Ih|a q Ks Ih]//= in n S BL PRJ *.
-    - by move: PRJ=>[<-].
-    (* - by move: PRJ=>[<-]. *)
+    - by move: PRJ=>[<-]; rewrite /= BL.
     - move: PRJ; case PRJ:partial_proj =>[S'|//] [<-{S}].
-      by move: (Ih _ _ BL PRJ); case: ifP.
+      move: (Ih _ _ BL PRJ)=>/orP-[END|BND]; case: ifP=>//=.
+      + by rewrite END.
+      + by rewrite orbC BND.
   Qed.
 
   Lemma prjall_merge_cons Ks p KsL L :
@@ -586,6 +601,36 @@ Section IProject.
     by move=>_ _; exists K; left.
   Qed.
 
+  Lemma project_binds_eq p q G Lp Lq n m :
+    project G p = Some Lp ->
+    project G q = Some Lq ->
+    l_binds n Lp ->
+    l_binds m Lq ->
+    l_binds n Lq.
+  Proof.
+    elim/gty_ind1: G=>[|v|G Ih|r s Ks Ih] in Lp Lq n m *.
+    - by move=>[<-].
+    - by move=>[<-] [<-]/=.
+    - move=>/=; case Pp: project=>[Lp'|//]; case Pq: project=>[Lq'|//].
+      by case: ifP=>_ [<-]//; case: ifP=>_ [<-]//=; apply/Ih.
+    - rewrite !project_msg.
+      case PRJp: prj_all=>[KSp|//]; case PRJq: prj_all=>[KSq|//].
+      case: ifP=>// Ers; do ! (case: ifP=> _; first by move=>[<-]).
+      move=>MRGp;do ! (case: ifP=> _; first by move=>[<-]).
+      move=> MRGq; case: (prjall_merge_cons PRJp MRGp) =>[K M].
+      move: PRJq MRGq=>/eqP-Pq /eqP-Mq; move: (prjall_merge Pq Mq M)=>/eqP.
+      move: PRJp MRGp=>/eqP-Pp /eqP-Mp; move: (prjall_merge Pp Mp M)=>/eqP.
+      move: K M Lp Lq n m {Mq Mp Pp Pq Ers KSp KSq}; apply/Ih.
+  Qed.
+
+  Lemma sbinds_eq n m S :
+    s_binds n S -> s_binds m S -> n = m.
+  Proof.
+    elim/sty_ind: S=>[|v|S Ih|a Ks Ih]//= in n m *.
+    - by move=>/eqP->/eqP.
+    - by move=> H1 H2; move: (Ih _ _ H1 H2)=>[].
+  Qed.
+
   Lemma pproj_notin_binds n G Lp Lq p q S
         (PRJp : project G p = Some Lp)
         (BLp : l_binds n Lp)
@@ -594,18 +639,17 @@ Section IProject.
     : s_binds n S.
   Proof.
     elim/gty_ind1: G=>[|v|G Ih|r s Ks Ih] in n S Lp Lq PPRJ BLp PRJp PRJq *.
-    - by move: PRJq PPRJ=>[<-] [<-].
+    - by move: PRJp BLp=> [<-].
     - by move: PRJp BLp PRJq PPRJ=>[<-]/= vn [<-] [<-].
     - move: PRJp PRJq => /=.
-      case PRJp: project=>[Lp'|//] [ELp]; move: ELp BLp=><-{Lp}BLp.
+      case PRJp: project=>[Lp'|//] [ELp]; move: ELp BLp =><-{Lp}BLp.
       case PRJq: project=>[Lq'|//] [ELq]; move: ELq PPRJ=><-{Lq}.
-      case:ifP=>//= BLq'; first by move=> [<-].
-      case PPRJ: partial_proj=>[S'|//].
-      case:ifP=>//= BS; first by move=> [<-].
-      move=>[<-]/=.
-      apply/(Ih _ _ _ _ PPRJ _ PRJp PRJq).
-      by move: BLp; case: ifP=>//= C _.
-      (* by move: (Ih _ _ _ _ PPRJ C PRJp PRJq); rewrite BS. *)
+      move: BLp; case: ifP=>//= BLp.
+      case: ifP; first (by move=>/(project_binds_eq PRJq PRJp)-C /C; rewrite BLp).
+      move=>/= BLq BLp'; case PPRJ: partial_proj=>[S'|//].
+      move: (Ih _ _ _ _ PPRJ BLp' PRJp PRJq) => SB.
+      case: ifP=>/=; first by move/(sbinds_eq SB).
+      by move=> _ [<-]/=.
     - move: PRJp PRJq; rewrite !project_msg.
       case PRJp: prj_all=>[KSp'|//]; case PRJq: prj_all=>[KSq'|//].
       do 3 case: ifP=>//; try (by move=>_ _ _ [ELp]; move: ELp BLp=><-).
@@ -707,7 +751,7 @@ Section CProject.
   Definition Merge (F : lbl /-> mty * rl_ty) (L : rl_ty) : Prop :=
     forall Lb Ty L', F Lb = Some (Ty, L') -> EqL L' L.
 
-  Definition proj_rel := rel2 rg_ty (fun=>rl_ty).
+  Definition proj_rel := rg_ty -> rl_ty -> Prop.
   Inductive Proj_ (p : role) (r : proj_rel) : proj_rel :=
   | prj_end : @Proj_ p r rg_end rl_end
   | prj_send1 q KsG KsL :
@@ -938,61 +982,44 @@ Section CProject.
         by apply: (Ih _ MG)=>//; apply/cKs.
   Qed.
 
-  Lemma lguarded_lbinds_gt s m Lr :
+  Lemma lguarded_lbinds_lt s Lr :
     l_binds s Lr = false ->
-    lguarded m Lr ->
-    exists n, lguarded (s + n).+1 Lr.
+    lguarded s Lr ->
+    lguarded s.+1 Lr.
   Proof.
     move: {-1}(lrec_depth Lr) (erefl (lrec_depth Lr))=> n E.
-    elim: n=>[|n Ih] in s m Lr E *.
-    - case: Lr E=>//= v _ /(rwP negPf); rewrite -ltnNge=> H1 H2.
-      by exists 0; rewrite addnC.
-    - case: Lr E=>//= L [/Ih-E].
-      by move=>/E-{E}/(_ m.+1)-E /E-[x /= H]; exists x.
-  Qed.
-
-  Lemma project_guarded' n r iG iL :
-    guarded n iG ->
-    project iG r == Some iL ->
-    (exists m, lguarded m iL).
-  Proof.
-    elim/gty_ind1: iG n =>[|v|iG Ih/=|p q Ks Ih] n in iL *.
-    - by move=>/= _ /eqP-[<-]; exists 0.
-    - by move=>/= G /eqP-[<-]; exists n.
-    - case Prj: project=>[Lr|//]; move: Prj=>/eqP-Prj.
-      case: ifP; first by move=> _ _ /eqP-[<-]; exists 0.
-      move=> B /Ih; move=> /(_ _ Prj)-[m LG] /eqP-[<-]/=.
-      by move: (lguarded_lbinds_gt B LG)=>[m0 H]; exists m0.
-    - rewrite project_msg.
-      move=>/=/forallbP/forall_member-gKs.
-      case PrjAll: prj_all => [KsL|]//; case: ifP=>// p_n_q.
-      case: ifP=>[p_r|p_n_r]; last case: ifP=>[q_r|q_n_r].
-      + move=>/eqP-[<-]/=; exists 0.
-        move: PrjAll=>/eqP/prjall_some2-PrjAll.
-        apply/forallbP/forall_member=>K M.
-        move: (PrjAll _ M)=>[g' [Mks /eqP-Prj]].
-        move: (Ih _ Mks _ _ (gKs _ Mks) Prj)=>[x].
-        by apply/lguarded_gt.
-      + move=>/eqP-[<-]/=; exists 0.
-        move: PrjAll=>/eqP/prjall_some2-PrjAll.
-        apply/forallbP/forall_member=>K M.
-        move: (PrjAll _ M)=>[g' [Mks /eqP-Prj]].
-        move: (Ih _ Mks _ _ (gKs _ Mks) Prj)=>[x].
-        by apply/lguarded_gt.
-      + move=>/eqP-Mrg; move: (prjall_merge_cons PrjAll Mrg)=>[K M].
-        move: PrjAll Mrg=>/eqP-PrjAll /eqP-Mrg.
-        move: (prjall_merge PrjAll Mrg M)=> H.
-        move: (gKs _ M)=>GG.
-        by apply/(Ih _ M 0).
+    elim: n=>[|n Ih] in s Lr E *.
+    - by case: Lr E=>//= v _ /(rwP negPf); rewrite ltn_neqAle eq_sym=>->->.
+    - case: Lr E=>//= L [/Ih-E]; apply/E.
   Qed.
 
   Lemma project_guarded r iG iL :
-    guarded 0 iG ->
     project iG r == Some iL ->
     lguarded 0 iL.
   Proof.
-    move=> gG Prj; move: (project_guarded' gG Prj)=>[m gL].
-    by apply/(lguarded_gt (leq0n m)).
+    elim/gty_ind1: iG =>[|v|iG Ih/=|p q Ks Ih] in iL *.
+    - by move=>/= /eqP-[<-].  (* exists 0. *)
+    - by move=>/= /eqP-[<-]. (* exists n. *)
+    - case Prj: project=>[Lr|//]; move: Prj=>/eqP/Ih-Prj.
+      case: ifP; first by move=> _ /eqP-[<-]. (* exists 0. *)
+      by move=> B /eqP-[<-]/=; apply/lguarded_lbinds_lt.
+    - rewrite project_msg.
+      case PrjAll: prj_all => [KsL|]//; case: ifP=>// p_n_q.
+      case: ifP=>[p_r|p_n_r]; last case: ifP=>[q_r|q_n_r].
+      + move=>/eqP-[<-]/=. (* exists 0. *)
+        move: PrjAll=>/eqP/prjall_some2-PrjAll.
+        apply/forallbP/forall_member=>K M.
+        move: (PrjAll _ M)=>[g' [Mks /eqP-Prj]].
+        by apply/(Ih _ Mks _ Prj).
+      + move=>/eqP-[<-]/=. (* exists 0. *)
+        move: PrjAll=>/eqP/prjall_some2-PrjAll.
+        apply/forallbP/forall_member=>K M.
+        move: (PrjAll _ M)=>[g' [Mks /eqP-Prj]].
+        by apply/(Ih _ Mks _ Prj).
+      + move=>/eqP-Mrg; move: (prjall_merge_cons PrjAll Mrg)=>[K M].
+        move: PrjAll Mrg=>/eqP-PrjAll /eqP-Mrg.
+        move: (prjall_merge PrjAll Mrg M)=> H.
+        by apply/(Ih _ M).
   Qed.
 
   Lemma lunroll_end cL :
@@ -1239,8 +1266,7 @@ Section CProject.
     move: LU =>/(LUnroll_ind U)=>LU.
     move : GU (unroll_guarded ciG giG)=>/(GUnroll_ind (rec_depth iG))=>GU nrG.
     move: (g_guarded_nunroll (rec_depth iG) ciG giG)=>guiG.
-    move: (g_closed_unroll (rec_depth iG) ciG)=>cuiG.
-    move=> {ciG giG iGiL}.
+    move: (g_closed_unroll (rec_depth iG) ciG)=>cuiG {ciG giG iGiL}.
     by apply/(project_nonrec CIH cuiG guiG nrG proj).
   Qed.
 End CProject.
