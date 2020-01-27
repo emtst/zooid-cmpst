@@ -767,10 +767,12 @@ Section CProject.
       p != q ->
       R_all r KsG KsL ->
       Proj_ p r (rg_msg o q p KsG) (rl_msg l_recv q KsL)
+  (* | prj_end2 G : ~ In r G -> Proj_ r G rl_end *)
   | prj_mrg o q s KsG KsL L :
       q != s ->
       p != q ->
       p != s ->
+      (* InAll r KsG -> *)
       R_all r KsG KsL ->
       Merge KsL L ->
       Proj_ p r (rg_msg o q s KsG) L
