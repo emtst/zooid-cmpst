@@ -743,7 +743,7 @@ Section CProject.
 
   Lemma EqL_monotone : monotone2 EqL_.
   Proof.
-    move=>L1 L2 r r' E H; elim: E=>[|a p C1 C2 D E]//; constructor=>//.
+    move=>L1 L2 r r' E H; elim: E =>[|a p C1 C2 D E]//; constructor=>//.
     by move: E; rewrite /R_all=>E L Ty G G' /E-{E}E /E/H.
   Qed.
   Hint Resolve EqL_monotone.
@@ -780,7 +780,18 @@ Section CProject.
   Hint Constructors Proj_.
   Lemma Proj_monotone p : monotone2 (Proj_ p).
   Proof.
-  Admitted.
+  rewrite /monotone2; move=> x0 x1 r r' it LE; move: it; case=>//.
+  + move=> q KsG KsL neq HP; constructor =>//; move: HP; rewrite /R_all.
+    move=> HP l Ty G L KsG_l KsL_l; apply: LE; by apply: (@HP l Ty G L KsG_l KsL_l).
+  + move=> l t q KsG KsL L neq HP KsL_l; apply: (@prj_send2 _ _ l t _ _ KsL) => //.
+    move: HP; rewrite /R_all; move=> HP l0 t0 G0 L0 KsG_l0 KsL_l0; apply LE.
+    by apply: (@HP l0 _ _ _ KsG_l0 KsL_l0).
+  + move=> o q KsG KsL neq HP; constructor =>//; move: HP; rewrite /R_all.
+    move=> HP l t G L KsG_l KsL_l; apply: LE. by apply: (HP _ _ _ _ KsG_l KsL_l).
+  + move=> o q s KsG KsL L0 neq_qs neq_pq neq_ps HP merg.
+    apply (@prj_mrg _ _ _ _ _ KsG KsL _) =>//; move: HP; rewrite /R_all.
+    move=> HP l t G L KsG_l KsL_l; apply: LE; by apply: (HP _ _ _ _ KsG_l KsL_l).
+  Qed.
   Definition Project p CG CL := paco2 (Proj_ p) bot2 CG CL.
 
   Lemma gclosed_lclosed d G r L :
