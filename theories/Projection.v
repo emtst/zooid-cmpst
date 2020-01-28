@@ -1090,8 +1090,18 @@ Section CProject.
   Lemma project_open L G r
         (* (NV : forall v : nat, L != l_var v) *)
         (* (FV : g_fidx 1 G == fset0) *)
-        (Prj : project G r = Some L)
-    : project (unroll G) r = Some (l_open 0 (l_rec L) L).
+        (*(Prj : project G r = Some L)*)
+    : project G r = Some L -> project (unroll G) r = Some (l_open 0 (l_rec L) L).
+  Proof.
+  case: G; rewrite //=.
+  + by move=> [Some_eq]; rewrite -Some_eq //=.
+  + move=> VAR [Some_eq]; rewrite -Some_eq /unroll //=.
+    case: ifP. rewrite <-(rwP eqP); move=>->; rewrite //=.
+    (*...and tomorrow we study this
+
+rewrite /project //=.
+    case: ifP =>//=.*)
+
   Admitted.
 
   (* WARNING: depends on project_open *)
