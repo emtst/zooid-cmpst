@@ -1072,20 +1072,33 @@ Section CProject.
     - by exists n.+1=>/=; rewrite (isend_open 0 _ END).
   Qed.
 
+  Lemma l_bind_open m n L L1: n != m -> l_closed L1 
+    -> l_binds m (l_open n L1 L) = l_binds m L.
+  Proof.
+ (* move=> neq closed; case: L; rewrite //=.
+  + move=> k; case: ifP => //=; rewrite <-(rwP eqP); move=>->; rewrite /l_binds.
+    move: closed; case: L1.
+    - rewrite (negbTE neq) //=.
+    - move=> v. rewrite /l_closed //=.
+
+ rewrite (rwP (fset0Pn _  ([fset v - 0]%fset == fset0))).
+
+About fset0.*)
+  Admitted.
+
   Lemma project_open L G r
         (* (NV : forall v : nat, L != l_var v) *)
         (* (FV : g_fidx 1 G == fset0) *)
         (*(Prj : project G r = Some L)*)
-    : project G r = Some L -> project (unroll G) r = Some (l_open 0 (l_rec L) L).
+    : (*to be added and factored in next lemmas: g_closed G ->*) 
+  project G r = Some L -> project (unroll G) r = Some (l_open 0 (l_rec L) L).
   Proof.
-  case: G; rewrite //=.
-  + by move=> [Some_eq]; rewrite -Some_eq //=.
-  + move=> VAR [Some_eq]; rewrite -Some_eq /unroll //=.
-    case: ifP. rewrite <-(rwP eqP); move=>->; rewrite //=.
-    (*...and tomorrow we study this
-
-rewrite /project //=.
-    case: ifP =>//=.*)
+  case: G.
+  (*+ elim; by move=> [Some_eq]; rewrite -Some_eq //=.
+  + move=> VAR neq [Some_eq]; rewrite -Some_eq /unroll //=; move: neq.
+  move: Some_eq; case: ifP; [ rewrite <-(rwP eqP); move=>->| ]; by rewrite //=.
+  + move=> GT; elim.
+    rewrite /unroll. rewrite //=.*)
 
   Admitted.
 
