@@ -211,6 +211,31 @@ Section Syntax.
     | g_msg _ _ Ks => all (fun K => guarded 0 K.cnt) Ks
     end.
 
+  Fixpoint g_binds n G :=
+    match G with
+    | g_var v => v == n
+    | g_rec G => g_binds n.+1 G
+    | _ => false
+    end.
+
+  Fixpoint guarded' G :=
+    match G with
+    | g_end
+    | g_var _ => true
+    | g_rec G => ~~ g_binds 0 G && guarded' G
+    | g_msg _ _ Ks => all (fun K => guarded' K.cnt) Ks
+    end.
+
+  Lemma guarded_next n G : guarded n.+1 G = ~~ g_binds n G && guarded n G.
+  Proof. by elim/gty_ind1: G n=>//= v n; rewrite ltn_neqAle eq_sym. Qed.
+
+  Lemma guarded_binds G : guarded 0 G = guarded' G.
+  Proof.
+    elim/gty_ind1: G=>[||G|_ _ Ks Ih]//=; first by move=><-;apply/guarded_next.
+    elim: Ks Ih=>[//|K Ks Ih']/= Ih; rewrite Ih; last by left.
+    by rewrite Ih' // => K' /or_intror/Ih.
+  Qed.
+
   (* Inductive Guarded : nat -> g_ty -> Prop := *)
   (* | G_end d : *)
   (*     Guarded d g_end *)
