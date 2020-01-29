@@ -193,6 +193,40 @@ Section Syntax.
     | l_msg _ _ Ks => all (fun K => lguarded 0 K.cnt) Ks
     end.
 
+  Fixpoint l_binds n L :=
+    match L with
+    | l_var v => v == n
+    | l_rec L => l_binds n.+1 L
+    | _ => false
+    end.
+
+  Fixpoint lguarded' L :=
+    match L with
+    | l_end
+    | l_var _ => true
+    | l_rec L => ~~ l_binds 0 L && lguarded' L
+    | l_msg _ _ Ks => all (fun K => lguarded' K.cnt) Ks
+    end.
+
+  Lemma lguarded_next n G : lguarded n.+1 G = ~~ l_binds n G && lguarded n G.
+  Proof. by elim/lty_ind2: G n=>//= v n; rewrite ltn_neqAle eq_sym. Qed.
+
+  Lemma lguarded_binds G : lguarded 0 G = lguarded' G.
+  Proof.
+    elim/lty_ind2: G=>[||G|_ _ Ks Ih]//=; first by move=><-;apply/lguarded_next.
+    elim: Ks Ih=>[//|K Ks Ih']/= Ih; rewrite Ih ?in_cons ?eq_refl //.
+    by rewrite Ih' // => K' H; apply/Ih; rewrite in_cons orbC H.
+  Qed.
+
+  Lemma lguarded_rec d L
+    : lguarded d (l_rec L) -> forall s, s <= d -> ~~ l_binds s L.
+  elim/lty_ind2: L=>[|v|L /= Ih|a p Ks Ih]// in d *.
+  - move=>/= vd s sd; move: (leq_ltn_trans sd vd).
+    by rewrite eq_sym ltn_neqAle=>/andP-[].
+  - by rewrite /==>/Ih-{Ih}Ih s Lsd; apply/Ih.
+  Qed.
+
+
   (* Inductive LGuarded : nat -> l_ty -> Prop := *)
   (* | L_end d : *)
   (*     LGuarded d l_end *)

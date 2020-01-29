@@ -90,21 +90,6 @@ Section IProject.
       end.
   Proof. by []. Qed.
 
-  Fixpoint l_binds d s :=
-    match s with
-    | l_var v => v == d
-    | l_rec s => l_binds d.+1 s
-    | _ => false
-    end.
-
-  Lemma lguarded_binds d L
-    : lguarded d (l_rec L) -> forall s, s <= d -> ~~ l_binds s L.
-  elim/lty_ind2: L=>[|v|L /= Ih|a p Ks Ih]// in d *.
-  - move=>/= vd s sd; move: (leq_ltn_trans sd vd).
-    by rewrite eq_sym ltn_neqAle=>/andP-[].
-  - by rewrite /==>/Ih-{Ih}Ih s Lsd; apply/Ih.
-  Qed.
-
   (* Lemma lguarded_next L n m *)
   (*   : lguarded m L -> (forall s, s <= n -> ~~ l_binds n L) -> lguarded n (l_rec L). *)
 
