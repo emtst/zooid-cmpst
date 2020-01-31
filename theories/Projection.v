@@ -1087,7 +1087,7 @@ Section CProject.
   Lemma l_closed_no_binds n L: l_closed L -> l_binds n L = false.
   Proof. by apply: l_closed_no_binds_aux. Qed.
 
-  Lemma l_bind_open m n L L1: n != m -> l_closed L1 
+  Lemma l_binds_open m n L L1: n != m -> l_closed L1 
     -> l_binds m (l_open n L1 L) = l_binds m L.
   Proof.
   elim: L m n L1.
@@ -1100,24 +1100,60 @@ Section CProject.
   + by [].
   Qed.
 
+ Lemma g_open_msg_rw d G2 FROM TO CONT :
+   g_open d G2 (g_msg FROM TO CONT)
+   = g_msg FROM TO [seq (K.lbl, (K.mty, g_open d G2 K.cnt)) | K <- CONT].
+  Proof. by []. Qed.
+
+(*  Lemma project_msg_some_msg: 
+    project (g_msg FROM TO CONT) r = Some L2 ->
+    L2 = ()*)
+
+
+  Lemma project_g_open_comm G1 G2 r L1 L2 k: 
+    l_closed L1 -> g_closed G1 ->
+(*firts hp is not necessary: g_closed + project is sufficient*)
+    project G1 r = Some L1 -> project G2 r = Some L2 -> 
+    project (g_open k G1 G2) r = Some (l_open k L1 L2).
+  Proof.
+  elim/gty_ind1: G2 G1 k L1 L2.
+  + by move=> G1 k L1 L2 lclo gclo eq1 => //=; move=> [eq2]; rewrite -eq2 //=.
+  + by move=> VAR G1 k L1 L2 lclo gclo eq1 => //=; move=> [eq2]; rewrite -eq2 //=; case: ifP.
+  + move=> GT IH G1 k L1 L2 lclo gclo eq1 => //=; case Prj: project=>[LT| //=].
+    * case: ifP; move=> lbi [eq2]; rewrite //=.
+      move: (IH _ (k.+1) L1 LT lclo gclo eq1 Prj) =>->; rewrite -eq2 //=.
+      move: (@l_binds_open 0 (k.+1) LT L1) =>-> //=.
+      by move: lbi; case: ifP => //=.
+    * move: (IH G1 (k.+1) L1 LT lclo gclo eq1 Prj) =>->; move: eq2=><-/=.
+      move: (@l_binds_open 0 (k.+1) LT L1) =>-> //=.
+      by move: lbi; case: ifP => //=.
+  + move=> FROM TO CONT IH G1 k L1 L2 lclo gclo eq1 eq2.
+    move: eq2. rewrite g_open_msg_rw project_msg.
+    case Pra: prj_all=>[K| //=]; case: ifP; [by rewrite //= | ].
+    move=> partdiff; case: ifP.
+  Admitted.
+
   Lemma project_open L G r
         (* (NV : forall v : nat, L != l_var v) *)
         (* (FV : g_fidx 1 G == fset0) *)
         (*(Prj : project G r = Some L)*)
-    : g_closed (g_rec G) ->
+    : (* (forall n, l_binds n L = false) -> *) g_closed (g_rec G) ->
   project G r = Some L -> project (unroll G) r = Some (l_open 0 (l_rec L) L).
   Proof.
-  case: G.
-  (*+ elim; by move=> [Some_eq]; rewrite -Some_eq //=.
-  + move=> VAR neq [Some_eq]; rewrite -Some_eq /unroll //=; move: neq.
-  move: Some_eq; case: ifP; [ rewrite <-(rwP eqP); move=>->| ]; by rewrite //=.
-  + move=> GT; elim.
-    rewrite /unroll. rewrite //=.*)
+ (* move=> nobinds; elim: G.
+  + elim; by move=> [Some_eq]; rewrite -Some_eq //=.
+  + move=> VAR gclo [Some_eq]; move: nobinds; rewrite -Some_eq /unroll //=; move: gclo.
+    case: ifP => //=; move=> veq0; rewrite veq0; move: veq0 ; rewrite <-(rwP eqP); move=>->.
+    by move=> gclo nobinds; move: (nobinds 0) => //=.
+  + move=> GT IH gclo projhp. rewrite  //=. unfold g_open.
+*)
+
+
+
 
   Admitted.
 
   (* WARNING: depends on project_open *)
-  (*   and also the proof breaks when adding g_closed as an hypothesis*)
   Lemma project_unroll_isend n r G L :
     g_closed G ->
     project G r = Some L ->
