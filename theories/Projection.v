@@ -1100,16 +1100,32 @@ Section CProject.
   + by [].
   Qed.
 
- Lemma g_open_msg_rw d G2 FROM TO CONT :
-   g_open d G2 (g_msg FROM TO CONT)
-   = g_msg FROM TO [seq (K.lbl, (K.mty, g_open d G2 K.cnt)) | K <- CONT].
+  (*FIXME: maybe the 4 folowing lemmas are useless,
+      anyway they should probably be moved elsewhere*)
+
+  Lemma g_open_msg_rw d G2 FROM TO CONT:
+    g_open d G2 (g_msg FROM TO CONT)
+    = g_msg FROM TO [seq (K.lbl, (K.mty, g_open d G2 K.cnt)) | K <- CONT].
   Proof. by []. Qed.
 
-(*  Lemma project_msg_some_msg: 
-    project (g_msg FROM TO CONT) r = Some L2 ->
-    L2 = ()*)
+  Lemma l_open_msg_rw d L2 a r Ks:
+   l_open d L2 (l_msg a r Ks)
+   = l_msg a r [seq (K.lbl, (K.mty, l_open d L2 K.cnt)) | K <- Ks].
+  Proof. by []. Qed.
 
+  Lemma prj_all_Some_nil r K: 
+    prj_all [::] r = Some K -> K = [::].
+  Proof.
+  by rewrite /prj_all; move=>[]-> => //=.
+  Qed.
 
+  (*Lemma prj_all_Some_cons C0 Cs0 K r:
+    prj_all (C0 :: Cs0) r = Some K -> exists K0 Ks0, K = (K0 :: Ks0).
+  Proof.
+  rewrite /prj_all. case Prj0: project=>[K0| //=]. rewrite //=.
+
+  case Prja0: prj_all=> [Ks0|//=].*)
+  
   Lemma project_g_open_comm G1 G2 r L1 L2 k: 
     l_closed L1 -> g_closed G1 ->
 (*firts hp is not necessary: g_closed + project is sufficient*)
@@ -1130,7 +1146,24 @@ Section CProject.
   + move=> FROM TO CONT IH G1 k L1 L2 lclo gclo eq1 eq2.
     move: eq2. rewrite g_open_msg_rw project_msg.
     case Pra: prj_all=>[K| //=]; case: ifP; [by rewrite //= | ].
-    move=> partdiff; case: ifP.
+    move=> partdiff; case: ifP; move=> FROMr.
+    * move: FROMr partdiff; rewrite <-(rwP eqP) =>->; move=> rTO [lmsgL2].
+      rewrite project_msg.  case prall: prj_all =>[sl| ].
+      - rewrite rTO; case: ifP; [ elim; rewrite <-lmsgL2 | by rewrite eq_refl //= ].
+        apply f_equal. (*is this really the way to do it?*)
+        rewrite l_open_msg_rw; apply f_equal; move: prall.
+        (*rewrite /prj_all. ;*) 
+        move: IH Pra.
+        elim: CONT; [by move=> IH [nilK] [nilsl]; rewrite <-nilK; rewrite <-nilsl| ].
+        move=> C0 Cs0 IHnew IH Pra. rewrite //=.
+        case Prj: project=> [L0| //=]; case Prja: prj_all=> [Ls0|//=].
+        move=> [sleq]; rewrite <-sleq.
+(*        
+        
+      (*have contunf: CONT = [seq (K0.lbl, (K0.mty, g_open k G1 K0.cnt)) | K0 <- CONT].
+        elim CONT; rewrite //=. move=> a l ih //=; elim a; rewrite //=.*)
+
+; rewrite /FROMr.*)
   Admitted.
 
   Lemma project_open L G r
