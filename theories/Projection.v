@@ -1126,7 +1126,7 @@ Section CProject.
 
   Lemma project_g_open_comm G1 G2 r L1 L2 k: 
     l_closed L1 -> g_closed G1 ->
-(*firts hp is not necessary: g_closed + project is sufficient*)
+(*first hp is not necessary: g_closed + project is sufficient*)
     project G1 r = Some L1 -> project G2 r = Some L2 -> 
     project (g_open k G1 G2) r = Some (l_open k L1 L2).
   Proof.
@@ -1189,7 +1189,47 @@ Section CProject.
   by move=> pprecs cl; apply (@gclosed_lclosed 0 (g_rec G) r).
   Qed.
 
-(*I need another lemma for the case l_binds 0 L *)
+  Lemma project_open_end_aux L G1 G r : l_binds 0 L -> g_closed G1 ->
+    project G r = Some L -> project G1 r = Some (l_end)->
+    project (g_open 0 G1 G) r = Some (l_open 0 l_end L).
+  Proof.
+  move=>lbi clo. elim/gty_ind1: G; [ by move=> [eq]; rewrite -eq // | | | ].
+  Admitted.
+
+
+  Lemma project_open_end L G r : l_binds 0 L -> g_closed (g_rec G) ->
+    project G r = Some L -> project (unroll G) r = Some (l_open 0 l_end L).
+  Proof.
+  move=> lbi clo pro.
+  (*mistake is here*)
+  have: project (g_rec G) r = Some (l_end).
+    move: pro; rewrite //=; case Prj: project=>[LT| //=].
+    by move=> eq; move: eq Prj lbi=>[<-] Prj; case: ifP=>//=.
+  rewrite /unroll; move=> prjrec. rewrite prjrec.
+  move=> prjrec; rewrite /unroll; move: lbi clo pro; rewrite /l_binds; case: L=>//=.
+  + move=> v; case: ifP =>//=; rewrite -(rwP eqP)=>->; elim.
+    move: prjrec; elim/gty_ind1: G=> [//=|||]. 
+    - by rewrite //=; move=> n prjrec clo [eq]; move: eq; rewrite (rwP eqP); case: ifP=>//=; case: ifP=>//=.
+    - by rewrite //=; move=> GT prjrec clo; case Prj: project=>[LT| //=]; case: ifP.
+    - move=> FROM TO CONT ih prjrec clo; rewrite project_msg; case prja: prj_all=> [s|//=].
+      case: ifP=> //; case: ifP=> //; case: ifP=> //; move=> TOr FROMr FROMTO mer.
+      rewrite g_open_msg_rw project_msg.
+      rewrite (@prjall_open r 0 (g_rec (g_msg FROM TO CONT)) l_end CONT s).
+      * case: ifP; [rewrite FROMTO //|elim]; case: ifP; [rewrite FROMr //|elim]; case: ifP; [rewrite TOr //|elim].
+        admit.
+      *
+      *
+About prjall_open.
+
+Check l_binds_open.
+  Admitted.
+. 
+  Lemma lbinds_open_end L: l_binds 0 L -> l_isend (l_open 0 l_end L).
+  Proof.
+  Admitted.
+
+
+
 
   (* WARNING: depends on project_open *)
   Lemma project_unroll_isend n r G L :
@@ -1198,24 +1238,24 @@ Section CProject.
     l_isend L ->
     exists L', project (n_unroll n G) r = Some L' /\ l_isend L'.
   Proof.
-    elim: n=>[|n Ih]//= in G L *.
-    - by move=> closed -> H; exists L.
-    - case: G=>[|v|G|p q Ks] closed.
-      + by move=> _ _; exists l_end.
-      + by move=>[<-].
-      + move=>/=.
-        case P:project=>[L'|//].
-(*
-        move: (project_open closed P) => P1.
-        case:ifP=>[B _ _|].
-        * move: closed (prj_open_binds P B P1) => /gopen_closed-closed END.
-          by apply/(Ih _ _ _ P1).
-        * move=> _ [<-]/= END; apply/(Ih _ _ _ P1); rewrite ?isend_open//.
-          by apply: gopen_closed.
-      + by move=>-> H; exists L.
+  elim: n=>[|n Ih]//= in G L *.
+  - by move=> closed -> H; exists L.
+  - case: G=>[|v|G|p q Ks] closed.
+    + by move=> _ _; exists l_end.
+    + by move=>[<-].
+    + move=>/=.
+      case P:project=>[L'|//]; case: ifP.
+      * move=> lbi [eq] isend. apply (@Ih _ (l_open 0 l_end L')).
+        - by rewrite /unroll; apply gopen_closed.
+        - by apply project_open_end.
+        - by apply lbinds_open_end.
+      * rewrite (rwP eqP); move=> lbi.
+        move: (project_open lbi closed P) => P1 [eq] isend.
+        apply (Ih _ (l_open 0 (l_rec L') L')); rewrite //=.
+        - by rewrite /unroll; apply gopen_closed.
+        - move: isend; rewrite -eq => //=; move=> isend; rewrite isend_open //=.
+    + by move=>-> H; exists L.
   Qed.
-*)
-Admitted.
 
   (* WARNING: depends on project_open *)
   Lemma project_unroll m G r L :
