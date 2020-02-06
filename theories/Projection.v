@@ -1142,7 +1142,7 @@ Section CProject.
       move: (@l_binds_open 0 (k.+1) LT L1) =>-> //=.
       by move: lbi; case: ifP => //=.
   + move=> FROM TO CONT IH G1 k L1 L2 lclo gclo eq1 eq2.
-    move: eq2. rewrite g_open_msg_rw project_msg.
+    move: eq2; rewrite g_open_msg_rw project_msg.
     case Pra: prj_all=>[K| //=]; case: ifP; [by rewrite //= | ].
     move=> partdiff; case: ifP; move=> FROMr.
     * move: FROMr partdiff; rewrite <-(rwP eqP) =>->; move=> rTO [lmsgL2].
@@ -1189,44 +1189,64 @@ Section CProject.
   by move=> pprecs cl; apply (@gclosed_lclosed 0 (g_rec G) r).
   Qed.
 
-  Lemma project_open_end_aux L G1 G r : l_binds 0 L -> g_closed G1 ->
+  Lemma project_open_end_strong L G1 G r k:
     project G r = Some L -> project G1 r = Some (l_end)->
-    project (g_open 0 G1 G) r = Some (l_open 0 l_end L).
+    project (g_open k G1 G) r = Some (l_open k l_end L).
   Proof.
-  move=>lbi clo. elim/gty_ind1: G; [ by move=> [eq]; rewrite -eq // | | | ].
-  Admitted.
+  elim/gty_ind1: G L G1 k.
+  + by rewrite //=; move=> L G1 k [eq] pro; rewrite -eq.
+  + rewrite //=; move=> v L G1 k [eq] pro; rewrite -eq.
+    case: ifP. 
+     * by rewrite -(rwP eqP) pro; move=>->//=; case: ifP; rewrite eq_refl. 
+     * by rewrite //=; case: ifP.
+  + move=> G Ih L G1 k; rewrite //=; case prG: project=> [LT|] //.
+    case: ifP=> //; move=> lbi' [eq] pro'.
+    * rewrite (@Ih LT G1 (k.+1) prG pro') -eq.
+      by rewrite (@l_binds_open 0 (k.+1) LT l_end) //=; move: lbi'; case: ifP.
+    * rewrite (@Ih LT G1 (k.+1) prG pro') -eq.
+      by rewrite (@l_binds_open 0 (k.+1) LT l_end) //=; move: lbi'; case: ifP.
+  + move=> FROM TO CONT Ih L G1 k prG pro'; move: prG; rewrite g_open_msg_rw project_msg.
+    case Pra: prj_all=>[K| //=]; case: ifP; [by rewrite //= | ].
+    move=> FROMTO; case: ifP; move=> FROMr.
+    * move: FROMr FROMTO; rewrite <-(rwP eqP) =>->; move=> rTO [eq].
+      rewrite project_msg; rewrite (@prjall_open r k G1 l_end CONT K).
+      - move: rTO =>->; move: eq_refl =>-> //=; rewrite <-eq. 
+        by apply f_equal; rewrite l_open_msg_rw.
+      - by move=> p mem loc; rewrite <-(rwP eqP); move=> prS; apply Ih; rewrite //=.
+      - by [].
+    * case: ifP; [rewrite <-(rwP eqP) | ]; move=> TOr.
+      - rewrite TOr; move=> [eq]; rewrite project_msg; rewrite (@prjall_open r k G1 l_end CONT K).
+        + move: FROMr =>->; move: eq_refl =>-> //=; rewrite <-eq.
+          by apply f_equal; rewrite l_open_msg_rw.
+        + by move=> p mem loc; rewrite <-(rwP eqP); move=> prS; apply Ih; rewrite //=.  
+        + by [].
+      - rewrite (rwP eqP); move=> mer; rewrite project_msg; rewrite (@prjall_open r k G1 l_end CONT K).
+        + move: FROMTO =>->; move: FROMr =>->; move: TOr =>-> //=. 
+          by rewrite <-map_comp; rewrite (rwP eqP); apply mergeall_fun. 
+        + by move=> p mem loc; rewrite <-(rwP eqP); move=> prS; apply Ih; rewrite //=.  
+        + by [].
+  Qed.
 
 
-  Lemma project_open_end L G r : l_binds 0 L -> g_closed (g_rec G) ->
+  Lemma project_open_end L G r : l_binds 0 L -> (*g_closed (g_rec G) ->*)
     project G r = Some L -> project (unroll G) r = Some (l_open 0 l_end L).
   Proof.
-  move=> lbi clo pro.
-  (*mistake is here*)
-  have: project (g_rec G) r = Some (l_end).
-    move: pro; rewrite //=; case Prj: project=>[LT| //=].
-    by move=> eq; move: eq Prj lbi=>[<-] Prj; case: ifP=>//=.
-  rewrite /unroll; move=> prjrec. rewrite prjrec.
-  move=> prjrec; rewrite /unroll; move: lbi clo pro; rewrite /l_binds; case: L=>//=.
-  + move=> v; case: ifP =>//=; rewrite -(rwP eqP)=>->; elim.
-    move: prjrec; elim/gty_ind1: G=> [//=|||]. 
-    - by rewrite //=; move=> n prjrec clo [eq]; move: eq; rewrite (rwP eqP); case: ifP=>//=; case: ifP=>//=.
-    - by rewrite //=; move=> GT prjrec clo; case Prj: project=>[LT| //=]; case: ifP.
-    - move=> FROM TO CONT ih prjrec clo; rewrite project_msg; case prja: prj_all=> [s|//=].
-      case: ifP=> //; case: ifP=> //; case: ifP=> //; move=> TOr FROMr FROMTO mer.
-      rewrite g_open_msg_rw project_msg.
-      rewrite (@prjall_open r 0 (g_rec (g_msg FROM TO CONT)) l_end CONT s).
-      * case: ifP; [rewrite FROMTO //|elim]; case: ifP; [rewrite FROMr //|elim]; case: ifP; [rewrite TOr //|elim].
-        admit.
-      *
-      *
-About prjall_open.
+  move=> lbi pro; apply project_open_end_strong; move: pro; rewrite //=.
+  by case Prj: project=>[LT| //=]; move=> eq; move: eq Prj lbi=>[<-] Prj; case: ifP.
+  Qed.
 
-Check l_binds_open.
-  Admitted.
-. 
+  Lemma lbinds_open_end_strong L k: l_binds k L -> l_isend (l_open k l_end L).
+  Proof.
+  elim: L k=> //.
+  + by move=> v k; rewrite /l_binds -(rwP eqP)=>->/=; case: ifP; rewrite eq_refl.
+  + by move=> L ih k //=; apply ih.
+  Qed.
+
+
   Lemma lbinds_open_end L: l_binds 0 L -> l_isend (l_open 0 l_end L).
   Proof.
-  Admitted.
+  by apply lbinds_open_end_strong.
+  Qed.
 
 
 
@@ -1264,23 +1284,24 @@ Check l_binds_open.
     (* g_closed G -> *)
     exists n1 n2 L',
     project (n_unroll m G) r = Some L' /\ lunroll n1 L = lunroll n2 L'.
-(*  Proof.
+    Proof.
     move=> closed Prj; elim: m => [|m Ih]//= in G closed L Prj *; first (by exists 0,0,L).
     move: closed Prj;case:(rec_gty G)=>[[G'->]|/(@matchGrec g_ty)->];last (by exists 0,0,L).
     move=>/=; case Prj: project=>[L'|]//= closed.
     case: ifP=>//.
-    + move: (project_open closed Prj) => Prj'.
-      move=> B [U]; move: (prj_open_binds Prj B Prj')=>END.
+    + move=> lbi; move: (project_open_end lbi Prj) => Prj'.
+      move=> [U]; move: (prj_open_binds Prj lbi Prj')=>END.
       move: closed => /gopen_closed-closed.
       move: (project_unroll_isend m closed Prj' END)=>[L0 [-> L0_END]].
       move: (keep_unrolling L0_END)=>[m' U_END].
       by exists m', m', L0; split=>//; rewrite -U -U_END; case: m' {U_END}.
-    + move=> _ [<-]{L}.
-      move: (project_open closed Prj) => Prj'.
+    + rewrite (rwP eqP).
+      move=> nlbi [<-]{L}.
+      move: (project_open nlbi closed Prj) => Prj'.
       move: closed => /gopen_closed-closed.
       move: (Ih _ closed _ Prj')=>[n1] [n2] [L0] [PRJ] UNR.
       by exists n1.+1,n2,L0.
-  Qed.*) Admitted.
+  Qed.
 
   (* FIXME: refactor somewhere else *)
   Lemma EqL_refl CL : EqL CL CL.
