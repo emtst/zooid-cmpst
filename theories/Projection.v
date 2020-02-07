@@ -254,7 +254,7 @@ Section IProject.
   Qed.
 
   Lemma mergeall_fun (A B : eqType) (f : A -> B) (Ks : seq (lbl * (mty * A))) X:
-    merge_all [seq x.cnt | x <- Ks] == Some X 
+    merge_all [seq x.cnt | x <- Ks] == Some X
     -> merge_all [seq f x.cnt | x <- Ks] == Some (f X).
   Proof.
     case: Ks=>[//|K Ks/=]; elim: Ks=>[|K' Ks]//=.
@@ -1086,9 +1086,9 @@ Section CProject.
     -> l_binds n L = false.
   Proof.
   elim: L m n; rewrite //=.
-  + move=> v m n le; case: ifP; 
-      [by rewrite -cardfs_eq0 cardfs1 //= 
-      | by move=> lefalse; elim; apply: ltn_eqF; 
+  + move=> v m n le; case: ifP;
+      [by rewrite -cardfs_eq0 cardfs1 //=
+      | by move=> lefalse; elim; apply: ltn_eqF;
       apply: (leq_trans _ le); move: (negbT lefalse); rewrite-ltnNge //=].
   + by move=> L IH m n le; apply: IH; rewrite //=.
   Qed.
@@ -1096,12 +1096,12 @@ Section CProject.
   Lemma l_closed_no_binds n L: l_closed L -> l_binds n L = false.
   Proof. by apply: l_closed_no_binds_aux. Qed.
 
-  Lemma l_binds_open m n L L1: n != m -> l_closed L1 
+  Lemma l_binds_open m n L L1: n != m -> l_closed L1
     -> l_binds m (l_open n L1 L) = l_binds m L.
   Proof.
   elim: L m n L1.
   + by move=> m n L1 neq closed; rewrite /l_binds //=.
-  + move=> v m n L1 neq closed. 
+  + move=> v m n L1 neq closed.
     rewrite /l_binds //=; case: ifP => //=; rewrite <-(rwP eqP); move=>->.
     move: (@l_closed_no_binds m _ closed); rewrite /l_binds; move =>->.
     by move: (negbTE neq).
@@ -1124,10 +1124,10 @@ Section CProject.
 
 
 
-  Lemma project_g_open_comm G1 G2 r L1 L2 k: 
+  Lemma project_g_open_comm G1 G2 r L1 L2 k:
     l_closed L1 -> g_closed G1 ->
 (*first hp is not necessary: g_closed + project is sufficient*)
-    project G1 r = Some L1 -> project G2 r = Some L2 -> 
+    project G1 r = Some L1 -> project G2 r = Some L2 ->
     project (g_open k G1 G2) r = Some (l_open k L1 L2).
   Proof.
   elim/gty_ind1: G2 G1 k L1 L2.
@@ -1147,7 +1147,7 @@ Section CProject.
     move=> partdiff; case: ifP; move=> FROMr.
     * move: FROMr partdiff; rewrite <-(rwP eqP) =>->; move=> rTO [lmsgL2].
       rewrite project_msg; rewrite (@prjall_open r k G1 L1 CONT K).
-      - move: rTO =>->; move: eq_refl =>-> //=; rewrite <-lmsgL2. 
+      - move: rTO =>->; move: eq_refl =>-> //=; rewrite <-lmsgL2.
         by apply f_equal; (*is this really the way to do it?*)
           rewrite l_open_msg_rw.
       - by move=> p mem loc; rewrite <-(rwP eqP); move=> prS; apply IH; rewrite //=.
@@ -1156,12 +1156,12 @@ Section CProject.
       - rewrite TOr; move=> [lmsgL2]; rewrite project_msg; rewrite (@prjall_open r k G1 L1 CONT K).
         + move: FROMr =>->; move: eq_refl =>-> //=; rewrite <-lmsgL2.
           by apply f_equal; rewrite l_open_msg_rw.
-        + by move=> p mem loc; rewrite <-(rwP eqP); move=> prS; apply IH; rewrite //=.  
+        + by move=> p mem loc; rewrite <-(rwP eqP); move=> prS; apply IH; rewrite //=.
         + by [].
       - rewrite (rwP eqP); move=> mer; rewrite project_msg; rewrite (@prjall_open r k G1 L1 CONT K).
-        + move: partdiff =>->; move: FROMr =>->; move: TOr =>-> //=. 
-          by rewrite <-map_comp; rewrite (rwP eqP); apply mergeall_fun. 
-        + by move=> p mem loc; rewrite <-(rwP eqP); move=> prS; apply IH; rewrite //=.  
+        + move: partdiff =>->; move: FROMr =>->; move: TOr =>-> //=.
+          by rewrite <-map_comp; rewrite (rwP eqP); apply mergeall_fun.
+        + by move=> p mem loc; rewrite <-(rwP eqP); move=> prS; apply IH; rewrite //=.
         + by [].
   Qed.
 
@@ -1196,8 +1196,8 @@ Section CProject.
   elim/gty_ind1: G L G1 k.
   + by rewrite //=; move=> L G1 k [eq] pro; rewrite -eq.
   + rewrite //=; move=> v L G1 k [eq] pro; rewrite -eq.
-    case: ifP. 
-     * by rewrite -(rwP eqP) pro; move=>->//=; case: ifP; rewrite eq_refl. 
+    case: ifP.
+     * by rewrite -(rwP eqP) pro; move=>->//=; case: ifP; rewrite eq_refl.
      * by rewrite //=; case: ifP.
   + move=> G Ih L G1 k; rewrite //=; case prG: project=> [LT|] //.
     case: ifP=> //; move=> lbi' [eq] pro'.
@@ -1210,7 +1210,7 @@ Section CProject.
     move=> FROMTO; case: ifP; move=> FROMr.
     * move: FROMr FROMTO; rewrite <-(rwP eqP) =>->; move=> rTO [eq].
       rewrite project_msg; rewrite (@prjall_open r k G1 l_end CONT K).
-      - move: rTO =>->; move: eq_refl =>-> //=; rewrite <-eq. 
+      - move: rTO =>->; move: eq_refl =>-> //=; rewrite <-eq.
         by apply f_equal; rewrite l_open_msg_rw.
       - by move=> p mem loc; rewrite <-(rwP eqP); move=> prS; apply Ih; rewrite //=.
       - by [].
@@ -1218,12 +1218,12 @@ Section CProject.
       - rewrite TOr; move=> [eq]; rewrite project_msg; rewrite (@prjall_open r k G1 l_end CONT K).
         + move: FROMr =>->; move: eq_refl =>-> //=; rewrite <-eq.
           by apply f_equal; rewrite l_open_msg_rw.
-        + by move=> p mem loc; rewrite <-(rwP eqP); move=> prS; apply Ih; rewrite //=.  
+        + by move=> p mem loc; rewrite <-(rwP eqP); move=> prS; apply Ih; rewrite //=.
         + by [].
       - rewrite (rwP eqP); move=> mer; rewrite project_msg; rewrite (@prjall_open r k G1 l_end CONT K).
-        + move: FROMTO =>->; move: FROMr =>->; move: TOr =>-> //=. 
-          by rewrite <-map_comp; rewrite (rwP eqP); apply mergeall_fun. 
-        + by move=> p mem loc; rewrite <-(rwP eqP); move=> prS; apply Ih; rewrite //=.  
+        + move: FROMTO =>->; move: FROMr =>->; move: TOr =>-> //=.
+          by rewrite <-map_comp; rewrite (rwP eqP); apply mergeall_fun.
+        + by move=> p mem loc; rewrite <-(rwP eqP); move=> prS; apply Ih; rewrite //=.
         + by [].
   Qed.
 
@@ -1402,13 +1402,13 @@ Section CProject.
       + move=>[EL]; move: EL LU=><- {L} /lu_unfold-LU.
         case EL: _ _/LU=>[||a p Ks C LU]//; move: EL LU=>[<-<-<-] LU {a p Ks}.
         move: F_r CIH E=>/eqP<-{r} CIH E; apply/prj_send1; first by apply/negPf.
-        apply/(cproj_all CIH cG gG GU LU)=>//.
+        by apply/(cproj_all CIH cG gG GU LU).
       + case:ifP=>[T_r | T_ne_r].
         * move=>[EL]; move: EL LU=><- {L} /lu_unfold-LU {F_ne_r}.
           case EL: _ _/LU=>[||a p Ks C LU]//; move: EL LU=>[<-<-<-] LU {a p Ks}.
           move: T_r CIH E=>/eqP<-{r} CIH E.
           apply/prj_recv; first by rewrite eq_sym (F_neq_T).
-          by apply/(cproj_all CIH cG gG GU LU)=>//.
+          by apply/(cproj_all CIH cG gG GU LU).
         * move=> M.
           have {M}M: merge L [seq K.cnt | K <- KsL] = Some L
             by move: M=>{E}; case: KsL=>//=K Ks /eqP-M;
@@ -1451,5 +1451,3 @@ Section CProject.
     by apply/(project_nonrec CIH cuiG guiG nrG proj).
   Qed.
 End CProject.
-
-Print Assumptions ic_proj.
