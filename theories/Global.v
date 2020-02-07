@@ -133,6 +133,18 @@ Section Syntax.
     by case: g_ty_eqP=>[<-|H]; last (by apply: ReflectF =>[[/H]]); apply: ReflectT.
   Qed.
 
+  Lemma rec_gty G :
+    (exists G', G = g_rec G') \/ (forall G', G != g_rec G').
+  Proof. by case:G; try (by right); move=> GT; left; exists GT. Qed.
+
+  Lemma matchGrec A G (f : g_ty -> A) g :
+    (forall G', G != g_rec G') ->
+    match G with
+    | g_rec G' => f G'
+    | _ => g
+    end = g.
+  Proof. by case: G=>// GT /(_ GT)/eqP. Qed.
+
   (**
    * Does not apply any "shift" to G2, and therefore G2 must always be closed
    *)
@@ -148,6 +160,41 @@ Section Syntax.
   Notation "G '^' v":= (g_open 0 (g_var v) G) (at level 30, right associativity).
 
   Definition unroll G := g_open 0 (g_rec G) G.
+
+  Lemma g_open_msg_rw d G2 FROM TO CONT:
+    g_open d G2 (g_msg FROM TO CONT)
+    = g_msg FROM TO [seq (K.lbl, (K.mty, g_open d G2 K.cnt)) | K <- CONT].
+  Proof. by []. Qed.
+
+  Lemma notin_part_g_open_strong d r G G': r \notin participants G ->
+    r \notin participants G'-> r \notin participants (g_open d G' G).
+  Proof.
+  move=> h1 rnG'; move: h1; apply: contra; elim: G d.
+  + rewrite //=.
+  + rewrite //= => v d.
+    by case: ifP=>[_ F|//]; rewrite F in rnG'.
+  + rewrite //=. by move=> G ih d; apply ih.
+  + move=>p q Ks ih d. rewrite /= !in_cons -map_comp/comp/=.
+    move=>/orP-[->//|/orP-[->|]]; first by rewrite orbC.
+    move=> H.
+    do ! (apply/orP; right).
+    move: H=>/flatten_mapP-[K inKs inK].
+    apply/flatten_mapP.
+    exists K=>//.
+    by apply: (ih _ _ d); first by apply/memberP.
+  Qed.
+
+  Lemma same_notin_part_g_open d r G G': participants G' = participants G ->
+    r \notin participants G -> r \notin participants (g_open d G' G).
+  Proof.
+  move=> hp1 hp2; apply: notin_part_g_open_strong; [by apply hp2 | by rewrite hp1 //=].
+  Qed.
+
+  Lemma notin_part_g_open r G:
+    r \notin participants G -> r \notin participants (g_open 0 (g_rec G) G).
+  Proof.
+  by apply same_notin_part_g_open; rewrite //=.
+  Qed.
 
   Open Scope fset_scope.
 
@@ -319,6 +366,13 @@ Section Syntax.
     | _ => 0
     end.
 
+
+  Lemma rd_zero G :
+    (forall G' : g_ty, G != g_rec G') ->
+    rec_depth G = 0.
+  Proof. by case: G=>// GT /(_ GT)/eqP. Qed.
+
+
   Fixpoint n_unroll d G :=
     match d with
     | 0 => G
@@ -328,6 +382,28 @@ Section Syntax.
       | _ => G
       end
     end.
+
+
+  Lemma r_in_unroll r G n:
+    r \in participants (n_unroll n G) -> r \in participants G.
+  Proof.
+  apply: contraLR.
+  elim: n => [rewrite //= | n ih] in G *; case G; rewrite //=.
+  move=> G0 notinpart; apply ih.
+  unfold unroll; apply notin_part_g_open; by [].
+  Qed.
+
+  Lemma r_in_unroll_rec_depth r G:
+    r \in participants (n_unroll (rec_depth G) G) -> r \in participants G.
+  Proof. by apply r_in_unroll. Qed.
+
+  Lemma notin_nunroll r n G :
+    r \notin participants G ->
+    r \notin participants (n_unroll n G).
+  Proof.
+    elim: n G=>//= n Ih G H.
+    by case: G H=>//= GT; rewrite /unroll=>/notin_part_g_open/Ih.
+  Qed.
 
   Lemma guarded_match d G :
     match G with
@@ -488,6 +564,51 @@ Section Semantics.
     - elim: n =>// n Ih in iG cG *.
       by case: iG=>//= G H1; apply/paco2_fold; constructor; left; apply/Ih.
   Qed.
+
+  Lemma gen2 A B (x' : A) (y' : B) Q P :
+    (forall x y, Q x y -> x = x' -> y = y' -> P) ->
+    Q x' y' -> P.
+  Proof. by move=>H /H/( _ erefl erefl).  Qed.
+
+  Lemma r_in_unroll_msg r G a p q Ks :
+    GUnroll G (rg_msg a p q Ks) ->
+    guarded 0 G ->
+    g_closed G ->
+    (r == p) || (r == q) ->
+    r \in participants G.
+  Proof.
+    move=> GU GG CG r_pq; apply/(r_in_unroll_rec_depth).
+    move: (unroll_guarded CG GG) r_pq => H.
+    move: GU=>/(GUnroll_ind (rec_depth G)); move: H.
+    move: (n_unroll _ G) => [|v|G'|p' q' Ks'].
+    - by move=>_; apply: gen2=>iG cG /gunroll_unfold-[].
+    - by move=>_; apply: gen2=>iG cG /gunroll_unfold-[].
+    - by move=>/(_ G')/eqP.
+    - move=>_; apply: gen2=>iG cG /gunroll_unfold-[]//.
+      move=> p'' q'' Ks'' CC GU E; move: E GU=> [->->->]{p'' q'' Ks''} GU.
+      by move=>[_->-> _]/=; rewrite !in_cons orbA =>->.
+  Qed.
+
+
+  Lemma g_closed_unroll n iG : g_closed iG -> g_closed (n_unroll n iG).
+  Proof. by elim: n iG=>[|n Ih]//=; case=>//= iG /gopen_closed/Ih. Qed.
+
+
+  Lemma g_guarded_unroll iG :
+    g_closed (g_rec iG) -> guarded 0 (g_rec iG) -> guarded 0 (unroll iG).
+  Proof.
+    move=> C GG; have GG': (guarded 1 iG) by move:GG C=>/=; case: iG.
+    move: (guarded_open 0 GG C GG')=>/guarded_depth_gt.
+    by move=>/(_ _ _ (leq0n 1) (gopen_closed C)).
+  Qed.
+
+  Lemma g_guarded_nunroll n iG
+    : g_closed iG -> guarded 0 iG -> guarded 0 (n_unroll n iG).
+  Proof.
+    elim: n iG=>[|n Ih]//;case=>// iG CG /(g_guarded_unroll CG)/Ih-H/=.
+    by apply/H/gopen_closed.
+  Qed.
+
 
   Definition R_only (R : rg_ty -> rg_ty -> Prop)
              L0 (C C' : lbl /-> mty * rg_ty) :=

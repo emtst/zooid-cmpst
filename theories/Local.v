@@ -114,6 +114,16 @@ Section Syntax.
   Notation "{ k '~>' v } L":= (l_open k v L) (at level 30, right associativity).
   Notation "L '^' v":= (l_open 0 (l_var v) L) (at level 30, right associativity).
 
+  Lemma open_notvar n L L' :
+    (forall v : nat, L != l_var v) ->
+    (forall v : nat, l_open n L' L != l_var v).
+  Proof. by case: L=>//v /(_ v)/eqP. Qed.
+
+  Lemma l_open_msg_rw d L2 a r Ks:
+   l_open d L2 (l_msg a r Ks)
+   = l_msg a r [seq (K.lbl, (K.mty, l_open d L2 K.cnt)) | K <- Ks].
+  Proof. by []. Qed.
+
   Lemma unzip2_lift A B C (f : B -> C) (K : seq (A * B)) :
     [seq f x | x <- unzip2 K] = unzip2 [seq (x.1, f x.2) | x <- K].
   Proof. by rewrite /unzip2 -!map_comp /comp. Qed.
@@ -411,6 +421,56 @@ Section Syntax.
     by apply/lguarded_open=>//; apply/lguarded_gt; last by apply/GG'.
   Qed.
 
+  Fixpoint l_isend L {struct L}:=
+    match L with
+    | l_rec L => l_isend L
+    | l_end => true
+    | _ => false
+    end.
+
+  Lemma isend_open n L' L :
+    l_isend L -> l_open n L' L = L.
+  Proof.
+    elim/lty_ind2: L=>[|v|L Ih|a p KS Ih]//= in n *; move=> END.
+    by rewrite Ih.
+  Qed.
+
+  Lemma keep_unrolling L :
+    l_isend L -> exists m, l_end = lunroll m L.
+  Proof.
+    elim/lty_ind2: L=>[||L Ih|]//; [move=>_| move=>/=END; move:(Ih END)=>[n U]].
+    - by exists 0.
+    - by exists n.+1=>/=; rewrite (isend_open 0 _ END).
+  Qed.
+
+
+ Lemma l_closed_no_binds_aux m n L: m <= n -> l_fidx m L == fset0
+    -> l_binds n L = false.
+  Proof.
+  elim: L m n; rewrite //=.
+  + move=> v m n le; case: ifP;
+      [by rewrite -cardfs_eq0 cardfs1 //=
+      | by move=> lefalse; elim; apply: ltn_eqF;
+      apply: (leq_trans _ le); move: (negbT lefalse); rewrite-ltnNge //=].
+  + by move=> L IH m n le; apply: IH; rewrite //=.
+  Qed.
+
+  Lemma l_closed_no_binds n L: l_closed L -> l_binds n L = false.
+  Proof. by apply: l_closed_no_binds_aux. Qed.
+
+  Lemma l_binds_open m n L L1: n != m -> l_closed L1
+    -> l_binds m (l_open n L1 L) = l_binds m L.
+  Proof.
+  elim: L m n L1.
+  + by move=> m n L1 neq closed; rewrite /l_binds //=.
+  + move=> v m n L1 neq closed.
+    rewrite /l_binds //=; case: ifP => //=; rewrite <-(rwP eqP); move=>->.
+    move: (@l_closed_no_binds m _ closed); rewrite /l_binds; move =>->.
+    by move: (negbTE neq).
+  + by move=> L IH m n L1 neq closed; rewrite //=; apply: IH.
+  + by [].
+  Qed.
+
 End Syntax.
 
 Section Semantics.
@@ -473,6 +533,44 @@ Section Semantics.
       by apply/paco2_fold; constructor; left.
   Qed.
 
+  Lemma lunroll_end cL :
+    LUnroll l_end cL -> cL = rl_end.
+  Proof. by move=> /lu_unfold-LU; case Eq: _ _ / LU. Qed.
+
+  Lemma l_guarded_unroll iG :
+    l_closed (l_rec iG) -> lguarded 0 (l_rec iG) ->
+    lguarded 0 (l_open 0 (l_rec iG) iG).
+  Proof.
+    move=> C GG; have GG': (lguarded 1 iG) by move:GG C=>/=; case: iG.
+    by move: (lguarded_open 0 GG C GG')=>/lguarded_depth_gt/(_ (lopen_closed C)).
+  Qed.
+
+  Lemma l_guarded_nunroll n iL :
+    l_closed iL -> lguarded 0 iL -> lguarded 0 (lunroll n iL).
+  Proof.
+    elim: n iL=>[|n Ih]//;case=>// iG CG /(l_guarded_unroll CG)/Ih-H/=.
+    by apply/H/lopen_closed.
+  Qed.
+
+  Lemma l_closed_unroll n iL :
+    l_closed iL -> l_closed (lunroll n iL).
+  Proof. by elim: n iL=>[|n Ih]//=; case=>//= iG /lopen_closed/Ih. Qed.
+
+  Lemma v_lty G : (exists v, G = l_var v) \/ (forall v, G != l_var v).
+  Proof. by case: G; try (by right); move=>v;left;exists v. Qed.
+
+  Lemma lguarded_lbinds_lt s Lr :
+    l_binds s Lr = false ->
+    lguarded s Lr ->
+    lguarded s.+1 Lr.
+  Proof.
+    move: {-1}(lrec_depth Lr) (erefl (lrec_depth Lr))=> n E.
+    elim: n=>[|n Ih] in s Lr E *.
+    - by case: Lr E=>//= v _ /(rwP negPf); rewrite ltn_neqAle eq_sym=>->->.
+    - case: Lr E=>//= L [/Ih-E]; apply/E.
+  Qed.
+
+
   Notation renv := {fmap role -> rl_ty}.
   Notation qenv := {fmap role * role -> seq (lbl * mty) }.
 
@@ -523,6 +621,38 @@ Section Semantics.
     - by exists E.[ p <- Lp]%fmap.
   Qed.
 
+
+
+  Definition rlty_rel := rl_ty -> rl_ty -> Prop.
+  Inductive EqL_ (r : rlty_rel) : rlty_rel :=
+  | el_end : @EqL_ r rl_end rl_end
+  | el_msg a p C1 C2 :
+      same_dom C1 C2 ->
+      R_all r C1 C2 ->
+      @EqL_ r (rl_msg a p C1) (rl_msg a p C2).
+  Hint Constructors EqL_.
+  Definition EqL L1 L2 := paco2 EqL_ bot2 L1 L2.
+
+  Lemma EqL_monotone : monotone2 EqL_.
+  Proof.
+    move=>L1 L2 r r' E H; elim: E =>[|a p C1 C2 D E]//; constructor=>//.
+    by move: E; rewrite /R_all=>E L Ty G G' /E-{E}E /E/H.
+  Qed.
+  (*Hint Resolve EqL_monotone. *)
+
+  Lemma EqL_refl CL : EqL CL CL.
+  Proof.
+    move: CL {-1 3}CL (erefl CL).
+    apply/paco2_acc=> r0 _ CIH CL CL'<- {CL'}.
+    apply/paco2_fold.
+    case: CL=>//a R C; constructor.
+    - by move=> Lb Ty; split=>[[CL ->]|[CL ->]]; exists CL.
+    - by move=> Lb Ty CG CG'-> [->]; right; apply: CIH.
+  Qed.
+  (*Hint Resolve EqL_refl. *)
+
+
+
   Open Scope fmap_scope.
   (** lstep a Q P Q' P' is the 'step' relation <P, Q> ->^a <P', Q'> in Coq*)
   Inductive lstep : act -> renv * qenv -> renv * qenv -> Prop :=
@@ -551,3 +681,7 @@ Section Semantics.
   Derive Inversion llts_inv with (forall tr G, l_lts tr G) Sort Prop.
 
 End Semantics.
+
+Hint Constructors EqL_.
+Hint Resolve EqL_monotone.
+Hint Resolve EqL_refl.

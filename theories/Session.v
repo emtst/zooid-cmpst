@@ -142,4 +142,42 @@ Section Session.
 
   Lemma dualI : injective dual.
   Proof. by move=>x1 x2; rewrite -{2}(dualK x1) -{2}(dualK x2)=>->. Qed.
+
+  Fixpoint s_binds d s :=
+    match s with
+    | s_var v => v == d
+    | s_rec s => s_binds d.+1 s
+    | _ => false
+    end.
+
+  Fixpoint s_isend s :=
+    match s with
+    | s_end => true
+    | s_rec s => s_isend s
+    | _ => false
+    end.
+
+  Lemma sty_not_var A G (b1 : nat -> A) (b2 : A) :
+    (forall v : nat, G != s_var v) ->
+    match G with | s_var v => b1 v | _ => b2 end = b2.
+  Proof. by case: G =>[|n /(_ n)/eqP||]. Qed.
+
+  Lemma dual_not_var G :
+    (forall v : nat, G != s_var v) ->
+    (forall v : nat, dual G != s_var v).
+  Proof. by case: G=>//. Qed.
+
+
+  Lemma sbinds_eq n m S :
+    s_binds n S -> s_binds m S -> n = m.
+  Proof.
+    elim/sty_ind: S=>[|v|S Ih|a Ks Ih]//= in n m *.
+    - by move=>/eqP->/eqP.
+    - by move=> H1 H2; move: (Ih _ _ H1 H2)=>[].
+  Qed.
+
+  Lemma sbinds_dual n S : s_binds n S = s_binds n (dual S).
+  Proof. by elim/sty_ind: S=>[|v|S Ih|a Ks Ih]//= in n *; apply/Ih. Qed.
+
+
 End Session.

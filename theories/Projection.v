@@ -31,19 +31,6 @@ Section IProject.
     | _ => None
     end.
 
-  Fixpoint s_binds d s :=
-    match s with
-    | s_var v => v == d
-    | s_rec s => s_binds d.+1 s
-    | _ => false
-    end.
-
-  Fixpoint s_isend s :=
-    match s with
-    | s_end => true
-    | s_rec s => s_isend s
-    | _ => false
-    end.
 
   Fixpoint partial_proj (l : l_ty) (r : role) : option s_ty :=
     match l with
@@ -503,16 +490,6 @@ Section IProject.
       by apply: Ih.
   Qed.
 
-  Lemma sty_not_var A G (b1 : nat -> A) (b2 : A) :
-    (forall v : nat, G != s_var v) ->
-    match G with | s_var v => b1 v | _ => b2 end = b2.
-  Proof. by case: G =>[|n /(_ n)/eqP||]. Qed.
-
-  Lemma dual_not_var G :
-    (forall v : nat, G != s_var v) ->
-    (forall v : nat, dual G != s_var v).
-  Proof. by case: G=>//. Qed.
-
   Lemma flatten_notin (A: eqType) (p : A) Ks :
     p \notin flatten Ks ->
     (forall K, member K Ks -> p \notin K).
@@ -617,13 +594,7 @@ Section IProject.
       move: K M Lp Lq n m {Mq Mp Pp Pq Ers KSp KSq}; apply/Ih.
   Qed.
 
-  Lemma sbinds_eq n m S :
-    s_binds n S -> s_binds m S -> n = m.
-  Proof.
-    elim/sty_ind: S=>[|v|S Ih|a Ks Ih]//= in n m *.
-    - by move=>/eqP->/eqP.
-    - by move=> H1 H2; move: (Ih _ _ H1 H2)=>[].
-  Qed.
+
 
   Lemma pproj_notin_binds n G Lp Lq p q S
         (PRJp : project G p = Some Lp)
@@ -672,9 +643,6 @@ Section IProject.
         move: (prjall_merge PRJq MRGq MK)=>/eqP.
         by apply/Ih=>//; first by apply: BLp.
   Qed.
-
-  Lemma sbinds_dual n S : s_binds n S = s_binds n (dual S).
-  Proof. by elim/sty_ind: S=>[|v|S Ih|a Ks Ih]//= in n *; apply/Ih. Qed.
 
   Lemma all_compat G S S' p q :
     p != q ->
@@ -725,22 +693,9 @@ End IProject.
 Section CProject.
 
   Open Scope mpst_scope.
-  Definition rlty_rel := rl_ty -> rl_ty -> Prop.
-  Inductive EqL_ (r : rlty_rel) : rlty_rel :=
-  | el_end : @EqL_ r rl_end rl_end
-  | el_msg a p C1 C2 :
-      same_dom C1 C2 ->
-      R_all r C1 C2 ->
-      @EqL_ r (rl_msg a p C1) (rl_msg a p C2).
-  Hint Constructors EqL_.
-  Definition EqL L1 L2 := paco2 EqL_ bot2 L1 L2.
 
-  Lemma EqL_monotone : monotone2 EqL_.
-  Proof.
-    move=>L1 L2 r r' E H; elim: E =>[|a p C1 C2 D E]//; constructor=>//.
-    by move: E; rewrite /R_all=>E L Ty G G' /E-{E}E /E/H.
-  Qed.
-  Hint Resolve EqL_monotone.
+
+
 
   Definition Merge (F : lbl /-> mty * rl_ty) (L : rl_ty) : Prop :=
     forall Lb Ty L', F Lb = Some (Ty, L') -> EqL L' L.
@@ -816,7 +771,7 @@ Section CProject.
           case: Ks Eq Ih H1=>//= Kg Ks.
           case Eqg: project =>[Lk|//].
           case EqKs: prj_all =>[Ks''|//].
-          rewrite !fsetUs_list => /eqP-[[<- H2]] Ih /andP-[H3 H4].
+          rewrite !fsetUs_list => /eqP-[<- H2] Ih /andP-[H3 H4].
           by apply: (Ih  Kg)=>//=; [left=>//|apply/eqP]; apply: Eqg.
   Qed.
 
@@ -838,131 +793,6 @@ Section CProject.
       by case: prj_all => [Ksr|//] /(_ Ksr erefl)-> [<-<-]/=.
   Qed.
 
-  Lemma notin_part_g_open_strong d r G G': r \notin participants G ->
-    r \notin participants G'-> r \notin participants (g_open d G' G).
-  Proof.
-  move=> h1 rnG'; move: h1; apply: contra; elim: G d.
-  + rewrite //=.
-  + rewrite //= => v d.
-    by case: ifP=>[_ F|//]; rewrite F in rnG'.
-  + rewrite //=. by move=> G ih d; apply ih.
-  + move=>p q Ks ih d. rewrite /= !in_cons -map_comp/comp/=.
-    move=>/orP-[->//|/orP-[->|]]; first by rewrite orbC.
-    move=> H.
-    do ! (apply/orP; right).
-    move: H=>/flatten_mapP-[K inKs inK].
-    apply/flatten_mapP.
-    exists K=>//.
-    by apply: (ih _ _ d); first by apply/memberP.
-  Qed.
-
-  Lemma same_notin_part_g_open d r G G': participants G' = participants G ->
-    r \notin participants G -> r \notin participants (g_open d G' G).
-  Proof.
-  move=> hp1 hp2; apply: notin_part_g_open_strong; [by apply hp2 | by rewrite hp1 //=].
-  Qed.
-
-  Lemma notin_part_g_open r G:
-    r \notin participants G -> r \notin participants (g_open 0 (g_rec G) G).
-  Proof.
-  by apply same_notin_part_g_open; rewrite //=.
-  Qed.
-
-  Lemma r_in_unroll r G n:
-    r \in participants (n_unroll n G) -> r \in participants G.
-  Proof.
-  apply: contraLR.
-  (*move: {-2}(rec_depth G) (erefl (rec_depth G)) => n.*)
-  elim: n => [rewrite //= | n ih] in G *; case G; rewrite //=.
-  move=> G0 notinpart; apply ih.
-  unfold unroll; apply notin_part_g_open; by [].
-  Qed.
-
-  Lemma r_in_unroll_rec_depth r G:
-    r \in participants (n_unroll (rec_depth G) G) -> r \in participants G.
-  Proof. by apply r_in_unroll. Qed.
-
-  (* FIXME: refactor somewhere else *)
-  Lemma gen2 A B (x' : A) (y' : B) Q P :
-    (forall x y, Q x y -> x = x' -> y = y' -> P) ->
-    Q x' y' -> P.
-  Proof. by move=>H /H/( _ erefl erefl).  Qed.
-
-  Lemma r_in_unroll_msg r G a p q Ks :
-    GUnroll G (rg_msg a p q Ks) ->
-    guarded 0 G ->
-    g_closed G ->
-    (r == p) || (r == q) ->
-    r \in participants G.
-  Proof.
-    move=> GU GG CG r_pq; apply/(r_in_unroll_rec_depth).
-    move: (unroll_guarded CG GG) r_pq => H.
-    move: GU=>/(GUnroll_ind (rec_depth G)); move: H.
-    move: (n_unroll _ G) => [|v|G'|p' q' Ks'].
-    - by move=>_; apply: gen2=>iG cG /gunroll_unfold-[].
-    - by move=>_; apply: gen2=>iG cG /gunroll_unfold-[].
-    - by move=>/(_ G')/eqP.
-    - move=>_; apply: gen2=>iG cG /gunroll_unfold-[]//.
-      move=> p'' q'' Ks'' CC GU E; move: E GU=> [->->->]{p'' q'' Ks''} GU.
-      by move=>[_->-> _]/=; rewrite !in_cons orbA =>->.
-  Qed.
-
-  (* FIXME: refactor into correct place *)
-  Lemma g_closed_unroll n iG : g_closed iG -> g_closed (n_unroll n iG).
-  Proof. by elim: n iG=>[|n Ih]//=; case=>//= iG /gopen_closed/Ih. Qed.
-
-  (* FIXME: refactor into correct place *)
-  Lemma g_guarded_unroll iG :
-    g_closed (g_rec iG) -> guarded 0 (g_rec iG) -> guarded 0 (unroll iG).
-  Proof.
-    move=> C GG; have GG': (guarded 1 iG) by move:GG C=>/=; case: iG.
-    move: (guarded_open 0 GG C GG')=>/guarded_depth_gt.
-    by move=>/(_ _ _ (leq0n 1) (gopen_closed C)).
-  Qed.
-
-  (* FIXME: refactor into correct place *)
-  Lemma g_guarded_nunroll n iG
-    : g_closed iG -> guarded 0 iG -> guarded 0 (n_unroll n iG).
-  Proof.
-    elim: n iG=>[|n Ih]//;case=>// iG CG /(g_guarded_unroll CG)/Ih-H/=.
-    by apply/H/gopen_closed.
-  Qed.
-
-  (* FIXME: refactor into correct place *)
-  Lemma l_guarded_unroll iG :
-    l_closed (l_rec iG) -> lguarded 0 (l_rec iG) ->
-    lguarded 0 (l_open 0 (l_rec iG) iG).
-  Proof.
-    move=> C GG; have GG': (lguarded 1 iG) by move:GG C=>/=; case: iG.
-    by move: (lguarded_open 0 GG C GG')=>/lguarded_depth_gt/(_ (lopen_closed C)).
-  Qed.
-
-  (* FIXME: refactor into correct place *)
-  Lemma l_guarded_nunroll n iL :
-    l_closed iL -> lguarded 0 iL -> lguarded 0 (lunroll n iL).
-  Proof.
-    elim: n iL=>[|n Ih]//;case=>// iG CG /(l_guarded_unroll CG)/Ih-H/=.
-    by apply/H/lopen_closed.
-  Qed.
-
-  (* FIXME: refactor *)
-  Lemma l_closed_unroll n iL :
-    l_closed iL -> l_closed (lunroll n iL).
-  Proof. by elim: n iL=>[|n Ih]//=; case=>//= iG /lopen_closed/Ih. Qed.
-
-  Lemma v_lty G : (exists v, G = l_var v) \/ (forall v, G != l_var v).
-  Proof. by case: G; try (by right); move=>v;left;exists v. Qed.
-
-  Lemma lguarded_lbinds_lt s Lr :
-    l_binds s Lr = false ->
-    lguarded s Lr ->
-    lguarded s.+1 Lr.
-  Proof.
-    move: {-1}(lrec_depth Lr) (erefl (lrec_depth Lr))=> n E.
-    elim: n=>[|n Ih] in s Lr E *.
-    - by case: Lr E=>//= v _ /(rwP negPf); rewrite ltn_neqAle eq_sym=>->->.
-    - case: Lr E=>//= L [/Ih-E]; apply/E.
-  Qed.
 
   Lemma project_guarded r iG iL :
     project iG r == Some iL ->
@@ -993,50 +823,11 @@ Section CProject.
         by apply/(Ih _ M).
   Qed.
 
-  Lemma lunroll_end cL :
-    LUnroll l_end cL -> cL = rl_end.
-  Proof. by move=> /lu_unfold-LU; case Eq: _ _ / LU. Qed.
-
-  Lemma rec_gty G :
-    (exists G', G = g_rec G') \/ (forall G', G != g_rec G').
-  Proof. by case:G; try (by right); move=> GT; left; exists GT. Qed.
-
-  Lemma matchGrec A G (f : g_ty -> A) g :
-    (forall G', G != g_rec G') ->
-    match G with
-    | g_rec G' => f G'
-    | _ => g
-    end = g.
-  Proof. by case: G=>// GT /(_ GT)/eqP. Qed.
-
-  Lemma rd_zero G :
-    (forall G' : g_ty, G != g_rec G') ->
-    rec_depth G = 0.
-  Proof. by case: G=>// GT /(_ GT)/eqP. Qed.
-
-  Lemma open_notvar n L L' :
-    (forall v : nat, L != l_var v) ->
-    (forall v : nat, l_open n L' L != l_var v).
-  Proof. by case: L=>//v /(_ v)/eqP. Qed.
 
   Lemma project_var_parts G v r :
     project G r == Some (l_var v) -> r \notin participants G.
   Proof. by apply/project_var_notin/orP/or_intror/eq_refl. Qed.
 
-  Lemma notin_nunroll r n G :
-    r \notin participants G ->
-    r \notin participants (n_unroll n G).
-  Proof.
-    elim: n G=>//= n Ih G H.
-    by case: G H=>//= GT; rewrite /unroll=>/notin_part_g_open/Ih.
-  Qed.
-
-  Fixpoint l_isend L {struct L}:=
-    match L with
-    | l_rec L => l_isend L
-    | l_end => true
-    | _ => false
-    end.
 
   Lemma prj_open_binds L1 L2 G r :
     project G r = Some L1 ->
@@ -1066,63 +857,7 @@ Section CProject.
       by apply/(Ih _ M n L1' L2).
   Qed.
 
-  Lemma isend_open n L' L :
-    l_isend L -> l_open n L' L = L.
-  Proof.
-    elim/lty_ind2: L=>[|v|L Ih|a p KS Ih]//= in n *; move=> END.
-    by rewrite Ih.
-  Qed.
-
-  Lemma keep_unrolling L :
-    l_isend L -> exists m, l_end = lunroll m L.
-  Proof.
-    elim/lty_ind2: L=>[||L Ih|]//; [move=>_| move=>/=END; move:(Ih END)=>[n U]].
-    - by exists 0.
-    - by exists n.+1=>/=; rewrite (isend_open 0 _ END).
-  Qed.
-
-
- Lemma l_closed_no_binds_aux m n L: m <= n -> l_fidx m L == fset0
-    -> l_binds n L = false.
-  Proof.
-  elim: L m n; rewrite //=.
-  + move=> v m n le; case: ifP;
-      [by rewrite -cardfs_eq0 cardfs1 //=
-      | by move=> lefalse; elim; apply: ltn_eqF;
-      apply: (leq_trans _ le); move: (negbT lefalse); rewrite-ltnNge //=].
-  + by move=> L IH m n le; apply: IH; rewrite //=.
-  Qed.
-
-  Lemma l_closed_no_binds n L: l_closed L -> l_binds n L = false.
-  Proof. by apply: l_closed_no_binds_aux. Qed.
-
-  Lemma l_binds_open m n L L1: n != m -> l_closed L1
-    -> l_binds m (l_open n L1 L) = l_binds m L.
-  Proof.
-  elim: L m n L1.
-  + by move=> m n L1 neq closed; rewrite /l_binds //=.
-  + move=> v m n L1 neq closed.
-    rewrite /l_binds //=; case: ifP => //=; rewrite <-(rwP eqP); move=>->.
-    move: (@l_closed_no_binds m _ closed); rewrite /l_binds; move =>->.
-    by move: (negbTE neq).
-  + by move=> L IH m n L1 neq closed; rewrite //=; apply: IH.
-  + by [].
-  Qed.
-
-  (*FIXME: maybe the 2 folowing lemmas are useless,
-      anyway they should probably be moved elsewhere*)
-
-  Lemma g_open_msg_rw d G2 FROM TO CONT:
-    g_open d G2 (g_msg FROM TO CONT)
-    = g_msg FROM TO [seq (K.lbl, (K.mty, g_open d G2 K.cnt)) | K <- CONT].
-  Proof. by []. Qed.
-
-  Lemma l_open_msg_rw d L2 a r Ks:
-   l_open d L2 (l_msg a r Ks)
-   = l_msg a r [seq (K.lbl, (K.mty, l_open d L2 K.cnt)) | K <- Ks].
-  Proof. by []. Qed.
-
-
+(*FIXME: from here on some cleaning is necessary*)
 
   Lemma project_g_open_comm G1 G2 r L1 L2 k:
     l_closed L1 -> g_closed G1 ->
@@ -1165,18 +900,7 @@ Section CProject.
         + by [].
   Qed.
 
-(*  Lemma project_rec_rw G r L: project G r = Some L ->
-    project (g_rec G) r = Some (l_rec L).
-  Proof.
-  rewrite //=; case Prj: project=>[LT| //=].
-  move=>eq; move: eq Prj =>[->]; rewrite (rwP eqP); move=> eq.
-  move: (project_guarded eq).
-*)
-
   Lemma project_open L G r
-        (* (NV : forall v : nat, L != l_var v) *)
-        (* (FV : g_fidx 1 G == fset0) *)
-        (*(Prj : project G r = Some L)*)
     : l_binds 0 L == false -> g_closed (g_rec G) ->
   project G r = Some L -> project (unroll G) r = Some (l_open 0 (l_rec L) L).
   Proof.
@@ -1228,8 +952,8 @@ Section CProject.
   Qed.
 
 
-  Lemma project_open_end L G r : l_binds 0 L -> (*g_closed (g_rec G) ->*)
-    project G r = Some L -> project (unroll G) r = Some (l_open 0 l_end L).
+  Lemma project_open_end L G r : l_binds 0 L -> project G r = Some L 
+    -> project (unroll G) r = Some (l_open 0 l_end L).
   Proof.
   move=> lbi pro; apply project_open_end_strong; move: pro; rewrite //=.
   by case Prj: project=>[LT| //=]; move=> eq; move: eq Prj lbi=>[<-] Prj; case: ifP.
@@ -1247,9 +971,6 @@ Section CProject.
   Proof.
   by apply lbinds_open_end_strong.
   Qed.
-
-
-
 
   (* WARNING: depends on project_open *)
   Lemma project_unroll_isend n r G L :
@@ -1303,17 +1024,10 @@ Section CProject.
       by exists n1.+1,n2,L0.
   Qed.
 
-  (* FIXME: refactor somewhere else *)
-  Lemma EqL_refl CL : EqL CL CL.
-  Proof.
-    move: CL {-1 3}CL (erefl CL).
-    apply/paco2_acc=> r0 _ CIH CL CL'<- {CL'}.
-    apply/paco2_fold.
-    case: CL=>//a R C; constructor.
-    - by move=> Lb Ty; split=>[[CL ->]|[CL ->]]; exists CL.
-    - by move=> Lb Ty CG CG'-> [->]; right; apply: CIH.
-  Qed.
-  Hint Resolve EqL_refl.
+
+
+
+
   (* FIXME: abstract all g_closed && guarded ... as "wf" to simplify statements
    *)
 
