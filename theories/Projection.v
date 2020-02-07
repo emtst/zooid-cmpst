@@ -365,7 +365,7 @@ Section IProject.
         (BLp : l_binds 0 Lp)
     : p \notin participants G.
   Proof.
-    elim/gty_ind1: G 0 =>[|v|G Ih|q r Ks Ih] n//= in Lp BLp Ep *.
+    elim: G 0 =>[|v|G Ih|q r Ks Ih] n//= in Lp BLp Ep *.
     - move: Ep Ih; case Prj: project=>[L|//]; move: Prj=>/eqP-Prj; case: ifP.
       + move=> B [E]; move: E BLp=><- _.
         by move=>/(_ _ _ B erefl).
@@ -384,7 +384,7 @@ Section IProject.
     project G p == Some L ->
     p \notin participants G.
   Proof.
-    elim/gty_ind1: G => [|v'|G Ih|q r Ks Ih]// in L v *.
+    elim: G => [|v'|G Ih|q r Ks Ih]// in L v *.
     - move: Ih=>/=; case Prj: project =>[Lp|//] Ih.
       move=>/orP-[/eqP->|/eqP->]; case: ifP=>[Lp_var|]//.
       by move: (l_binds_notin Prj Lp_var).
@@ -446,7 +446,7 @@ Section IProject.
     partial_proj Lq p == Some Sq ->
     Sq = s_var n.
   Proof.
-    elim/gty_ind1: G =>[//|v//=|G Ih//=|r s Ks Ih] in Lq Sq *.
+    elim: G =>[//|v//=|G Ih//=|r s Ks Ih] in Lq Sq *.
     - by move=>/eqP-[->]/eqP-[<-]/=/eqP-[<-].
     - by case: project=>//[[]]//v'; case: ifP.
     - move=> /projectmsg_var-[r_ne_p [s_ne_p [r_ne_s Ksp]]].
@@ -481,7 +481,7 @@ Section IProject.
     project G q == Some (l_var v') ->
     v == v'.
   Proof.
-    elim/gty_ind1: G => [|n|G Ih|f t Ks Ih]// in v v' *.
+    elim: G => [|n|G Ih|f t Ks Ih]// in v v' *.
     - by move=>/eqP-[<-]/eqP-[<-].
     - move=>/=.
       case Pp: project =>[Lp|//]; move: Pp=>/eqP=>Pp.
@@ -526,7 +526,7 @@ Section IProject.
   (*       (NIN : p \notin participants G) *)
   (*   : p \notin partsL Lp. *)
   (* Proof. *)
-  (*   elim/gty_ind1: G=>[|v|G Ih|q r Ks Ih] in Lp NIN Ep *; move: Ep=>[]. *)
+  (*   elim: G=>[|v|G Ih|q r Ks Ih] in Lp NIN Ep *; move: Ep=>[]. *)
   (*   - by move<-. *)
   (*   - by move<-. *)
   (*   - move=>/=; case Ep: project=>[Lp'|//]; case: ifP=>//; first by move=>_[<-]. *)
@@ -547,7 +547,7 @@ Section IProject.
   (*   l_binds n L -> *)
   (*   0 \in g_fidx n G. *)
   (* Proof. *)
-  (*   elim/gty_ind1: G=>[|v|G Ih|q r Ks Ih] in L *. *)
+  (*   elim: G=>[|v|G Ih|q r Ks Ih] in L *. *)
   (*   - by move=>[<-]. *)
   (*   - move=>[<-]/=. *)
   (*   (* - by move=>[<-]; case: v=>//= _; apply/fset11.  *) *)
@@ -602,7 +602,7 @@ Section IProject.
     l_binds m Lq ->
     l_binds n Lq.
   Proof.
-    elim/gty_ind1: G=>[|v|G Ih|r s Ks Ih] in Lp Lq n m *.
+    elim: G=>[|v|G Ih|r s Ks Ih] in Lp Lq n m *.
     - by move=>[<-].
     - by move=>[<-] [<-]/=.
     - move=>/=; case Pp: project=>[Lp'|//]; case Pq: project=>[Lq'|//].
@@ -632,7 +632,7 @@ Section IProject.
         (PPRJ : partial_proj Lq p = Some S)
     : s_binds n S.
   Proof.
-    elim/gty_ind1: G=>[|v|G Ih|r s Ks Ih] in n S Lp Lq PPRJ BLp PRJp PRJq *.
+    elim: G=>[|v|G Ih|r s Ks Ih] in n S Lp Lq PPRJ BLp PRJp PRJq *.
     - by move: PRJp BLp=> [<-].
     - by move: PRJp BLp PRJq PPRJ=>[<-]/= vn [<-] [<-].
     - move: PRJp PRJq => /=.
@@ -683,7 +683,7 @@ Section IProject.
     S' = dual S.
   Proof.
     move=>/negPf-p_neq_q.
-    elim/gty_ind1: G => [|v|G Ih| r s Ks Ih] in S S' *.
+    elim: G => [|v|G Ih| r s Ks Ih] in S S' *.
     - by do ! (move=>/eqP-[<-]).
     - by do ! (move=>/eqP-[<-]).
     - rewrite /full_project/=.
@@ -793,7 +793,7 @@ Section CProject.
     project G r == Some L ->
     l_fidx d L == fset0.
   Proof.
-    elim/gty_ind1: G =>[|v|G Ih|p q Ks Ih] in d L *.
+    elim: G =>[|v|G Ih|p q Ks Ih] in d L *.
     - by move=> _ /eqP-[<-].
     - move=> /=; case: ifP; first by rewrite -cardfs_eq0 cardfs1.
       by move=> H _ /eqP-[<-]/=; rewrite H.
@@ -841,7 +841,7 @@ Section CProject.
   Lemma notin_part_g_open_strong d r G G': r \notin participants G ->
     r \notin participants G'-> r \notin participants (g_open d G' G).
   Proof.
-  move=> h1 rnG'; move: h1; apply: contra; elim/gty_ind1: G d.
+  move=> h1 rnG'; move: h1; apply: contra; elim: G d.
   + rewrite //=.
   + rewrite //= => v d.
     by case: ifP=>[_ F|//]; rewrite F in rnG'.
@@ -968,7 +968,7 @@ Section CProject.
     project iG r == Some iL ->
     lguarded 0 iL.
   Proof.
-    elim/gty_ind1: iG =>[|v|iG Ih/=|p q Ks Ih] in iL *.
+    elim: iG =>[|v|iG Ih/=|p q Ks Ih] in iL *.
     - by move=>/= /eqP-[<-].
     - by move=>/= /eqP-[<-].
     - case Prj: project=>[Lr|//]; move: Prj=>/eqP/Ih-Prj.
@@ -1046,7 +1046,7 @@ Section CProject.
   Proof.
     move=>P1 B1; have []: project G r = Some L1 /\ l_binds 0 L1 by split.
     move: {-2}G  {1 2}L1 =>G' L1'.
-    elim/gty_ind1: G' 0 =>[|v|G' Ih|p q Ks' Ih] n // in L1' L2 *.
+    elim: G' 0 =>[|v|G' Ih|p q Ks' Ih] n // in L1' L2 *.
     - by move=>[<-].
     - by move=>[<-]/=->/=; rewrite P1 B1=> [[<-]].
     - move=>/=; case P: project=>[L''|//].
@@ -1130,7 +1130,7 @@ Section CProject.
     project G1 r = Some L1 -> project G2 r = Some L2 ->
     project (g_open k G1 G2) r = Some (l_open k L1 L2).
   Proof.
-  elim/gty_ind1: G2 G1 k L1 L2.
+  elim: G2 G1 k L1 L2.
   + by move=> G1 k L1 L2 lclo gclo eq1 => //=; move=> [eq2]; rewrite -eq2 //=.
   + by move=> VAR G1 k L1 L2 lclo gclo eq1 => //=; move=> [eq2]; rewrite -eq2 //=; case: ifP.
   + move=> GT IH G1 k L1 L2 lclo gclo eq1 => //=; case Prj: project=>[LT| //=].
@@ -1193,7 +1193,7 @@ Section CProject.
     project G r = Some L -> project G1 r = Some (l_end)->
     project (g_open k G1 G) r = Some (l_open k l_end L).
   Proof.
-  elim/gty_ind1: G L G1 k.
+  elim: G L G1 k.
   + by rewrite //=; move=> L G1 k [eq] pro; rewrite -eq.
   + rewrite //=; move=> v L G1 k [eq] pro; rewrite -eq.
     case: ifP.

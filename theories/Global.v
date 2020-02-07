@@ -13,6 +13,7 @@ Require Import MPST.Forall.
 Require Import MPST.Actions.
 
 Section Syntax.
+  Unset Elimination Schemes.
   (**
    * Global Types
    *)
@@ -21,6 +22,9 @@ Section Syntax.
   | g_var (VAR : nat)
   | g_rec (GT : g_ty)
   | g_msg (FROM TO : role) (CONT : seq (lbl * (mty * g_ty))).
+  Hint Constructors g_ty : mpst.
+
+  Set Elimination Schemes.
 
   Open Scope mpst_scope.
 
@@ -54,7 +58,7 @@ Section Syntax.
     | g_msg p q Ks => p |` (q |` flat_set [seq parts_set K.cnt | K <- Ks])
     end%fset.
 
-  Lemma gty_ind1 :
+  Lemma g_ty_ind :
     forall (P : g_ty -> Prop),
       P g_end ->
       (forall v, P (g_var v)) ->
@@ -101,6 +105,7 @@ Section Syntax.
     rewrite /=; do 2 (case: eqP=>///= _).
     by elim: Ks1 Ks2=>[|Ks1 K1 Ih]; case=>[|Ks2 K2]//; rewrite Ih.
   Qed.
+  Hint Rewrite eqgty_all : mpst.
 
   Lemma g_ty_eqP : Equality.axiom eq_g_ty.
   Proof.
@@ -128,18 +133,9 @@ Section Syntax.
     by case: g_ty_eqP=>[<-|H]; last (by apply: ReflectF =>[[/H]]); apply: ReflectT.
   Qed.
 
-  Lemma gty_ind2 :
-    forall (P : g_ty -> Prop),
-      P g_end ->
-      (forall v, P (g_var v)) ->
-      (forall G, P G -> P (g_rec G)) ->
-      (forall p q Ks, Forall (fun K => P K.cnt) Ks -> P (g_msg p q Ks)) ->
-      forall G : g_ty, P G.
-  Proof.
-    move=> P P_end P_var P_rec P_msg; elim/gty_ind1=>//.
-    by move=> p q Ks /forall_member; apply: P_msg.
-  Qed.
-
+  (**
+   * Does not apply any "shift" to G2, and therefore G2 must always be closed
+   *)
   Fixpoint g_open (d : nat) (G2 : g_ty) (G1 : g_ty) :=
     match G1 with
     | g_end => G1
@@ -164,10 +160,12 @@ Section Syntax.
     + by move=>z; rewrite Bool.orb_false_r.
     + by move=> a l Ih z/=; rewrite Ih in_fsetU orbA.
   Qed.
+  Hint Rewrite in_fold_has : mpst.
 
   Lemma notin_fold_all (A : choiceType) (x : A) (l : seq {fset A}) :
     (x \notin fsetUs l) = all (fun s => x \notin s) l.
   Proof. by rewrite in_fold_has -all_predC. Qed.
+  Hint Rewrite notin_fold_all: mpst.
 
   Fixpoint g_fidx (d : nat) (G : g_ty) : {fset nat} :=
     match G with
@@ -195,7 +193,7 @@ Section Syntax.
     g_fidx n G == fset0 ->
     g_fidx n.+1 G = fset0.
   Proof.
-    elim/gty_ind1: G n=>[//|v|G Ih|p q Ks Ih] n/=.
+    elim: G n=>[//|v|G Ih|p q Ks Ih] n/=.
     - case: v=>//= m H; case: ifP=>// n_m; move: H.
       by move: (leq_trans (leqnSn n) n_m)=>->; rewrite -cardfs_eq0 cardfs1.
     - by apply: Ih.
@@ -227,11 +225,11 @@ Section Syntax.
     end.
 
   Lemma guarded_next n G : guarded n.+1 G = ~~ g_binds n G && guarded n G.
-  Proof. by elim/gty_ind1: G n=>//= v n; rewrite ltn_neqAle eq_sym. Qed.
+  Proof. by elim: G n=>//= v n; rewrite ltn_neqAle eq_sym. Qed.
 
   Lemma guarded_binds G : guarded 0 G = guarded' G.
   Proof.
-    elim/gty_ind1: G=>[||G|_ _ Ks Ih]//=; first by move=><-;apply/guarded_next.
+    elim: G=>[||G|_ _ Ks Ih]//=; first by move=><-;apply/guarded_next.
     elim: Ks Ih=>[//|K Ks Ih']/= Ih; rewrite Ih; last by left.
     by rewrite Ih' // => K' /or_intror/Ih.
   Qed.
@@ -348,7 +346,7 @@ Section Syntax.
     m < d ->
     forall G', rec_depth G = rec_depth ({m ~> G'} G).
   Proof.
-    elim/gty_ind1: G=>[|n|G Ih|p q Ks Ih]//= in d m *.
+    elim: G=>[|n|G Ih|p q Ks Ih]//= in d m *.
     - move=>dn md G; case: ifP=>[/eqP-E|ne//].
       by move: E dn md=>-> /leq_ltn_trans-H /H; rewrite ltnn.
     - by move=> GG md G'; rewrite (Ih _ m.+1 GG _ G').
@@ -358,7 +356,7 @@ Section Syntax.
     n <= dG' ->
     guarded dG' G -> g_fidx n G == fset0 -> guarded dG G.
   Proof.
-    elim/gty_ind1: G =>[|m|G Ih|p q Ks Ih]// in n dG dG' *.
+    elim: G =>[|m|G Ih|p q Ks Ih]// in n dG dG' *.
     - by move=> /leq_trans-H /= /H->; rewrite -cardfs_eq0 cardfs1.
     - by move=>/= LE; apply/Ih.
   Qed.
@@ -369,7 +367,7 @@ Section Syntax.
    Proof.
      rewrite/g_closed/==>G_fbv; have: g_fidx 0 (g_rec G) == fset0 by [].
      move: (g_rec G) => G' G'0.
-     elim/gty_ind1: G 0 G'0 G_fbv=>[//|v|G Ih|p q Ks Ih] n G'0/=.
+     elim: G 0 G'0 G_fbv=>[//|v|G Ih|p q Ks Ih] n G'0/=.
      - move=> H; case: ifP=>[//|/=]; case: ifP=>//; move: H.
        case: ifP=>//; first by rewrite -cardfs_eq0 cardfs1//.
        rewrite ltn_neqAle =>/(rwP negPf); rewrite negb_and negbK eq_sym.
@@ -398,7 +396,7 @@ Section Syntax.
     guarded d1 G ->
     guarded d1 ({d2 ~> G'} G).
   Proof.
-    elim/gty_ind1: G=>[|n|G Ih|p q Ks Ih]//= in d1 d2 *.
+    elim: G=>[|n|G Ih|p q Ks Ih]//= in d1 d2 *.
     - by case: ifP=>// _ /(guarded_depth_gt d1 (leq0n 0))-H /H-{H}H.
     - by apply/Ih.
     - move=> GG' CG'; elim: Ks=>[|K Ks IhK]//= in Ih *.
@@ -412,7 +410,7 @@ Section Syntax.
     guarded d G ->
     guarded d' G.
   Proof.
-    elim/gty_ind1: G=>[|n|G Ih|p q Ks Ih]//= in d d' *.
+    elim: G=>[|n|G Ih|p q Ks Ih]//= in d d' *.
     - by move=>/leq_trans-H /H.
     - by move=> H; apply/Ih.
   Qed.
@@ -465,7 +463,7 @@ Section Semantics.
   Lemma gunroll_monotone : monotone2 g_unroll.
   Proof.
     move=> IG CG r r' U H; move: IG CG U.
-    elim/gty_ind1=>[|V|G IH|F T C IH] CG;
+    elim=>[|V|G IH|F T C IH] CG;
       case E:_ _/ =>[|G' CG' R|F' T' C' CC U]//.
     - by move: E R=>[<-]{G'} /H; constructor.
     - move: E U=>[<-<-<-]{F' T' C'} U; constructor; move: U IH.
@@ -491,7 +489,7 @@ Section Semantics.
       by case: iG=>//= G H1; apply/paco2_fold; constructor; left; apply/Ih.
   Qed.
 
-  Definition R_only (R : rel2 rg_ty (fun=>rg_ty))
+  Definition R_only (R : rg_ty -> rg_ty -> Prop)
              L0 (C C' : lbl /-> mty * rg_ty) :=
     (forall L1 K, L0 != L1 -> C L1 = Some K <-> C' L1 = Some K)
     /\ exists Ty G0 G1,
@@ -531,7 +529,7 @@ Section Semantics.
   | eg_trans a t G G' :
       step a G G' ->
       r t G' ->
-      @g_lts_ r (tr_next a t) G.
+      g_lts_ r (tr_next a t) G.
   Hint Constructors g_lts_.
   Definition g_lts t g := paco2 g_lts_ bot2 t g.
 

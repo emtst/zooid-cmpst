@@ -16,8 +16,11 @@ Definition dual_act a :=
   | l_recv => l_send
   end.
 
+Create HintDb mpst.
+
 Lemma dual_actK a : dual_act (dual_act a) = a.
 Proof. by case: a. Qed.
+Hint Rewrite dual_actK : mpst.
 
 Definition eq_lact a b :=
   match a, b with
@@ -101,6 +104,7 @@ Lemma fsetUs_list (A : choiceType) (K : {fset A}) Ks :
 Proof.
   by rewrite /fsetUs/= fset0U foldl_fsetU fsetU_eq0.
 Qed.
+Hint Rewrite fsetUs_list : mpst.
 
 Lemma fsetUs_fset0 (A : choiceType) (Ks : seq {fset A}) :
   fsetUs Ks == fset0 <-> (forall K, member K Ks -> K == fset0).
@@ -117,6 +121,7 @@ Proof.
   elim: L fset0 => [s'|s' L Ih s'']/=; first (by rewrite in_fsetU orbC).
   by rewrite fsetUC fsetUA Ih fsetUC.
 Qed.
+Hint Rewrite fsetUs_cons : mpst.
 
 
 Lemma member_map A B (P : B -> Prop) (f : A -> B) L :
@@ -130,6 +135,7 @@ Proof.
     + by apply: H; left.
     + by apply: Ih=>// z M; apply: H; right.
 Qed.
+Hint Rewrite member_map : mpst.
 
 Lemma fsetUs_eq A (B : choiceType) (f g : A -> {fset B}) L :
   (forall x, member x L -> f x = g x) ->
@@ -145,9 +151,15 @@ Qed.
 
 Definition alt (x : Type) := (lbl * (mty * x))%type.
 
-Notation "K .lbl" := (K.1)   (at level 2, left associativity, format "K .lbl") : mpst_scope.
-Notation "K .mty" := (K.2.1) (at level 2, left associativity, format "K .mty") : mpst_scope.
-Notation "K .cnt" := (K.2.2) (at level 2, left associativity, format "K .cnt") : mpst_scope.
+Notation "K .lbl" := (K.1) (at level 2,
+                            left associativity,
+                            format "K .lbl") : mpst_scope.
+Notation "K .mty" := (K.2.1) (at level 2,
+                              left associativity,
+                              format "K .mty") : mpst_scope.
+Notation "K .cnt" := (K.2.2) (at level 2,
+                              left associativity,
+                              format "K .cnt") : mpst_scope.
 
 Reserved Notation "x '/->' y" (at level 99, right associativity, y at level 200).
 Notation "x '/->' y" := (x -> option y) : mpst_scope.
