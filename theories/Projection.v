@@ -857,26 +857,27 @@ Section CProject.
       by apply/(Ih _ M n L1' L2).
   Qed.
 
-(*FIXME: from here on some cleaning is necessary*)
+(*FIXME: just a coq question from Lorenzo to David and Francisco*)
 
   Lemma project_g_open_comm G1 G2 r L1 L2 k:
-    l_closed L1 -> g_closed G1 ->
-(*first hp is not necessary: g_closed + project is sufficient*)
+    g_closed G1 ->
     project G1 r = Some L1 -> project G2 r = Some L2 ->
     project (g_open k G1 G2) r = Some (l_open k L1 L2).
   Proof.
   elim: G2 G1 k L1 L2.
-  + by move=> G1 k L1 L2 lclo gclo eq1 => //=; move=> [eq2]; rewrite -eq2 //=.
-  + by move=> VAR G1 k L1 L2 lclo gclo eq1 => //=; move=> [eq2]; rewrite -eq2 //=; case: ifP.
-  + move=> GT IH G1 k L1 L2 lclo gclo eq1 => //=; case Prj: project=>[LT| //=].
+  + by move=> G1 k L1 L2 gclo eq1 => //=; move=> [eq2]; rewrite -eq2 //=.
+  + by move=> VAR G1 k L1 L2 gclo eq1 => //=; move=> [eq2]; rewrite -eq2 //=; case: ifP.
+  + move=> GT IH G1 k L1 L2 gclo eq1 => //=; case Prj: project=>[LT| //=].
     * case: ifP; move=> lbi [eq2]; rewrite //=.
-      move: (IH _ (k.+1) L1 LT lclo gclo eq1 Prj) =>->; rewrite -eq2 //=.
+      move: (IH _ (k.+1) L1 LT gclo eq1 Prj) =>->; rewrite -eq2 //=.
       move: (@l_binds_open 0 (k.+1) LT L1) =>-> //=.
-      by move: lbi; case: ifP => //=.
-    * move: (IH G1 (k.+1) L1 LT lclo gclo eq1 Prj) =>->; move: eq2=><-/=.
+      + by move: lbi; case: ifP => //=.
+      + by move: eq1; rewrite (rwP eqP); apply gclosed_lclosed.
+    * move: (IH G1 (k.+1) L1 LT gclo eq1 Prj) =>->; move: eq2=><-/=.
       move: (@l_binds_open 0 (k.+1) LT L1) =>-> //=.
-      by move: lbi; case: ifP => //=.
-  + move=> FROM TO CONT IH G1 k L1 L2 lclo gclo eq1 eq2.
+      + by move: lbi; case: ifP => //=.
+      + by move: eq1; rewrite (rwP eqP); apply gclosed_lclosed.
+  + move=> FROM TO CONT IH G1 k L1 L2 lclo eq1 eq2.
     move: eq2; rewrite g_open_msg_rw project_msg.
     case Pra: prj_all=>[K| //=]; case: ifP; [by rewrite //= | ].
     move=> partdiff; case: ifP; move=> FROMr.
@@ -909,8 +910,6 @@ Section CProject.
     move: prS; rewrite //=; case Prj: project=>[LT| //=].
     by move=> eq; move: eq Prj nlb=>[<-] Prj; case: ifP=>//=.
   move=> prrecS; apply project_g_open_comm; rewrite //=.
-  move: prrecS cl; rewrite /g_closed/l_closed (rwP eqP).
-  by move=> pprecs cl; apply (@gclosed_lclosed 0 (g_rec G) r).
   Qed.
 
   Lemma project_open_end_strong L G1 G r k:
@@ -972,7 +971,6 @@ Section CProject.
   by apply lbinds_open_end_strong.
   Qed.
 
-  (* WARNING: depends on project_open *)
   Lemma project_unroll_isend n r G L :
     g_closed G ->
     project G r = Some L ->
@@ -998,7 +996,6 @@ Section CProject.
     + by move=>-> H; exists L.
   Qed.
 
-  (* WARNING: depends on project_open *)
   Lemma project_unroll m G r L :
     g_closed G ->
     project G r = Some L ->
@@ -1024,12 +1021,7 @@ Section CProject.
       by exists n1.+1,n2,L0.
   Qed.
 
-
-
-
-
-  (* FIXME: abstract all g_closed && guarded ... as "wf" to simplify statements
-   *)
+  (* FIXME: abstract all g_closed && guarded ... as "wf" to simplify statements*)
 
   Lemma cproj_all (r0 : proj_rel) FROM CONT CC KsL C
         (CIH : forall cG cL iG iL,
