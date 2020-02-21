@@ -15,6 +15,92 @@ Require Import MPST.Projection.
 
 Section TraceEquiv.
 
+(*Finite set to be thought of as the set of all participants involved in the protocol.*)
+Variable PAR : {fset role}.
+
+Definition PAR2 := (PAR `*` PAR)%fset.
+
+
+  (*Definition Merge (F : lbl /-> mty * rl_ty) (L : rl_ty) : Prop :=
+    forall Lb Ty L', F Lb = Some (Ty, L') -> EqL L' L.
+
+  Definition proj_rel := rg_ty -> rl_ty -> Prop.
+  Inductive Proj_ (p : role) (r : proj_rel) : proj_rel :=
+  | prj_end : Proj_ p r rg_end rl_end
+  | prj_send1 q KsG KsL :
+      p != q ->
+      R_all r KsG KsL ->
+      Proj_ p r (rg_msg None p q KsG) (rl_msg l_send q KsL)
+  | prj_send2 l t q KsG KsL L :
+      p != q ->
+      R_all r KsG KsL ->
+      KsL l = Some (t, L) ->
+      Proj_ p r (rg_msg (Some l) p q KsG) L
+  | prj_recv o q KsG KsL :
+      p != q ->
+      R_all r KsG KsL ->
+      Proj_ p r (rg_msg o q p KsG) (rl_msg l_recv q KsL)
+  (* | prj_end2 G : ~ In r G -> Proj_ r G rl_end *)
+  | prj_mrg o q s KsG KsL L :
+      q != s ->
+      p != q ->
+      p != s ->
+      (* InAll r KsG -> *)
+      R_all r KsG KsL ->
+      Merge KsL L ->
+      Proj_ p r (rg_msg o q s KsG) L
+  .
+  Hint Constructors Proj_.
+  Lemma Proj_monotone p : monotone2 (Proj_ p).
+  Proof.
+  rewrite /monotone2; move=> x0 x1 r r' it LE; move: it; case=>//.
+  + move=> q KsG KsL neq HP; constructor =>//; move: HP; rewrite /R_all.
+    move=> HP l Ty G L KsG_l KsL_l; apply: LE; by apply: (@HP l Ty G L KsG_l KsL_l).
+  + move=> l t q KsG KsL L neq HP KsL_l; apply: (@prj_send2 _ _ l t _ _ KsL) => //.
+    move: HP; rewrite /R_all; move=> HP l0 t0 G0 L0 KsG_l0 KsL_l0; apply LE.
+    by apply: (@HP l0 _ _ _ KsG_l0 KsL_l0).
+  + move=> o q KsG KsL neq HP; constructor =>//; move: HP; rewrite /R_all.
+    move=> HP l t G L KsG_l KsL_l; apply: LE. by apply: (HP _ _ _ _ KsG_l KsL_l).
+  + move=> o q s KsG KsL L0 neq_qs neq_pq neq_ps HP merg.
+    apply (@prj_mrg _ _ _ _ _ KsG KsL _) =>//; move: HP; rewrite /R_all.
+    move=> HP l t G L KsG_l KsL_l; apply: LE; by apply: (HP _ _ _ _ KsG_l KsL_l).
+  Qed.
+  Definition Project p CG CL := paco2 (Proj_ p) bot2 CG CL.*)
+
+  Definition qproj_rel := rg_ty -> {fmap role * role -> seq (lbl * mty) } -> Prop.
+  Inductive qProj_ (p p': role) (r : qproj_rel) : qproj_rel :=
+  | qprj_end : qProj_ p p' r rg_end ([fmap qq:PAR2 => [::]])
+(*  | qprj_None:
+      p != q ->
+      R_all r KsG KsL ->
+      Proj_ p r (rg_msg None p q KsG) (rl_msg l_send q KsL)*)
+
+
+(*  | prj_send1 q KsG KsL :
+      p != q ->
+      R_all r KsG KsL ->
+      Proj_ p r (rg_msg None p q KsG) (rl_msg l_send q KsL)
+  | prj_send2 l t q KsG KsL L :
+      p != q ->
+      R_all r KsG KsL ->
+      KsL l = Some (t, L) ->
+      Proj_ p r (rg_msg (Some l) p q KsG) L
+  | prj_recv o q KsG KsL :
+      p != q ->
+      R_all r KsG KsL ->
+      Proj_ p r (rg_msg o q p KsG) (rl_msg l_recv q KsL)
+  (* | prj_end2 G : ~ In r G -> Proj_ r G rl_end *)
+  | prj_mrg o q s KsG KsL L :
+      q != s ->
+      p != q ->
+      p != s ->
+      (* InAll r KsG -> *)
+      R_all r KsG KsL ->
+      Merge KsL L ->
+      Proj_ p r (rg_msg o q s KsG) L*)
+  .
+
+
   Definition step_equiv G P :=
     forall a, (exists G', step a G G') <-> (exists P', lstep a P P').
 
