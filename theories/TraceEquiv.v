@@ -67,38 +67,23 @@ Definition PAR2 := (PAR `*` PAR)%fset.
   Qed.
   Definition Project p CG CL := paco2 (Proj_ p) bot2 CG CL.*)
 
+
+
+(*In the following there is definitely a problem. And I believe the problem is of monotonicity.*)
   Definition qproj_rel := rg_ty -> {fmap role * role -> seq (lbl * mty) } -> Prop.
-  Inductive qProj_ (p p': role) (r : qproj_rel) : qproj_rel :=
-  | qprj_end : qProj_ p p' r rg_end ([fmap qq:PAR2 => [::]])
-(*  | qprj_None:
-      p != q ->
-      R_all r KsG KsL ->
-      Proj_ p r (rg_msg None p q KsG) (rl_msg l_send q KsL)*)
-
-
-(*  | prj_send1 q KsG KsL :
-      p != q ->
-      R_all r KsG KsL ->
-      Proj_ p r (rg_msg None p q KsG) (rl_msg l_send q KsL)
-  | prj_send2 l t q KsG KsL L :
-      p != q ->
-      R_all r KsG KsL ->
-      KsL l = Some (t, L) ->
-      Proj_ p r (rg_msg (Some l) p q KsG) L
-  | prj_recv o q KsG KsL :
-      p != q ->
-      R_all r KsG KsL ->
-      Proj_ p r (rg_msg o q p KsG) (rl_msg l_recv q KsL)
-  (* | prj_end2 G : ~ In r G -> Proj_ r G rl_end *)
-  | prj_mrg o q s KsG KsL L :
-      q != s ->
-      p != q ->
-      p != s ->
-      (* InAll r KsG -> *)
-      R_all r KsG KsL ->
-      Merge KsL L ->
-      Proj_ p r (rg_msg o q s KsG) L*)
+  Inductive qProj_ (*p p': role*) (r : qproj_rel) : qproj_rel :=
+  | qprj_end : qProj_ r rg_end ([fmap qq:PAR2 => [::]])
+  | qprj_none q q' CONT l Ty G Q:
+      q != q' -> CONT l = Some (Ty, G) ->
+      r (rg_msg None q q' CONT) Q ->
+      qProj_ r (rg_msg (Some l) q q' CONT) Q
+  | qprj_some q q' CONT l Ty G Q:
+      q != q' -> CONT l = Some (Ty, G) ->
+      r (rg_msg (Some l) q q' CONT) Q ->
+      qProj_ r G (enq Q (q,q') (l, Ty))
   .
+
+
 
 
   Definition step_equiv G P :=
