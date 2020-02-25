@@ -4,6 +4,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
+From Paco Require Import paco paco2.
+
 Require Import MPST.Atom.
 Require Import MPST.AtomSets.
 Require Import MPST.Forall.
@@ -22,54 +24,12 @@ Definition PAR2 := (PAR `*` PAR)%fset.
 
 
   (*Definition Merge (F : lbl /-> mty * rl_ty) (L : rl_ty) : Prop :=
-    forall Lb Ty L', F Lb = Some (Ty, L') -> EqL L' L.
-
-  Definition proj_rel := rg_ty -> rl_ty -> Prop.
-  Inductive Proj_ (p : role) (r : proj_rel) : proj_rel :=
-  | prj_end : Proj_ p r rg_end rl_end
-  | prj_send1 q KsG KsL :
-      p != q ->
-      R_all r KsG KsL ->
-      Proj_ p r (rg_msg None p q KsG) (rl_msg l_send q KsL)
-  | prj_send2 l t q KsG KsL L :
-      p != q ->
-      R_all r KsG KsL ->
-      KsL l = Some (t, L) ->
-      Proj_ p r (rg_msg (Some l) p q KsG) L
-  | prj_recv o q KsG KsL :
-      p != q ->
-      R_all r KsG KsL ->
-      Proj_ p r (rg_msg o q p KsG) (rl_msg l_recv q KsL)
-  (* | prj_end2 G : ~ In r G -> Proj_ r G rl_end *)
-  | prj_mrg o q s KsG KsL L :
-      q != s ->
-      p != q ->
-      p != s ->
-      (* InAll r KsG -> *)
-      R_all r KsG KsL ->
-      Merge KsL L ->
-      Proj_ p r (rg_msg o q s KsG) L
-  .
-  Hint Constructors Proj_.
-  Lemma Proj_monotone p : monotone2 (Proj_ p).
-  Proof.
-  rewrite /monotone2; move=> x0 x1 r r' it LE; move: it; case=>//.
-  + move=> q KsG KsL neq HP; constructor =>//; move: HP; rewrite /R_all.
-    move=> HP l Ty G L KsG_l KsL_l; apply: LE; by apply: (@HP l Ty G L KsG_l KsL_l).
-  + move=> l t q KsG KsL L neq HP KsL_l; apply: (@prj_send2 _ _ l t _ _ KsL) => //.
-    move: HP; rewrite /R_all; move=> HP l0 t0 G0 L0 KsG_l0 KsL_l0; apply LE.
-    by apply: (@HP l0 _ _ _ KsG_l0 KsL_l0).
-  + move=> o q KsG KsL neq HP; constructor =>//; move: HP; rewrite /R_all.
-    move=> HP l t G L KsG_l KsL_l; apply: LE. by apply: (HP _ _ _ _ KsG_l KsL_l).
-  + move=> o q s KsG KsL L0 neq_qs neq_pq neq_ps HP merg.
-    apply (@prj_mrg _ _ _ _ _ KsG KsL _) =>//; move: HP; rewrite /R_all.
-    move=> HP l t G L KsG_l KsL_l; apply: LE; by apply: (HP _ _ _ _ KsG_l KsL_l).
-  Qed.
-  Definition Project p CG CL := paco2 (Proj_ p) bot2 CG CL.*)
+    forall Lb Ty L', F Lb = Some (Ty, L') -> EqL L' L.*)
+ 
 
 
 
-(*In the following there is definitely a problem. And I believe the problem is of monotonicity.*)
+(*In the following there is a problem, I think. However it is monotone...
   Definition qproj_rel := rg_ty -> {fmap role * role -> seq (lbl * mty) } -> Prop.
   Inductive qProj_ (*p p': role*) (r : qproj_rel) : qproj_rel :=
   | qprj_end : qProj_ r rg_end ([fmap qq:PAR2 => [::]])
@@ -82,7 +42,42 @@ Definition PAR2 := (PAR `*` PAR)%fset.
       r (rg_msg (Some l) q q' CONT) Q ->
       qProj_ r G (enq Q (q,q') (l, Ty))
   .
+  Hint Constructors qProj_.
+  Lemma Proj_monotone : monotone2 qProj_.
+  Proof.
+  rewrite /monotone2; move=> x0 x1 r r' it LE; move: it; case=>//.
+  + move=> p p' CONT l Ty G Q neq CONTeq rel; apply: (qprj_none neq CONTeq).
+    by apply (LE _ _ rel).
+  + move=> p p' CONT l Ty G Q neq CONTeq rel; apply: (qprj_some neq CONTeq).
+    by apply (LE _ _ rel).
+  Qed. *)
 
+  Definition qproj_rel := rg_ty -> {fmap role * role -> seq (lbl * mty) } -> Prop.
+  Inductive qProj_ (r : qproj_rel) : qproj_rel :=
+  | qprj_end : qProj_ r rg_end ([fmap qq:PAR2 => [::]])
+  | qprj_none p p' CONT l Ty G Q:
+      p != p' -> CONT l = Some (Ty, G) ->
+      r (rg_msg (Some l) p p' CONT) Q ->
+      qProj_ r (rg_msg None p p' CONT) Q
+  | qprj_some p p' CONT l Ty G Q:
+      p != p' -> CONT l = Some (Ty, G) ->
+      r G (enq Q (p,p') (l, Ty)) ->
+      qProj_ r (rg_msg (Some l) p p' CONT) Q
+  .
+  Hint Constructors qProj_.
+  Lemma qProj_monotone : monotone2 qProj_.
+  Proof.
+  rewrite /monotone2; move=> x0 x1 r r' it LE; move: it; case=>//.
+  + move=> p p' CONT l Ty G Q neq CONTeq rel; apply: (qprj_none neq CONTeq).
+    by apply (LE _ _ rel).
+  + move=> p p' CONT l Ty G Q neq CONTeq rel; apply: (qprj_some neq CONTeq).
+    by apply (LE _ _ rel).
+  Qed.
+  Definition qProject CG Q := paco2 (qProj_) bot2 CG Q.
+
+
+(*  Lemma qProj_step G G' a: step.
+  *)
 
 
 
