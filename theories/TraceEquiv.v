@@ -52,6 +52,8 @@ Definition PAR2 := (PAR `*` PAR)%fset.
     by apply (LE _ _ rel).
   Qed. *)
 
+(* first version: probably wrong.
+
   Definition qproj_rel := rg_ty -> {fmap role * role -> seq (lbl * mty) } -> Prop.
   Inductive qProj_ (r : qproj_rel) : qproj_rel :=
   | qprj_end : qProj_ r rg_end ([fmap qq:PAR2 => [::]])
@@ -73,11 +75,49 @@ Definition PAR2 := (PAR `*` PAR)%fset.
   + move=> p p' CONT l Ty G Q neq CONTeq rel; apply: (qprj_some neq CONTeq).
     by apply (LE _ _ rel).
   Qed.
+  Definition qProject CG Q := paco2 (qProj_) bot2 CG Q.*)
+
+  Definition qproj_rel := rg_ty -> {fmap role * role -> seq (lbl * mty) } -> Prop.
+  Inductive qProj_ (r : qproj_rel) : qproj_rel :=
+  | qprj_end : qProj_ r rg_end ([fmap qq:PAR2 => [::]])
+  | qprj_none p p' CONT l Ty G Q Q':
+      p != p' -> CONT l = Some (Ty, G) ->
+      deq Q' (p, p') == Some ((l, Ty), Q) ->
+      r (rg_msg (Some l) p p' CONT) Q ->
+      qProj_ r (rg_msg None p p' CONT) Q'
+  | qprj_some p p' CONT l Ty G Q Q':
+      p != p' -> CONT l = Some (Ty, G) ->
+      Q == (enq Q' (p,p') (l, Ty)) ->
+      r G Q ->
+      qProj_ r (rg_msg (Some l) p p' CONT) Q'
+  .
+  Hint Constructors qProj_.
+  Lemma qProj_monotone : monotone2 qProj_.
+  Proof.
+  rewrite /monotone2; move=> x0 x1 r r' it LE; move: it; case=>//.
+  + move=> p p' CONT l Ty G Q Q' neq CONTeq dequ rel.
+    apply: (qprj_none neq CONTeq dequ); by apply (LE _ _ rel).
+  + move=> p p' CONT l Ty G Q Q' neq CONTeq enqu rel.
+    apply: (qprj_some neq CONTeq enqu); by apply (LE _ _ rel).
+  Qed.
   Definition qProject CG Q := paco2 (qProj_) bot2 CG Q.
 
+About Project.
 
-(*  Lemma qProj_step G G' a: step.
-  *)
+Open Scope fmap.
+
+(*
+translate p to something in the domain of L ()
+*)
+  Definition fProject (G: rg_ty) (fL : {fmap role -> rl_ty}) : Prop :=
+  (forall p L, fL.[? p] = Some L -> Project p G L).
+
+
+(*
+  Lemma qProj_step G Q L a G': qProject G Q -> 
+  .
+*)
+
 
 
 
