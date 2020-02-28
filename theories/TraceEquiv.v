@@ -109,14 +109,25 @@ Open Scope fmap.
 (*
 translate p to something in the domain of L ()
 *)
-  Definition fProject (G: rg_ty) (fL : {fmap role -> rl_ty}) : Prop :=
-  (forall p L, fL.[? p] = Some L -> Project p G L).
+  Definition eProject (G: rg_ty) (E : {fmap role -> rl_ty}) : Prop :=
+  (forall p L, E.[? p] = Some L -> Project p G L).
 
+  Lemma qProject_none_exists F T C Q: 
+    qProject (rg_msg None F T C) Q -> 
+    (exists p p' l Ty G Q',
+    p != p' /\ C l = Some (Ty, G) /\
+    deq Q (p, p') == Some ((l, Ty), Q') /\
+    qProject (rg_msg (Some l) p p' C) Q).
+  Admitted.
+  (*PaCo time!!!*)
 
-(*
-  Lemma qProj_step G Q L a G': qProject G Q -> 
-  .
-*)
+  Lemma qProject_step G Q E a G': 
+  step a G G' -> qProject G Q -> eProject G E
+    -> exists E' Q', lstep a (E, Q) (E', Q').
+  Proof.
+  elim.
+  + move=> L F T C Ty G0 contL qpro epro.
+  Admitted.
 
 
 
@@ -338,6 +349,7 @@ translate p to something in the domain of L ()
   (*
   Proof. by move=>P /project_init/eqP; apply g_trequiv. Qed.
    *)
+
 
 End TraceEquiv.
 
