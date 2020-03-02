@@ -100,6 +100,7 @@ Definition PAR2 := (PAR `*` PAR)%fset.
   + move=> p p' CONT l Ty G Q Q' neq CONTeq enqu rel.
     apply: (qprj_some neq CONTeq enqu); by apply (LE _ _ rel).
   Qed.
+  Hint Resolve qProj_monotone.
   Definition qProject CG Q := paco2 (qProj_) bot2 CG Q.
 
 About Project.
@@ -112,16 +113,66 @@ translate p to something in the domain of L ()
   Definition eProject (G: rg_ty) (E : {fmap role -> rl_ty}) : Prop :=
   (forall p L, E.[? p] = Some L -> Project p G L).
 
-  Lemma qProject_none_exists F T C Q: 
+
+
+(*L to D and F; about the next 4 lemmas:
+  - should be moved
+  - might be be turned into 2 or even 0
+*)
+  Lemma qProject_None_exists_aux F T C Q GG: 
+    GG = (rg_msg None F T C) ->
+    qProject GG Q -> 
+    (exists p p' l Ty G Q',
+    p != p' /\ C l = Some (Ty, G) /\
+    deq Q (p, p') == Some ((l, Ty), Q') /\
+    qProject (rg_msg (Some l) p p' C) Q').
+  Proof.
+  move=> eq hp; punfold hp.
+  move: hp eq => [ | p p' CONT l Ty G {}Q Q' H0 H1 H2 H3| ]//= [].
+  move=> H4 H5 H6;  exists p, p', l, Ty, G, Q.
+  split; [by []|split; [by rewrite -H1 H6 |split; [by []|]]].
+  by move: H3; rewrite H6 /upaco2 /qProject /bot2; elim.
+  Qed.
+
+  Lemma qProject_None_exists F T C Q:
     qProject (rg_msg None F T C) Q -> 
     (exists p p' l Ty G Q',
     p != p' /\ C l = Some (Ty, G) /\
     deq Q (p, p') == Some ((l, Ty), Q') /\
-    qProject (rg_msg (Some l) p p' C) Q).
-  Admitted.
-  (*PaCo time!!!*)
+    qProject (rg_msg (Some l) p p' C) Q').
+  Proof.
+  by apply: qProject_None_exists_aux.
+  Qed.
+
+  Lemma qProject_Some_exists_aux l F T C Q GG: 
+    GG = (rg_msg (Some l) F T C) ->
+    qProject GG Q -> 
+    (exists p p' Ty G Q',
+    p != p' /\ C l = Some (Ty, G) /\
+    Q' == (enq Q (p,p') (l, Ty)) /\
+    qProject G Q').
+  Proof.
+  move=> eq hp; punfold hp.
+  move: hp eq  => [| | p p' CONT l0 Ty G {}Q Q' H0 H1 H2 H3] //= [].
+  move=> H4 H5 H6 H7;  exists p, p', Ty, G, Q.
+  split; [by []|split; [by rewrite -H1 H7 H4 |split; [ by rewrite -H4|]]].
+  by move: H3; rewrite /upaco2 /qProject /bot2; elim.
+  Qed.
+
+  Lemma qProject_Sone_exists l F T C Q:
+    qProject (rg_msg (Some l) F T C) Q -> 
+    (exists p p' Ty G Q',
+    p != p' /\ C l = Some (Ty, G) /\
+    Q' == (enq Q (p,p') (l, Ty)) /\
+    qProject G Q').
+  Proof.
+  by apply: qProject_Some_exists_aux.
+  Qed.
+
+
 
   Lemma qProject_step G Q E a G': 
+
   step a G G' -> qProject G Q -> eProject G E
     -> exists E' Q', lstep a (E, Q) (E', Q').
   Proof.
