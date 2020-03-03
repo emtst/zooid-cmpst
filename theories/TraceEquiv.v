@@ -144,6 +144,7 @@ translate p to something in the domain of L ()
   by apply: qProject_None_exists_aux.
   Qed.
 
+
   Lemma qProject_Some_exists_aux l F T C Q GG: 
     GG = (rg_msg (Some l) F T C) ->
     qProject GG Q -> 
