@@ -80,11 +80,12 @@ Definition PAR2 := (PAR `*` PAR)%fset.
   Definition qproj_rel := rg_ty -> {fmap role * role -> seq (lbl * mty) } -> Prop.
   Inductive qProj_ (r : qproj_rel) : qproj_rel :=
   | qprj_end : qProj_ r rg_end ([fmap qq:PAR2 => [::]])
-  | qprj_none p p' CONT l Ty G Q Q':
-      p != p' -> CONT l = Some (Ty, G) ->
+  | qprj_none p p' CONT (*l Ty G Q*) Q':
+      p != p' -> 
+      (forall l Ty G Q, CONT l = Some (Ty, G) ->
       (*deq Q (p, p') == Some ((l, Ty), Q') ->*)
       Q == enq Q' (p, p') (l, Ty) ->
-      r (rg_msg (Some l) p p' CONT) Q ->
+      r (rg_msg (Some l) p p' CONT) Q ) ->
       qProj_ r (rg_msg None p p' CONT) Q'
   | qprj_some p p' CONT l Ty G Q Q':
       p != p' -> CONT l = Some (Ty, G) ->
@@ -97,8 +98,9 @@ Definition PAR2 := (PAR `*` PAR)%fset.
   Lemma qProj_monotone : monotone2 qProj_.
   Proof.
   rewrite /monotone2; move=> x0 x1 r r' it LE; move: it; case=>//.
-  + move=> p p' CONT l Ty G Q Q' neq CONTeq dequ rel.
-    apply: (qprj_none neq CONTeq dequ); by apply (LE _ _ rel).
+  + move=> p p' CONT Q' neq hp.
+    apply: (qprj_none neq ); move=> l Ty G Q CONTeq enqu; apply LE.
+    by apply: (hp l Ty G).
   + move=> p p' CONT l Ty G Q Q' neq CONTeq enqu rel.
     apply: (qprj_some neq CONTeq enqu); by apply (LE _ _ rel).
   Qed.
@@ -121,30 +123,28 @@ translate p to something in the domain of L ()
   - should be moved
   - might be be turned into 2 or even 0
 *)
-  Lemma qProject_None_exists_aux F T C Q GG: 
+  Lemma qProject_None_exists_aux F T C l Ty G Q Q' GG: 
     GG = (rg_msg None F T C) ->
     qProject GG Q -> 
     F != T /\
-    (exists l Ty G Q',
-    C l = Some (Ty, G) /\
+    (C l = Some (Ty, G) ->
     (*deq Q' (F, T) == Some ((l, Ty), Q) /\*)
-    Q' == enq Q (F, T) (l, Ty) /\
+    Q' == enq Q (F, T) (l, Ty) ->
     qProject (rg_msg (Some l) F T C) Q').
   Proof.
   move=> eq hp; punfold hp.
-  move: hp eq => [ | p p' CONT l Ty G {}Q Q' H0 H1 H2 H3| ]//= [].
-  move=> H4 H5 H6; split; [by rewrite -H4 -H5 | exists l, Ty, G, Q].
-  split; [by rewrite -H1 H6 | split; [by rewrite -H4 -H5|]].
-  by move: H3; rewrite H4 H5 H6 /upaco2 /qProject /bot2; elim.
+  move: hp eq => [|p p' CONT {}Q neq hp |]//= [].
+  move=> eq1 eq2 eq3; split; [by rewrite -eq1 -eq2 | ].
+  rewrite -eq1 -eq2 -eq3; move=> conteq qeq; move: (hp _ _ _ _ conteq qeq).
+  by rewrite /upaco2 /qProject /bot2; elim.
   Qed.
 
-  Lemma qProject_None_exists F T C Q:
+  Lemma qProject_None_exists F T C l Ty G Q Q':
     qProject (rg_msg None F T C) Q -> 
     F != T /\
-    (exists l Ty G Q',
-    C l = Some (Ty, G) /\
+    (C l = Some (Ty, G) ->
     (*deq Q' (F, T) == Some ((l, Ty), Q) /\*)
-    Q' == enq Q (F, T) (l, Ty) /\
+    Q' == enq Q (F, T) (l, Ty) ->
     qProject (rg_msg (Some l) F T C) Q').
   Proof.
   by apply: qProject_None_exists_aux.
@@ -181,17 +181,42 @@ translate p to something in the domain of L ()
   Qed.
 
 
-  (*Lemma step_qProject_send F T C L Ty Q:
+  Lemma step_send_inv_aux F T C L Ty aa GG: 
+    step aa GG (rg_msg (Some L) F T C) ->
+    aa = a_send F T L Ty -> GG = rg_msg None F T C ->
+    exists G, C L = Some (Ty, G).
+  Proof.
+  elim/step_ind => //=.
+  + move=> L0 F0 T0 C0 Ty0 G eqC => [] [].
+    move=> H0 H1 H2 H3 =>[] []. elim; elim; move=> H4.
+    by exists G; rewrite -H2 -H3 -H4.
+  + move=> a F0 T0 C0 C1 sub1 sub2 samed rall hp eqa => [] [].
+    move=> eq1 eq2 eq3; move: sub1; rewrite eqa eq1 //=.
+    by rewrite -(rwP negP) //=.
+  Qed.
+
+  Lemma step_send_inv F T C L Ty: 
+    step (a_send F T L Ty) (rg_msg None F T C) (rg_msg (Some L) F T C) ->
+    exists G, C L = Some (Ty, G).
+  Proof.
+  by move=> hp; apply: (step_send_inv_aux hp).
+  Qed.
+
+  Lemma step_qProject_send F T C L Ty Q:
     step (a_send F T L Ty) (rg_msg None F T C) (rg_msg (Some L) F T C) ->
     qProject (rg_msg None F T C) Q ->
     F != T /\ (exists G Q',
     C L = Some (Ty, G) /\ Q' == enq Q (F, T) (L, Ty) /\
     qProject (rg_msg (Some L) F T C) Q').
   Proof.
+  move=> ste qpro.
+  split; [ by move: (qProject_None_exists L Ty  qpro); elim |].
 
-  move=> ste qpro; split; [ by move: (qProject_None_exists qpro); elim |].
+ move:  (qProject_None_exists qpro).
+
+split; [ by move: (qProject_None_exists qpro); elim |].
   
-  Admitted.*)
+  Admitted.
 
 
   Lemma qProject_step G Q E a G':
