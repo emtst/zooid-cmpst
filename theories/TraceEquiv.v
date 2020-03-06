@@ -23,6 +23,8 @@ Variable PAR : {fset role}.
 Definition PAR2 := (PAR `*` PAR)%fset.
 
 
+
+
   (*Definition Merge (F : lbl /-> mty * rl_ty) (L : rl_ty) : Prop :=
     forall Lb Ty L', F Lb = Some (Ty, L') -> EqL L' L.*)
  
@@ -115,9 +117,15 @@ Open Scope fmap.
 translate p to something in the domain of L ()
 *)
   Definition eProject (G: rg_ty) (E : {fmap role -> rl_ty}) : Prop :=
-  (forall p L, Project p G L -> E.[? p] = Some L).
+  (forall p, p \in PAR -> (exists L, Project p G L /\ E.[? p] = Some L)).
 
+Print R_all.
 
+  Inductive part_of: role -> rg_ty -> Prop :=
+    | pof_from o F T C: part_of F (rg_msg o F T C)
+    | pof_to o F T C: part_of T (rg_msg o F T C)
+    | pof_cont p o F T C L G Ty: C L = Some (Ty, G) 
+      -> part_of p G -> part_of p (rg_msg o F T C).
 
 (*L to D and F; about the next 4 lemmas:
   - should be moved
@@ -180,6 +188,7 @@ translate p to something in the domain of L ()
   by apply: qProject_Some_exists_aux.
   Qed.
 
+(*again lemmas to be moved elsewhere later*)
 
   Lemma step_send_inv_aux F T C L Ty aa GG: 
     step aa GG (rg_msg (Some L) F T C) ->
@@ -210,23 +219,46 @@ translate p to something in the domain of L ()
     qProject (rg_msg (Some L) F T C) Q').
   Proof.
   move=> ste qpro.
-  split; [ by move: (qProject_None_exists L Ty  qpro); elim |].
+  move: (step_send_inv ste); elim; move=> G eqcont.
+  move: (@qProject_None_exists F T C L Ty G Q (enq Q (F, T) (L, Ty)) qpro).
+  elim; move=> neq hp; split => //=.
+  exists G, (enq Q (F, T) (L, Ty)); split; [|split; [ |apply hp]] =>//=.
+  Qed.
 
- move:  (qProject_None_exists qpro).
+  Lemma cProj_none_from_inv F T C lT:
+    Project F (rg_msg None F T C) lT ->
+    (exists lC, lT = rl_msg l_send T lC).
+  Proof.
+  (*move=> hp; punfold hp; [| by apply Proj_monotone].*)
+  Admitted.
 
-split; [ by move: (qProject_None_exists qpro); elim |].
-  
+  Lemma eProject_send_from F T C E:
+    F \in PAR -> eProject (rg_msg None F T C) E ->
+    F != T /\
+    (exists lC,
+    E.[? F]%fmap = Some (rl_msg l_send T lC) /\ R_all (Project F) C lC).
+  Proof.
+  rewrite /eProject; move=> Fin hp; move: (hp _ Fin).
+  elim; move=> lT; elim.
   Admitted.
 
 
+
+
   Lemma qProject_step G Q E a G':
-  step a G G' -> qProject G Q -> eProject G E
+    step a G G' -> 
+    (forall p, part_of p G -> p \in PAR)-> 
+    qProject G Q -> eProject G E
     -> exists E' Q', lstep a (E, Q) (E', Q').
   Proof.
   elim.
-  + move=> L F T C Ty G0 contL qpro epro.
+  + (*move=> L F T C Ty G0 contL qpro epro.
+    move: (@step_qProject_send F T C L Ty Q (st_send F T contL)) => hp.
+    
+
+
     move: (qProject_None_exists qpro); elim; move=> rneq.
-    elim; move=>x; elim.
+    elim; move=>x; elim.*)
   Admitted.
 
 
