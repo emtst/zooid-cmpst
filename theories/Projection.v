@@ -741,7 +741,9 @@ Section CProject.
     apply (@prj_mrg _ _ _ _ _ KsG KsL _) =>//; move: HP; rewrite /R_all.
     move=> HP l t G L KsG_l KsL_l; apply: LE; by apply: (HP _ _ _ _ KsG_l KsL_l).
   Qed.
+  Hint Resolve Proj_monotone.
   Definition Project p CG CL := paco2 (Proj_ p) bot2 CG CL.
+
 
   Lemma gclosed_lclosed d G r L :
     g_fidx d G == fset0 ->
