@@ -225,12 +225,28 @@ Print R_all.
   exists G, (enq Q (F, T) (L, Ty)); split; [|split; [ |apply hp]] =>//=.
   Qed.
 
-  Lemma cProj_none_from_inv F T C lT:
-    Project F (rg_msg None F T C) lT ->
-    (exists lC, lT = rl_msg l_send T lC).
+  Lemma cProj_none_from_inv_aux F T C GG lT:
+    Project F GG lT -> GG = (rg_msg None F T C) ->
+    F != T /\ (exists lC, lT = rl_msg l_send T lC /\ 
+      R_all (upaco2 (Proj_ F) bot2) C lC).
   Proof.
-  (*move=> hp; punfold hp; [| by apply Proj_monotone].*)
-  Admitted.
+  move=> hp; punfold hp; [move: hp => [] //=| by apply Proj_monotone].
+  + move=> q gC lC neq rall [eq1 eq2].
+    by rewrite -eq1 -eq2; split; [| exists lC;  split; [ |]].
+  + move=> o q gC lC neq rall [eq1 eq2 eq3 eq4].
+    by move: neq; rewrite eq2 -(rwP negP).
+  + move=> o q s gC lC L neq1 neq2 neq3 rall mer [eq1 eq2 eq3 eq4].
+    by move: neq2; rewrite eq2 -(rwP negP).
+  Qed.
+
+  Lemma cProj_none_from_inv F T C lT: 
+    Project F (rg_msg None F T C) lT ->
+    F != T /\ (exists lC, lT = rl_msg l_send T lC /\ 
+      R_all (upaco2 (Proj_ F) bot2) C lC).
+  Proof.
+  by move=> hp; apply: (cProj_none_from_inv_aux hp).
+  Qed.
+
 
   Lemma eProject_send_from F T C E:
     F \in PAR -> eProject (rg_msg None F T C) E ->
@@ -239,9 +255,13 @@ Print R_all.
     E.[? F]%fmap = Some (rl_msg l_send T lC) /\ R_all (Project F) C lC).
   Proof.
   rewrite /eProject; move=> Fin hp; move: (hp _ Fin).
-  elim; move=> lT; elim.
-  Admitted.
-
+  elim; move=> lT; elim; move=> pro eq; move: (cProj_none_from_inv pro).
+  elim; move=> neq; elim; move=> lC; elim; move=> lTeq rall.
+  split; [by []|exists lC]; split; [by rewrite eq; apply f_equal|].
+  move: rall; rewrite /R_all; move=> rall L Ty G lTT someg somel.
+  move: (rall _ _ _ _ someg somel).
+  by rewrite /upaco2 /Project /bot2; elim.
+  Qed.
 
 
 
@@ -252,9 +272,11 @@ Print R_all.
     -> exists E' Q', lstep a (E, Q) (E', Q').
   Proof.
   elim.
-  + (*move=> L F T C Ty G0 contL qpro epro.
-    move: (@step_qProject_send F T C L Ty Q (st_send F T contL)) => hp.
-    
+  + move=> L F T C Ty G0 contL pin qpro epro.
+    have Fin: F \in PAR.
+      by apply: pin; apply: pof_from.
+    move: (@eProject_send_from F T C E Fin epro); elim; move=> neq.
+    elim; move=> lC; elim.
 
 
     move: (qProject_None_exists qpro); elim; move=> rneq.
