@@ -169,11 +169,16 @@ Definition empty A : (lbl /-> mty * A) := fun=> None.
 Definition extend A (L : lbl) (X : A) f :=
   fun L' => if L == L' then Some X else f L'.
 
-Definition same_dom T (C C' : lbl /-> mty * T) :=
+(*Definition same_dom T (C C' : lbl /-> mty * T) :=
+  forall L Ty, (exists G, C L = Some (Ty, G)) <-> (exists G', C' L = Some (Ty, G')).*)
+
+Definition same_dom T T' (C : lbl /-> mty * T) (C' : lbl /-> mty * T') :=
   forall L Ty, (exists G, C L = Some (Ty, G)) <-> (exists G', C' L = Some (Ty, G')).
 
 Definition R_all T T' (R : rel2 T (fun=>T'))
            (C : lbl /-> mty * T) (C' : lbl /-> mty * T'):=
-  forall L Ty G G',
+    forall L Ty G G',
     C L = Some (Ty, G) -> C' L = Some (Ty, G') -> R G G'.
+
+
 Close Scope mpst_scope.
