@@ -269,7 +269,8 @@ Print R_all.
     step a G G' -> 
     (forall p, part_of p G -> p \in PAR)-> 
     qProject G Q -> eProject G E
-    -> exists E' Q', lstep a (E, Q) (E', Q').
+    -> exists E' Q', lstep a (E, Q) (E', Q') 
+        /\ qProject G' Q' /\ eProject G' E'.
   Proof.
   elim.
   + move=> L F T C Ty G0 contL pin qpro epro.
@@ -277,10 +278,13 @@ Print R_all.
       by apply: pin; apply: pof_from.
     move: (@eProject_send_from F T C E Fin epro); elim; move=> neq.
     elim; move=> lC; elim.
+    move: (qProject_None_exists L Ty G0 (enq Q (F, T) (L, Ty)) qpro).
+    elim; elim; rewrite eq_refl. move=> qpro0; move: (qpro0 contL).
+    move=> {}qpro0 envF. rewrite /R_all.
+
+About R_all.
 
 
-    move: (qProject_None_exists qpro); elim; move=> rneq.
-    elim; move=>x; elim.*)
   Admitted.
 
 

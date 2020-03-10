@@ -704,16 +704,19 @@ Section CProject.
   Inductive Proj_ (p : role) (r : proj_rel) : proj_rel :=
   | prj_end : Proj_ p r rg_end rl_end
   | prj_send1 q KsG KsL :
-      p != q ->
+      p != q ->      
+      same_dom KsG KsL ->
       R_all r KsG KsL ->
       Proj_ p r (rg_msg None p q KsG) (rl_msg l_send q KsL)
   | prj_send2 l t q KsG KsL L :
       p != q ->
+      same_dom KsG KsL ->
       R_all r KsG KsL ->
       KsL l = Some (t, L) ->
       Proj_ p r (rg_msg (Some l) p q KsG) L
   | prj_recv o q KsG KsL :
       p != q ->
+      same_dom KsG KsL ->
       R_all r KsG KsL ->
       Proj_ p r (rg_msg o q p KsG) (rl_msg l_recv q KsL)
   (* | prj_end2 G : ~ In r G -> Proj_ r G rl_end *)
@@ -722,6 +725,7 @@ Section CProject.
       p != q ->
       p != s ->
       (* InAll r KsG -> *)
+      same_dom KsG KsL ->
       R_all r KsG KsL ->
       Merge KsL L ->
       Proj_ p r (rg_msg o q s KsG) L
@@ -730,16 +734,16 @@ Section CProject.
   Lemma Proj_monotone p : monotone2 (Proj_ p).
   Proof.
   rewrite /monotone2; move=> x0 x1 r r' it LE; move: it; case=>//.
-  + move=> q KsG KsL neq HP; constructor =>//; move: HP; rewrite /R_all.
+  + move=> q KsG KsL neq samed HP; constructor =>//; move: HP; rewrite /R_all.
     move=> HP l Ty G L KsG_l KsL_l; apply: LE; by apply: (@HP l Ty G L KsG_l KsL_l).
-  + move=> l t q KsG KsL L neq HP KsL_l; apply: (@prj_send2 _ _ l t _ _ KsL) => //.
-    move: HP; rewrite /R_all; move=> HP l0 t0 G0 L0 KsG_l0 KsL_l0; apply LE.
-    by apply: (@HP l0 _ _ _ KsG_l0 KsL_l0).
-  + move=> o q KsG KsL neq HP; constructor =>//; move: HP; rewrite /R_all.
-    move=> HP l t G L KsG_l KsL_l; apply: LE. by apply: (HP _ _ _ _ KsG_l KsL_l).
-  + move=> o q s KsG KsL L0 neq_qs neq_pq neq_ps HP merg.
-    apply (@prj_mrg _ _ _ _ _ KsG KsL _) =>//; move: HP; rewrite /R_all.
-    move=> HP l t G L KsG_l KsL_l; apply: LE; by apply: (HP _ _ _ _ KsG_l KsL_l).
+  + move=> l t q KsG KsL L neq samed rall; apply: (@prj_send2 _ _ l t _ _ KsL) => //.
+    move: rall; rewrite /R_all; move=> rall l0 t0 G0 L0 KsG_l0 KsL_l0; apply LE.
+    by apply: (@rall l0 _ _ _ KsG_l0 KsL_l0).
+  + move=> o q KsG KsL neq samed rall; constructor =>//; move: rall; rewrite /R_all.
+    move=> rall l t G L KsG_l KsL_l; apply: LE. by apply: (rall _ _ _ _ KsG_l KsL_l).
+  + move=> o q s KsG KsL L0 neq_qs neq_pq neq_ps samed rall merg.
+    apply (@prj_mrg _ _ _ _ _ KsG KsL _) =>//; move: rall; rewrite /R_all.
+    move=> rall l t G L KsG_l KsL_l; apply: LE; by apply: (rall _ _ _ _ KsG_l KsL_l).
   Qed.
   Hint Resolve Proj_monotone.
   Definition Project p CG CL := paco2 (Proj_ p) bot2 CG CL.
@@ -1059,6 +1063,24 @@ Section CProject.
       by move: (Ih cG gG) CL_Lb =>{Ih}Ih /Ih/(_ UAL PAll).
   Qed.
 
+  Lemma cproj_samedom (r0 : proj_rel) FROM CONT CC KsL C
+        (CIH : forall cG cL iG iL,
+            g_closed iG ->
+            guarded 0 iG ->
+            project iG FROM == Some iL ->
+            GUnroll iG cG ->
+            LUnroll iL cL ->
+            r0 cG cL)
+        (cG : forall x, member x CONT -> g_fidx 0 x.cnt == fset0)
+        (gG : forall x, member x CONT -> guarded 0 x.cnt)
+        (GU : @unroll_all (upaco2 g_unroll bot2) CONT CC)
+        (LU : l_unroll_all (upaco2 l_unroll bot2) KsL C)
+        (PRJ : prj_all CONT FROM = Some KsL)
+    : same_dom CC C.
+  Proof.
+  Print extend.
+  Admitted.
+
   Lemma lunroll_merge r L CL CONT Ks
         (LU : LUnroll L CL)
         (PRJ : prj_all CONT r = Some Ks)
@@ -1110,13 +1132,15 @@ Section CProject.
       + move=>[EL]; move: EL LU=><- {L} /lu_unfold-LU.
         case EL: _ _/LU=>[||a p Ks C LU]//; move: EL LU=>[<-<-<-] LU {a p Ks}.
         move: F_r CIH E=>/eqP<-{r} CIH E; apply/prj_send1; first by apply/negPf.
-        by apply/(cproj_all CIH cG gG GU LU).
+        * admit.
+        *by apply/(cproj_all CIH cG gG GU LU).
       + case:ifP=>[T_r | T_ne_r].
         * move=>[EL]; move: EL LU=><- {L} /lu_unfold-LU {F_ne_r}.
           case EL: _ _/LU=>[||a p Ks C LU]//; move: EL LU=>[<-<-<-] LU {a p Ks}.
           move: T_r CIH E=>/eqP<-{r} CIH E.
           apply/prj_recv; first by rewrite eq_sym (F_neq_T).
-          by apply/(cproj_all CIH cG gG GU LU).
+          - admit.
+          - by apply/(cproj_all CIH cG gG GU LU).
         * move=> M.
           have {M}M: merge L [seq K.cnt | K <- KsL] = Some L
             by move: M=>{E}; case: KsL=>//=K Ks /eqP-M;
@@ -1124,8 +1148,9 @@ Section CProject.
           move: (lunroll_merge LU E M)=>[CCL [{LU}LU MRG]].
           move: F_ne_r T_ne_r; rewrite eq_sym=>F_ne_r; rewrite eq_sym=>T_ne_r.
           apply: prj_mrg;rewrite ?F_ne_r ?T_ne_r ?F_neq_T//; last by apply:MRG.
-          by apply/(cproj_all CIH cG gG GU LU)=>//.
-  Qed.
+          - admit.
+          - by apply/(cproj_all CIH cG gG GU LU)=>//.
+  Admitted.
 
   Lemma ic_proj r :
     forall iG iL cG cL,
