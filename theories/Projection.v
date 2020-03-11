@@ -1063,23 +1063,37 @@ Section CProject.
       by move: (Ih cG gG) CL_Lb =>{Ih}Ih /Ih/(_ UAL PAll).
   Qed.
 
-  Lemma cproj_samedom (r0 : proj_rel) FROM CONT CC KsL C
-        (CIH : forall cG cL iG iL,
-            g_closed iG ->
-            guarded 0 iG ->
-            project iG FROM == Some iL ->
-            GUnroll iG cG ->
-            LUnroll iL cL ->
-            r0 cG cL)
-        (cG : forall x, member x CONT -> g_fidx 0 x.cnt == fset0)
-        (gG : forall x, member x CONT -> guarded 0 x.cnt)
-        (GU : @unroll_all (upaco2 g_unroll bot2) CONT CC)
-        (LU : l_unroll_all (upaco2 l_unroll bot2) KsL C)
-        (PRJ : prj_all CONT FROM = Some KsL)
-    : same_dom CC C.
+  Lemma cproj_samedom p gCONT lCONT gC lC
+        (GU : @unroll_all (upaco2 g_unroll bot2) gCONT gC)
+        (LU : l_unroll_all (upaco2 l_unroll bot2) lCONT lC)
+        (PRJ : prj_all gCONT p = Some lCONT)
+    : same_dom gC lC.
   Proof.
-  Print extend.
-  Admitted.
+  elim: GU lCONT lC LU PRJ =>//=.
+  + move=> lCONT lC; elim; [rewrite /same_dom /empty //=| by[]].
+    by elim; move=> lab Ty; split; elim =>//=.
+  + move=> l Ty' iG cG gCONT0 gC0 gun unrall IHP lCONT lC lunrall.
+    case: (project iG p) =>//=; move=> lT.
+    move=> hp; move: hp IHP; case: (prj_all gCONT0 p) =>//=.
+    move=> lCONT0 [lCONTeq] IH; move: lCONTeq.
+    have IH_good: forall lC, 
+      l_unroll_all (upaco2 l_unroll bot2) lCONT0 lC -> same_dom gC0 lC.
+      by move=> lC0 hp; apply: (IH lCONT0) =>//=.
+    move: IH; move=> _ . (*I have removed a bad hp*)
+
+(*
+
+elim: lunrall l =>//=.
+
+
+
+move: IHP unrall; elim: lunrall gCONT0 l Ty' lT =>//=.
+    + move=> gCONT0 l Ty' lT IHP unrall.
+      by case: (prj_all gCONT0 p) =>//=.
+*)
+
+
+Admitted.
 
   Lemma lunroll_merge r L CL CONT Ks
         (LU : LUnroll L CL)
