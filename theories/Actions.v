@@ -175,6 +175,17 @@ Definition extend A (L : lbl) (X : A) f :=
 Definition same_dom T T' (C : lbl /-> mty * T) (C' : lbl /-> mty * T') :=
   forall L Ty, (exists G, C L = Some (Ty, G)) <-> (exists G', C' L = Some (Ty, G')).
 
+Lemma same_dom_extend T1 T2 l Ty G1 G2 
+  (C1 : lbl /-> mty * T1) (C2 : lbl /-> mty * T2):
+  same_dom C1 C2 ->
+  same_dom (extend l (Ty, G1) C1) (extend l (Ty, G2) C2).
+Proof.
+rewrite /extend /same_dom; move=> hp l0 Ty0; case: ifP =>//=; move=> eq.
+by split; elim; move=> GG [eqTy eqG]; rewrite eqTy; [exists G2 | exists G1]. 
+Qed.
+
+
+
 Definition R_all T T' (R : rel2 T (fun=>T'))
            (C : lbl /-> mty * T) (C' : lbl /-> mty * T'):=
     forall L Ty G G',

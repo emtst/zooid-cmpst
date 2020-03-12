@@ -228,21 +228,21 @@ Print R_all.
   Lemma cProj_none_from_inv_aux F T C GG lT:
     Project F GG lT -> GG = (rg_msg None F T C) ->
     F != T /\ (exists lC, lT = rl_msg l_send T lC /\ 
-      R_all (upaco2 (Proj_ F) bot2) C lC).
+    same_dom C lC /\ R_all (upaco2 (Proj_ F) bot2) C lC).
   Proof.
   move=> hp; punfold hp; [move: hp => [] //=| by apply Proj_monotone].
-  + move=> q gC lC neq rall [eq1 eq2].
+  + move=> q gC lC neq samedom rall [eq1 eq2].
     by rewrite -eq1 -eq2; split; [| exists lC;  split; [ |]].
-  + move=> o q gC lC neq rall [eq1 eq2 eq3 eq4].
+  + move=> o q gC lC neq samedom rall [eq1 eq2 eq3 eq4].
     by move: neq; rewrite eq2 -(rwP negP).
-  + move=> o q s gC lC L neq1 neq2 neq3 rall mer [eq1 eq2 eq3 eq4].
+  + move=> o q s gC lC L neq1 neq2 neq3 samedom rall mer [eq1 eq2 eq3 eq4].
     by move: neq2; rewrite eq2 -(rwP negP).
   Qed.
 
   Lemma cProj_none_from_inv F T C lT: 
     Project F (rg_msg None F T C) lT ->
     F != T /\ (exists lC, lT = rl_msg l_send T lC /\ 
-      R_all (upaco2 (Proj_ F) bot2) C lC).
+    same_dom C lC /\ R_all (upaco2 (Proj_ F) bot2) C lC).
   Proof.
   by move=> hp; apply: (cProj_none_from_inv_aux hp).
   Qed.
@@ -250,27 +250,48 @@ Print R_all.
 
   Lemma eProject_send_from F T C E:
     F \in PAR -> eProject (rg_msg None F T C) E ->
-    F != T /\
-    (exists lC,
-    E.[? F]%fmap = Some (rl_msg l_send T lC) /\ R_all (Project F) C lC).
+    F != T /\ (exists lC, E.[? F]%fmap = 
+      Some (rl_msg l_send T lC) /\ same_dom C lC /\ R_all (Project F) C lC).
   Proof.
   rewrite /eProject; move=> Fin hp; move: (hp _ Fin).
   elim; move=> lT; elim; move=> pro eq; move: (cProj_none_from_inv pro).
-  elim; move=> neq; elim; move=> lC; elim; move=> lTeq rall.
-  split; [by []|exists lC]; split; [by rewrite eq; apply f_equal|].
+  elim; move=> neq. elim; move=> lC; elim; move=> lTeq; elim; move=> samedom rall.
+  split; [by []|exists lC]; split; [by rewrite eq; apply f_equal| split; [ by []|]].
   move: rall; rewrite /R_all; move=> rall L Ty G lTT someg somel.
   move: (rall _ _ _ _ someg somel).
   by rewrite /upaco2 /Project /bot2; elim.
   Qed.
 
+  Lemma cProj_recv_inv_aux olb F T C GG lT:
+    Project T GG lT -> GG = (rg_msg olb F T C) ->
+    F != T /\ (exists lC, lT = rl_msg l_recv F lC /\ 
+    same_dom C lC /\ R_all (upaco2 (Proj_ T) bot2) C lC).
+  Proof.
+  move=> hp; punfold hp; [move: hp => [] //=| by apply Proj_monotone].
+  + move=> q gC lC neq samedom rall [eq1 eq2 eq3].
+    by move: neq; rewrite eq3 -(rwP negP).
+  + move=> lb0 Ty q gC lC lT0 neq samedom rall cLeq [eq1 eq2 eq3 eq4].
+    by move: neq; rewrite eq3 -(rwP negP).
+  + move=> o q gC lC neq samedom rall [eq1 eq2 eq3].
+    by rewrite -eq2 -eq3; split; [rewrite eq_sym| exists lC; split; [ | split; [|]]].
+  + move=> o q s gC lC L neq1 neq2 neq3 samedom rall mer [eq1 eq2 eq3 eq4].
+    by move: neq3; rewrite eq3 -(rwP negP).
+  Qed.
 
+  Lemma cProj_recv_inv  olb F T C lT: 
+    Project T (rg_msg olb F T C) lT ->
+    F != T /\ (exists lC, lT = rl_msg l_recv F lC /\ 
+    same_dom C lC /\ R_all (upaco2 (Proj_ T) bot2) C lC).
+  Proof.
+  by move=> hp; apply: (cProj_recv_inv_aux hp).
+  Qed.
 
   Lemma qProject_step G Q E a G':
     step a G G' -> 
     (forall p, part_of p G -> p \in PAR)-> 
     qProject G Q -> eProject G E
-    -> exists E' Q', lstep a (E, Q) (E', Q') 
-        /\ qProject G' Q' /\ eProject G' E'.
+    -> exists E' Q', qProject G' Q' /\ eProject G' E'
+       /\ lstep a (E, Q) (E', Q').
   Proof.
   elim.
   + move=> L F T C Ty G0 contL pin qpro epro.
@@ -279,8 +300,35 @@ Print R_all.
     move: (@eProject_send_from F T C E Fin epro); elim; move=> neq.
     elim; move=> lC; elim.
     move: (qProject_None_exists L Ty G0 (enq Q (F, T) (L, Ty)) qpro).
-    elim; elim; rewrite eq_refl. move=> qpro0; move: (qpro0 contL).
-    move=> {}qpro0 envF. rewrite /R_all.
+    elim; elim; rewrite eq_refl; move=> qpro0; move: (qpro0 contL).
+    move=> {}qpro0 envF; elim; move=> samedom.
+    have lT_aux: exists lT, lC L = Some (Ty, lT).
+      move: samedom; rewrite /same_dom. move=> sd; rewrite -sd.
+      by exists G0.
+    move: lT_aux; elim; move=> lT.
+    move=> lcontL rall.
+    exists (E.[F <- lT]), (enq Q (F, T) (L, Ty)).
+    split; [by apply qpro0|split].
+    * move: epro; rewrite /eProject; move=> it p.
+      case: (@eqP _ p F).
+      - move =>->; elim; exists lT; split.
+        + rewrite /Project; apply /paco2_fold.
+          apply: (@prj_send2 F (upaco2 (Proj_ F) bot2) L Ty T C lC lT) => //=.
+          move: rall; rewrite /Project /R_all /upaco2.
+          by move=> hp L0 Ty0 G1 T1 hp1 hp2; left; apply (hp _ _ _ _ hp1 hp2).
+        + by rewrite fnd_set; case: ifP; rewrite eq_refl //=.
+      - rewrite (rwP eqP); rewrite fnd_set; case: ifP =>//=.
+        move=> hp1 hp2 hp3; move: (it _ hp3); elim; move=> L0; elim.
+        move=> pro_p E_p; exists L0; split; [| by []].
+        case: (@eqP _ p T).
+        + move=> pT; rewrite pT; rewrite /Project; apply /paco2_fold.
+          move: pro_p; rewrite pT; move=> pro_T.
+          move: (@cProj_recv_inv _ _ _ _ _ pro_T); elim; rewrite eq_sym.
+          move=>neq2; elim; move=> lC0; elim; move=> L0eq; elim; move=> samed ral.
+          by rewrite L0eq; apply: (prj_recv (Some L) neq2 samed ral).
+
+About prj_recv.
+About eqP.
 
 About R_all.
 

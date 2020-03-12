@@ -704,7 +704,7 @@ Section CProject.
   Inductive Proj_ (p : role) (r : proj_rel) : proj_rel :=
   | prj_end : Proj_ p r rg_end rl_end
   | prj_send1 q KsG KsL :
-      p != q ->      
+      p != q ->
       same_dom KsG KsL ->
       R_all r KsG KsL ->
       Proj_ p r (rg_msg None p q KsG) (rl_msg l_send q KsL)
@@ -1063,6 +1063,8 @@ Section CProject.
       by move: (Ih cG gG) CL_Lb =>{Ih}Ih /Ih/(_ UAL PAll).
   Qed.
 
+
+
   Lemma cproj_samedom p gCONT lCONT gC lC
         (GU : @unroll_all (upaco2 g_unroll bot2) gCONT gC)
         (LU : l_unroll_all (upaco2 l_unroll bot2) lCONT lC)
@@ -1080,20 +1082,11 @@ Section CProject.
       l_unroll_all (upaco2 l_unroll bot2) lCONT0 lC -> same_dom gC0 lC.
       by move=> lC0 hp; apply: (IH lCONT0) =>//=.
     move: IH; move=> _ . (*I have removed a bad hp*)
-
-(*
-
-elim: lunrall l =>//=.
-
-
-
-move: IHP unrall; elim: lunrall gCONT0 l Ty' lT =>//=.
-    + move=> gCONT0 l Ty' lT IHP unrall.
-      by case: (prj_all gCONT0 p) =>//=.
-*)
-
-
-Admitted.
+    move: unrall IH_good. case: lunrall lCONT0 gC0 =>//=.
+    move => l0 t iT cT ilC clC upa lunrall lCONT0 gC0 unrall IH [eq].
+    move=> eqTy eqloc eqlcont; rewrite eq eqTy; apply: same_dom_extend.
+    by apply IH; rewrite eqlcont.
+  Qed.
 
   Lemma lunroll_merge r L CL CONT Ks
         (LU : LUnroll L CL)
@@ -1146,14 +1139,14 @@ Admitted.
       + move=>[EL]; move: EL LU=><- {L} /lu_unfold-LU.
         case EL: _ _/LU=>[||a p Ks C LU]//; move: EL LU=>[<-<-<-] LU {a p Ks}.
         move: F_r CIH E=>/eqP<-{r} CIH E; apply/prj_send1; first by apply/negPf.
-        * admit.
-        *by apply/(cproj_all CIH cG gG GU LU).
+        * by apply (cproj_samedom GU LU E).
+        * by apply/(cproj_all CIH cG gG GU LU).
       + case:ifP=>[T_r | T_ne_r].
         * move=>[EL]; move: EL LU=><- {L} /lu_unfold-LU {F_ne_r}.
           case EL: _ _/LU=>[||a p Ks C LU]//; move: EL LU=>[<-<-<-] LU {a p Ks}.
           move: T_r CIH E=>/eqP<-{r} CIH E.
           apply/prj_recv; first by rewrite eq_sym (F_neq_T).
-          - admit.
+          - by apply (cproj_samedom GU LU E).
           - by apply/(cproj_all CIH cG gG GU LU).
         * move=> M.
           have {M}M: merge L [seq K.cnt | K <- KsL] = Some L
@@ -1162,9 +1155,9 @@ Admitted.
           move: (lunroll_merge LU E M)=>[CCL [{LU}LU MRG]].
           move: F_ne_r T_ne_r; rewrite eq_sym=>F_ne_r; rewrite eq_sym=>T_ne_r.
           apply: prj_mrg;rewrite ?F_ne_r ?T_ne_r ?F_neq_T//; last by apply:MRG.
-          - admit.
+          - by apply (cproj_samedom GU LU E).
           - by apply/(cproj_all CIH cG gG GU LU)=>//.
-  Admitted.
+  Qed.
 
   Lemma ic_proj r :
     forall iG iL cG cL,
