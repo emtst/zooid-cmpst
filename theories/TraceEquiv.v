@@ -389,7 +389,7 @@ translate p to something in the domain of L ()
           by apply: (prj_mrg _ neq neqpF neqpT samed ral mer).
     * apply: ls_send =>//=; rewrite /do_act envF lcontL=> //=.
       by case: ifP; rewrite! eq_refl =>//=.
-  + move L F T C T G0.
+  + move=> L F T C Ty G0.
   Admitted.
 
 
