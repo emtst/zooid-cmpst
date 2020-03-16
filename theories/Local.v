@@ -599,9 +599,10 @@ Section Semantics.
         match Ks l with
         | Some (t', Lp) =>
           if (a == a') && (q == q') && (t == t')
-          then if Lp is rl_end
+          then Some P.[p <- Lp]
+               (*if Lp is rl_end
                then Some P.[~ p]
-               else Some P.[p <- Lp]
+               else Some P.[p <- Lp]*)
           else None
         | None => None
         end
@@ -616,9 +617,10 @@ Section Semantics.
     exists E', (do_act E l_send p q lb t = Some E').
   Proof.
     move=>H1 H2; rewrite /do_act H1 H2 !eq_refl/=.
-    case: Lp H2 =>[|a r Ks]; [|set (Lp := rl_msg _ _ _)].
+    by exists E.[ p <- Lp]%fmap.
+    (*case: Lp H2 =>[|a r Ks]; [|set (Lp := rl_msg _ _ _)].
     - by (exists E.[~ p]%fmap).
-    - by exists E.[ p <- Lp]%fmap.
+    - by exists E.[ p <- Lp]%fmap.*)
   Qed.
 
 
