@@ -361,79 +361,35 @@ translate p to something in the domain of L ()
       move: samedom; rewrite /same_dom. move=> sd; rewrite -sd.
       by exists G0.
     move: lT_aux; elim; move=> lT.
-    case: lT.
-    (*- move=> lcontL rall.
-      exists (E.[~ F]), (enq Q (F, T) (L, Ty)).
-      split; [by apply qpro0|split].
-      * move: epro; rewrite /eProject; move=> it p.
-        case: (@eqP _ p F).
-        + move =>->; elim; exists rl_end; split.
-          - rewrite /Project; apply /paco2_fold.
-            apply: (@prj_send2 F (upaco2 (Proj_ F) bot2) L Ty T C lC rl_end) => //=.
-            move: rall; rewrite /Project /R_all /upaco2.
-            by move=> hp L0 Ty0 G1 T1 hp1 hp2; left; apply (hp _ _ _ _ hp1 hp2).
-          - by rewrite fnd_set; case: ifP; rewrite eq_refl //=.
-        + rewrite (rwP eqP); rewrite fnd_set; case: ifP =>//=.
-          move=> hp1 hp2 hp3; move: (it _ hp3); elim; move=> L0; elim.
-          move=> pro_p E_p; exists L0; split; [| by []].
-          case: (@eqP _ p T).
-          * move=> pT; rewrite pT; rewrite /Project; apply /paco2_fold.
-            move: pro_p; rewrite pT; move=> pro_T.
-            move: (@cProj_recv_inv _ _ _ _ _ pro_T); elim; rewrite eq_sym.
-            move=>neq2; elim; move=> lC0; elim; move=> L0eq; elim; move=> samed ral.
-            by rewrite L0eq; apply: (prj_recv (Some L) neq2 samed ral).
-          * rewrite (rwP eqP); move=> neqpT; rewrite /Project; apply /paco2_fold.
-            move: hp1; rewrite (rwP negPf); move=> neqpF.
-            move: neqpT; rewrite (rwP negP); move=> neqpT.
-            move: (cProj_mrg_inv pro_p neqpF neqpT); elim; elim; elim.
-            move=> lC0; elim; move=> samed; elim; move=> ral mer. 
-            by apply: (prj_mrg _ neq neqpF neqpT samed ral mer).*)
-    - admit.
-
-
-    - move=> aa rr lCC lcontL rall.
-      exists (E.[F <- (rl_msg aa rr lCC)]), (enq Q (F, T) (L, Ty)).
-      split; [by apply qpro0|split].
-      * move: epro; rewrite /eProject; move=> it p.
-        case: (@eqP _ p F).
-        + move =>->; elim; exists (rl_msg aa rr lCC); split.
-          - rewrite /Project; apply /paco2_fold.
-            apply: (@prj_send2 F (upaco2 (Proj_ F) bot2) L Ty T C lC (rl_msg aa rr lCC)) => //=.
-            move: rall; rewrite /Project /R_all /upaco2.
-            by move=> hp L0 Ty0 G1 T1 hp1 hp2; left; apply (hp _ _ _ _ hp1 hp2).
-          - by rewrite fnd_set; case: ifP; rewrite eq_refl //=.
-        + rewrite (rwP eqP); rewrite fnd_set; case: ifP =>//=.
-          move=> hp1 hp2 hp3 hp4;  move: (it _ hp3 (part_of_label_label _ hp4)); elim.
-          move=> L0; elim; move=> pro_p E_p; exists L0; split; [| by []].
-          case: (@eqP _ p T).
-          * move=> pT; rewrite pT; rewrite /Project; apply /paco2_fold.
-            move: pro_p; rewrite pT; move=> pro_T.
-            move: (@cProj_recv_inv _ _ _ _ _ pro_T); elim; rewrite eq_sym.
-            move=>neq2; elim; move=> lC0; elim; move=> L0eq; elim; move=> samed ral.
-            by rewrite L0eq; apply: (prj_recv (Some L) neq2 samed ral).
-          * rewrite (rwP eqP); move=> neqpT; rewrite /Project; apply /paco2_fold.
-            move: hp1; rewrite (rwP negPf); move=> neqpF.
-            move: neqpT; rewrite (rwP negP); move=> neqpT.
-            move: (cProj_mrg_inv pro_p neqpF neqpT); elim; elim; elim.
-            move=> lC0; elim; move=> samed; elim; move=> ral mer. 
-            by apply: (prj_mrg _ neq neqpF neqpT samed ral mer).
-      * apply: ls_send =>//=; rewrite /do_act. envF lcontL=> //=.
-        by case: ifP; rewrite! eq_refl =>//=.
-          
-Locate "~~".
-
-About negb.
-
-About negPf.
-
-SearchAbout negb.
-
-About prj_recv.
-About eqP.
-
-About R_all.
-
-
+    move=> lcontL rall.
+    exists (E.[F <- lT]), (enq Q (F, T) (L, Ty)).
+    split; [by apply qpro0|split].
+    * move: epro; rewrite /eProject; move=> it p.
+      case: (@eqP _ p F).
+      - move =>->; elim; exists lT; split.
+        + rewrite /Project; apply /paco2_fold.
+          apply: (@prj_send2 F (upaco2 (Proj_ F) bot2) L Ty T C lC lT) => //=.
+          move: rall; rewrite /Project /R_all /upaco2.
+          by move=> hp L0 Ty0 G1 T1 hp1 hp2; left; apply (hp _ _ _ _ hp1 hp2).
+        + by rewrite fnd_set; case: ifP; rewrite eq_refl //=.
+      - rewrite (rwP eqP); rewrite fnd_set; case: ifP =>//=.
+        move=> hp1 hp2 hp3 hp4;  move: (it _ hp3 (part_of_label_label _ hp4)); elim.
+        move=> L0; elim; move=> pro_p E_p; exists L0; split; [| by []].
+        case: (@eqP _ p T).
+        + move=> pT; rewrite pT; rewrite /Project; apply /paco2_fold.
+          move: pro_p; rewrite pT; move=> pro_T.
+          move: (@cProj_recv_inv _ _ _ _ _ pro_T); elim; rewrite eq_sym.
+          move=>neq2; elim; move=> lC0; elim; move=> L0eq; elim; move=> samed ral.
+          by rewrite L0eq; apply: (prj_recv (Some L) neq2 samed ral).
+        + rewrite (rwP eqP); move=> neqpT; rewrite /Project; apply /paco2_fold.
+          move: hp1; rewrite (rwP negPf); move=> neqpF.
+          move: neqpT; rewrite (rwP negP); move=> neqpT.
+          move: (cProj_mrg_inv pro_p neqpF neqpT); elim; elim; elim.
+          move=> lC0; elim; move=> samed; elim; move=> ral mer. 
+          by apply: (prj_mrg _ neq neqpF neqpT samed ral mer).
+    * apply: ls_send =>//=; rewrite /do_act envF lcontL=> //=.
+      by case: ifP; rewrite! eq_refl =>//=.
+  + move L F T C T G0.
   Admitted.
 
 
