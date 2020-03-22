@@ -413,7 +413,7 @@ translate p to something in the domain of L ()
     move: (qProject_None_exists L Ty G0 (enq Q (F, T) (L, Ty)) qpro).
     elim; elim; rewrite eq_refl; move=> qpro0; move: (qpro0 contL)=> {}qpro0.
     have lT_aux: exists lT, lC L = Some (Ty, lT).
-      move: samedom; rewrite /same_dom. move=> sd; rewrite -sd.
+      move: samedom; rewrite /same_dom; move=> sd; rewrite -sd.
       by exists G0.
     move: lT_aux; elim=> lT lcontL.
     exists (E.[F <- lT]), (enq Q (F, T) (L, Ty)).
@@ -427,11 +427,11 @@ translate p to something in the domain of L ()
           by move=> hp L0 Ty0 G1 T1 hp1 hp2; left; apply (hp _ _ _ _ hp1 hp2).
         + by rewrite fnd_set; case: ifP; rewrite eq_refl //=.
       - rewrite (rwP eqP); rewrite fnd_set; case: ifP =>//=.
-        move=> hp1 hp2 hp3 hp4;  move: (it _ hp3 (part_of_label_label _ hp4)); elim.
-        move=> L0; elim=> pro_p E_p; exists L0; split; [| by []].
+        move=> hp1 hp2 hp3 hp4;  move: (it _ hp3 (part_of_label_label _ hp4)).
+        elim; move=> L0; elim=> pro_p E_p; exists L0; split; [| by []].
         case: (@eqP _ p T).
-        + move=> pT; rewrite pT; rewrite /Project; apply /paco2_fold.
-          move: pro_p; rewrite pT; move=> pro_T.
+        + move=> pT; move: pro_p; rewrite pT;  move=> pro_T.
+          rewrite /Project; apply /paco2_fold.
           move: (@cProj_recv_inv _ _ _ _ _ pro_T); elim; rewrite eq_sym.
           move=>neq2; elim=> lC0; elim=> L0eq; elim=> samed ral.
           by rewrite L0eq; apply: (prj_recv (Some L) neq2 samed ral).
@@ -439,7 +439,7 @@ translate p to something in the domain of L ()
           move: hp1; rewrite (rwP negPf)=> neqpF.
           move: neqpT; rewrite (rwP negP)=> neqpT.
           move: (cProj_mrg_inv pro_p neqpF neqpT); elim; elim; elim=> lC0.
-          elim=> samed; elim=> ral mer. 
+          elim=> samed; elim=> ral mer.
           by apply: (prj_mrg _ neq neqpF neqpT samed ral mer).
     * apply: ls_send =>//=; rewrite /do_act envF lcontL=> //=.
       by case: ifP; rewrite! eq_refl =>//=.
@@ -452,8 +452,41 @@ translate p to something in the domain of L ()
     elim=> Ty0; elim=> GG; elim=> Q'.
     elim; rewrite contL; move=> [eqTy eqG0]; rewrite eqTy eqG0.
     elim=> deqeq qpro'.
-
-
+    have lT_aux: exists lT, lC L = Some (Ty, lT).
+      move: samedom; rewrite /same_dom; move=> sd; rewrite -sd.
+      by exists G0.
+    move: lT_aux; elim=> lT lcontL.
+    exists (E.[T <- lT]), Q'.
+    split; [by apply qpro' | split].
+    * move: epro; rewrite /eProject; move=> it p.
+      case: (@eqP _ p T).
+      - move =>->; elim; exists lT; split.
+        + move: rall contL; rewrite /R_all eqG0; move=> rallu contL.
+          by apply: (rallu _ _ _ _ contL lcontL).
+        + by rewrite fnd_set; case: ifP; rewrite eq_refl //=.
+      - rewrite (rwP eqP); rewrite fnd_set; case: ifP =>//=.
+        move=> hp1 hp2 hp3 hp4; move: contL; rewrite eqG0; move=> contL.
+        move: (it p hp3 (pof_cont (Some L) F T contL hp4)).
+        elim=> L0; elim=> pro_p E_p; exists L0; split; [| by []].
+        case: (@eqP _ p F).
+        + move=> pF; move: pro_p; rewrite pF; move=> pro_F.
+          rewrite /Project; apply /paco2_fold.
+          move: (@cProj_send_some_inv _ _ _ _ _ pro_F); elim; elim.
+          elim=> lC0; elim=> Ty1; elim=> lcontL0; elim=> samed ral.
+          have eqTy1: Ty1 = Ty.
+            rewrite /same_dom in samed.
+            move: (samed L Ty); elim=> sd1 sd2; move: sd1. 
+            by elim; [ rewrite lcontL0; move=> L0' [d0 d1]|exists GG].
+          rewrite eqTy1 in lcontL0; rewrite /R_all in ral.
+          apply paco2_unfold; [by apply Proj_monotone| ].
+          by move: (ral _ _ _ _ contL lcontL0); rewrite /upaco2; elim. 
+        + rewrite (rwP eqP)=> neqpF; rewrite /Project; apply /paco2_fold.
+          move: hp1; rewrite (rwP negPf)=> neqpT.
+          move: neqpF; rewrite (rwP negP)=> neqpF.
+          move: (cProj_mrg_inv pro_p neqpF neqpT); elim; elim; elim=> lC0.
+          elim=> samed; rewrite /R_all /Merge /EqL; elim=> ral mer. 
+(*I need a beautiful and demanding lemma: 
+EqL lT lT' -> Project p G lT -> Project p G lT'*)
 (*; elim; move=> eq; elim; move=> samedom rall.*)
   Admitted.
 
