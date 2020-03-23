@@ -249,6 +249,19 @@ translate p to something in the domain of L ()
   exists G, (enq Q (F, T) (L, Ty)); split; [|split; [ |apply hp]] =>//=.
   Qed.
 
+  Lemma cProj_end_inv_aux p GG lT:
+    Project p GG lT -> GG = rg_end ->
+    lT = rl_end.
+  Proof.
+  by move=> hp; punfold hp; [move: hp => [] //=| by apply Proj_monotone].
+  Qed.
+
+  Lemma cProj_end_inv p lT:
+    Project p rg_end lT -> lT = rl_end.
+  Proof.
+  by move=> hp; apply (cProj_end_inv_aux hp).
+  Qed.
+
   Lemma cProj_send_none_inv_aux F T C GG lT:
     Project F GG lT -> GG = (rg_msg None F T C) ->
     F != T /\ (exists lC, lT = rl_msg l_send T lC /\ 
@@ -396,6 +409,79 @@ translate p to something in the domain of L ()
   Proof.
   by move=> hp neq1 neq2; apply: (cProj_mrg_inv_aux hp neq1 neq2).
   Qed.
+
+  Lemma EqL_r_end_inv_aux lT lT': 
+    EqL lT lT' -> lT' = rl_end -> lT = rl_end.
+  Proof.
+  by move=> hp; punfold hp; move: hp => [] //=.
+  Qed.
+
+  Lemma EqL_r_end_inv lT: 
+    EqL lT rl_end -> lT = rl_end.
+  Proof.
+  by move=> hp; apply (EqL_r_end_inv_aux hp).
+  Qed.
+
+  Lemma EqL_r_msg_inv_aux lT lT' a p C': 
+    EqL lT lT' -> lT' = rl_msg a p C' ->
+    exists C, same_dom C C' /\ 
+       R_all EqL C C' /\ lT = rl_msg a p C.
+  Proof.
+  move=> hp; punfold hp; move: hp => [] //=.
+  move=> a0 p0 C1 C2 samed rall [eq1 eq2 eq3].
+  exists C1; rewrite eq1 eq2 -eq3; split; [|split] => //=.
+  rewrite /R_all; move=> L Ty lT1 lT2 ceq1 ceq2.
+  rewrite /R_all in rall; move: (rall L Ty lT1 lT2 ceq1 ceq2).
+  by rewrite /upaco2; elim; rewrite //=.
+  Qed.
+  
+  Lemma EqL_r_msg_inv a p C' lT: 
+    EqL lT (rl_msg a p C') ->
+    exists C, same_dom C C' /\ 
+       R_all EqL C C' /\ lT = rl_msg a p C.
+  Proof.
+  by move=> hp; apply: (EqL_r_msg_inv_aux hp).
+  Qed.
+
+  Lemma EqL_project p G lT lT': 
+    EqL lT lT' -> Project p G lT -> Project p G lT'.
+  Proof.
+  move=> eql prj; move: (conj eql prj) => {eql prj}.
+  move => /(ex_intro (fun lT=> _) lT) {lT}.
+  move: G lT'; apply /paco2_acc; move=> r0 _ CIH G lT'.
+  elim=> lT; elim; case lT'.
+  + move=> eql; move: (EqL_r_end_inv eql); move=>->.
+    rewrite /Project; move=> pro; move: paco2_mon; rewrite /monotone2.
+    by move=> pamo; apply (pamo _ _ _ _ _ _ _ pro).
+  + move=> a q C eql; move: (EqL_r_msg_inv eql).
+    elim=> C0; elim=> samed; elim=> rall lTeq; rewrite lTeq.
+    case G; [by move => hp; move: (cProj_end_inv hp)|].
+    move=> op F T CONT; case: (@eqP _ p F).
+    * move=> pF; rewrite pF; case: op.
+      - move=> L hpro; move: (cProj_send_some_inv hpro); elim=> neq.
+        elim=> lC0; elim=> Ty; elim=> lC0eq; elim=> sam ral.
+        apply /paco2_fold.
+        apply: (@prj_send2 _ _ _ Ty _ _ (extend L (Ty, rl_msg a q C) lC0))=>//=.
+        + have exCONT: exists GG, CONT L = Some (Ty, GG).
+            rewrite /same_dom in sam; move: (sam L Ty); elim=> _ sam'.
+            by apply sam'; exists (rl_msg a q C0).
+          move: exCONT; elim; move=> GG contL.
+          by apply: (same_dom_extend_some_l (rl_msg a q C) sam contL).
+        + rewrite /R_all; move=> LL Tyy GG lTT contLL; rewrite /extend.
+          case: ifP.
+          * rewrite -(rwP eqP); move=> eqLLL [eq1 eq2].
+            rewrite /upaco2; right; apply CIH; rewrite -eq2.
+            exists (rl_msg a q C0); split; [by rewrite -lTeq|].
+            rewrite /R_all in ral; rewrite -eq1 -eqLLL in contLL. 
+            move: (ral _ _ _ _ contLL lC0eq); rewrite /upaco2.
+            elim; [by rewrite pF |by []].
+          * move=> neqLLL lC0LL; rewrite /R_all in ral.
+            move: upaco2_mon; rewrite /monotone2; move=> up.
+            apply (up _ _ _ _ _ _ _ (ral _ _ _ _ contLL lC0LL)).
+            by rewrite /bot2.
+        + by rewrite /extend; case: ifP; [|rewrite eq_refl].
+      -
+  Admitted.
 
   Lemma Project_step G Q E a G':
     step a G G' -> 
