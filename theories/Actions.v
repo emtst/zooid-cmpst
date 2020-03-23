@@ -184,6 +184,17 @@ rewrite /extend /same_dom; move=> hp l0 Ty0; case: ifP =>//=; move=> eq.
 by split; elim; move=> GG [eqTy eqG]; rewrite eqTy; [exists G2 | exists G1]. 
 Qed.
 
+Lemma same_dom_extend_some_l T1 T2 l Ty G1 G2 
+  (C1 : lbl /-> mty * T1) (C2 : lbl /-> mty * T2):
+  same_dom C1 C2 -> C1 l = Some (Ty, G1) ->
+  same_dom C1 (extend l (Ty, G2) C2).
+Proof.
+rewrite /extend /same_dom; move=> hp eq l0 Ty0.
+case: ifP =>//=; rewrite -(rwP eqP); move=> eql; rewrite -eql.
+split; [| by elim; move=> GG [eq1 eq2]; rewrite -eq1; exists G1].
+by elim=> GG; rewrite eq; move=> [eq1 eq2]; exists G2; rewrite eq1.
+Qed.
+
 
 
 Definition R_all T T' (R : rel2 T (fun=>T'))
