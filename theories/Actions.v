@@ -195,6 +195,27 @@ split; [| by elim; move=> GG [eq1 eq2]; rewrite -eq1; exists G1].
 by elim=> GG; rewrite eq; move=> [eq1 eq2]; exists G2; rewrite eq1.
 Qed.
 
+Definition same_dom_const T1 T2 (C: lbl /-> mty * T1) (t2 : T2) L := 
+match C L with
+  | None => None
+  | Some (Ty,t1) => Some (Ty,t2)
+end.
+
+Lemma same_dom_const_same_dom T1 T2 (C: lbl /-> mty * T1) (t : T2):
+  same_dom C (same_dom_const C t).
+Proof.
+rewrite /same_dom /same_dom_const; move=> L Ty; split.
++ by elim=> G hp; exists t; rewrite hp.
++ elim=> G; case: (C L) => //=; move=> a.
+  by case: a => Tyy t1 [eq1 eq2]; exists t1; rewrite eq1.
+Qed.
+
+Lemma same_dom_const_some T1 T2 (C: lbl /-> mty * T1) (t:T2) L Ty t':
+  same_dom_const C t L = Some (Ty, t') -> t' = t.
+Proof.
+rewrite /same_dom_const; case: (C L) => //=; move=> a.
+case: a=> Tyy _ [] =>//=.
+Qed.
 
 
 Definition R_all T T' (R : rel2 T (fun=>T'))

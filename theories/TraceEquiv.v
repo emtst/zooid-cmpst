@@ -443,11 +443,42 @@ translate p to something in the domain of L ()
   by move=> hp; apply: (EqL_r_msg_inv_aux hp).
   Qed.
 
+(*to be moved in Local.v*)
+
+  Lemma EqL_trans lT1 lT2 lT3:
+    EqL lT1 lT2 -> EqL lT2 lT3 -> EqL lT1 lT3.
+  Proof.
+  move=> hp1 hp2; move: (conj hp1 hp2) => {hp1 hp2}.
+  move=> /(ex_intro (fun lT=> _) lT2) {lT2}; move: lT1 lT3.
+  apply /paco2_acc; move=> r0 _ CIH lT1 lT3; elim=> lT2.
+  elim; case: lT3 =>//=.
+  + move=> eql12 eql23; move: (EqL_r_end_inv eql23) eql12 =>->.
+    move=> eql12; move: (EqL_r_end_inv eql12) =>->.
+    by apply /paco2_fold; apply el_end.
+  + move=> a r C eql12 eql23; move: (EqL_r_msg_inv eql23).
+    elim=> C2; elim=> samed23; elim=> rall23 lT2eq.
+    rewrite lT2eq in eql12; move: (EqL_r_msg_inv eql12).
+    elim=> C1; elim=> samed12; elim=> rall12 lT1eq.
+    rewrite lT1eq; apply /paco2_fold; apply el_msg.
+    - rewrite /same_dom; rewrite /same_dom in samed12 samed23.
+      by move=> L Ty; rewrite (samed12 L Ty).
+    - rewrite /R_all; move=> L Ty cT1 cT3 C1L C3L.
+      rewrite /upaco2; right; apply CIH.
+      have cT2aux: exists cT2, C2 L = Some (Ty, cT2).
+        rewrite /same_dom in samed12; rewrite -(samed12 L Ty).
+        by exists cT1.
+      move: cT2aux; elim=> cT2 C2L; exists cT2.
+      rewrite /R_all in rall12 rall23.
+      by split; [apply (rall12 L Ty)|apply (rall23 L Ty)].
+  Qed.
+
+
+
   Lemma EqL_project p G lT lT': 
     EqL lT lT' -> Project p G lT -> Project p G lT'.
   Proof.
   move=> eql prj; move: (conj eql prj) => {eql prj}.
-  move => /(ex_intro (fun lT=> _) lT) {lT}.
+  move=> /(ex_intro (fun lT=> _) lT) {lT}.
   move: G lT'; apply /paco2_acc; move=> r0 _ CIH G lT'.
   elim=> lT; elim; case lT'.
   + move=> eql; move: (EqL_r_end_inv eql); move=>->.
@@ -480,8 +511,66 @@ translate p to something in the domain of L ()
             apply (up _ _ _ _ _ _ _ (ral _ _ _ _ contLL lC0LL)).
             by rewrite /bot2.
         + by rewrite /extend; case: ifP; [|rewrite eq_refl].
-      -
-  Admitted.
+      - move=> hpro; move: (cProj_send_none_inv hpro); elim=> neq.
+        elim=> lC0; elim; move=> [eq1 eq2 eq3]; elim=> samed0 ral.
+        apply /paco2_fold; rewrite eq1 eq2.
+        apply (prj_send1 neq).
+        + rewrite /same_dom; rewrite /same_dom in samed samed0.
+          by move=> LL Tyy; rewrite (samed0 LL Tyy) -eq3.
+        + rewrite /R_all; move=> LL Tyy GG lTT contLL lcontLL.
+          rewrite /upaco2; right; apply CIH.
+          have lT0aux: exists lT0, C0 LL = Some (Tyy, lT0).
+            rewrite /same_dom in samed; rewrite (samed LL Tyy).
+            by exists lTT.
+          move: lT0aux; elim=> lT0 lcont0LL; exists lT0.
+          split; rewrite /R_all in rall ral; [by apply (rall LL Tyy)|].
+          rewrite eq3 in lcont0LL; move: (ral _ _ _ _ contLL lcont0LL).
+          by rewrite /upaco2 pF; elim=> //=.
+    * rewrite (rwP eqP) (rwP negP); move=> neq; case: (@eqP _ p T).
+      - move=> pT; rewrite pT; move=> hpro.
+        move: (cProj_recv_inv hpro); elim=> neqFT; elim=> lC; elim.
+        move=> [eq1 eq2 eq3]; elim=> samed0 ral; apply /paco2_fold.
+        rewrite eq_sym in neqFT.
+        rewrite eq1 eq2; apply: (prj_recv _ neqFT).
+        + rewrite /same_dom; rewrite /same_dom in samed samed0.
+          by move=> LL Tyy; rewrite (samed0 LL Tyy) -eq3.
+        + rewrite /R_all; move=> LL Tyy GG lTT contLL lcontLL.
+          rewrite /upaco2; right; apply CIH.
+          have lT0aux: exists lT0, C0 LL = Some (Tyy, lT0).
+            rewrite /same_dom in samed; rewrite (samed LL Tyy).
+            by exists lTT.
+          move: lT0aux; elim=> lT0 lcont0LL; exists lT0.
+          split; rewrite /R_all in rall ral; [by apply (rall LL Tyy)|].
+          rewrite eq3 in lcont0LL; move: (ral _ _ _ _ contLL lcont0LL).
+          by rewrite /upaco2 pT; elim=> //=.
+      - rewrite (rwP eqP) (rwP negP); move=> neqpT hpro.
+        move: (cProj_mrg_inv hpro neq neqpT); elim=> neqFT.
+        elim=> lC0; elim=> samed0; elim=> ral mer.
+        apply /paco2_fold.
+        apply: (@prj_mrg _ _ _ _ _ _ 
+          (same_dom_const CONT (rl_msg a q C)) _ neqFT neq neqpT).
+        + by apply same_dom_const_same_dom.
+        + rewrite /R_all; move=> LL Tyy GG lTT contLL lcontLL.
+          rewrite /upaco2; right; apply CIH.
+          have lT0aux: exists lT0, lC0 LL = Some (Tyy, lT0).
+            rewrite /same_dom in samed0; rewrite -(samed0 LL Tyy).
+            by exists GG.
+          have lTTeq : lTT = (rl_msg a q C).
+            rewrite /same_dom_const contLL in lcontLL.
+            by move: lcontLL=> [].
+          rewrite lTTeq; move: lT0aux; elim=> lT0 lcont0LL.
+          exists lT0; split.
+          * rewrite /Merge in mer; move: (mer _ _ _ lcont0LL).
+            move=> eql_1; apply: (EqL_trans eql_1).
+            rewrite /EqL; apply /paco2_fold; apply (el_msg _ _ samed).
+            move: rall; rewrite /R_all /upaco2.
+            move=> rall Le Tye lTe0 lTe eqe0 eqe; left.
+            by apply: (rall _ _ _ _ eqe0 eqe).
+          * rewrite /R_all in ral; move: (ral _ _ _ _ contLL lcont0LL).
+            by rewrite /upaco2; elim.
+          * rewrite /Merge; move=> Ln Tn lTn sdc.
+            move: (same_dom_const_some sdc) =>-> //=.
+  Qed.
 
   Lemma Project_step G Q E a G':
     step a G G' -> 
