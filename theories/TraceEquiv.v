@@ -474,7 +474,7 @@ translate p to something in the domain of L ()
 
 
 
-  Lemma EqL_project p G lT lT': 
+  Lemma EqL_Project p G lT lT': 
     EqL lT lT' -> Project p G lT -> Project p G lT'.
   Proof.
   move=> eql prj; move: (conj eql prj) => {eql prj}.
@@ -654,15 +654,21 @@ translate p to something in the domain of L ()
             by elim; [ rewrite lcontL0; move=> L0' [d0 d1]|exists GG].
           rewrite eqTy1 in lcontL0; rewrite /R_all in ral.
           apply paco2_unfold; [by apply Proj_monotone| ].
-          by move: (ral _ _ _ _ contL lcontL0); rewrite /upaco2; elim. 
-        + rewrite (rwP eqP)=> neqpF; rewrite /Project; apply /paco2_fold.
+          by move: (ral _ _ _ _ contL lcontL0); rewrite /upaco2; elim.
+        + rewrite (rwP eqP)=> neqpF.
           move: hp1; rewrite (rwP negPf)=> neqpT.
           move: neqpF; rewrite (rwP negP)=> neqpF.
           move: (cProj_mrg_inv pro_p neqpF neqpT); elim; elim; elim=> lC0.
-          elim=> samed; rewrite /R_all /Merge /EqL; elim=> ral mer. 
-(*I need a beautiful and demanding lemma: 
-EqL lT lT' -> Project p G lT -> Project p G lT'*)
-(*; elim; move=> eq; elim; move=> samedom rall.*)
+          elim=> samed; rewrite /R_all /Merge /EqL; elim=> ral mer.
+          have lT'aux: exists lT', lC0 L = Some (Ty, lT').
+            by rewrite /same_dom in samed; rewrite -samed; exists GG.
+          move: lT'aux; elim=> lT' lcont0L.
+          apply: (@EqL_Project _ _ lT'); [by apply (mer _ _ _ lcont0L)|].
+          by move: (ral _ _ _ _ contL lcont0L); rewrite /upaco2; elim.
+    * apply: ls_recv =>//=; rewrite /do_act envT lcontL eqTy => //=.
+      by case: ifP; rewrite! eq_refl =>//=.
+  +
+
   Admitted.
 
 
