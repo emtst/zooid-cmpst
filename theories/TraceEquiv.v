@@ -572,6 +572,38 @@ translate p to something in the domain of L ()
             move: (same_dom_const_some sdc) =>-> //=.
   Qed.
 
+(*Next thing should be moved in Global.v*)
+  SearchAbout paco1.
+  Definition g_pr :=  rg_ty -> Prop.
+  Inductive g_wf_ (P : g_pr) : g_pr :=
+  | g_wf_end : g_wf_ P rg_end
+  | g_wf_msg o F T C L Ty G:
+      C L = Some (Ty, G) -> P G -> 
+      g_wf_ P (rg_msg o F T C).
+  Hint Constructors g_wf_.
+  Definition g_wf g := paco1 g_wf_ bot1 g.
+
+  Lemma g_wf_monotone : monotone1 g_wf_.
+  Proof.
+  rewrite /monotone1; move=> G P P'; case=>//=.
+  move=> o F T C L Ty G0 CLeq wfG hp.
+  by apply (g_wf_msg _ _ _ CLeq); apply hp.
+  Qed.
+  Hint Resolve g_wf_monotone.
+
+  Lemma step_subject_part_of a G G':
+    step a G G' -> g_wf G -> part_of (subject a) G.
+  Proof.
+  elim.
+  + move=> L F T C Ty G0 CL wf; rewrite /subject.
+    by apply pof_from.
+  + move=> L F T C Ty G0 CL wf; rewrite /subject.
+    by apply pof_to.
+  + move=> a0 F T C0 C1 nF nT sd ra ih wf.
+    move: pof_cont.
+Admitted.
+
+
   Lemma Project_step G Q E a G':
     step a G G' -> 
     (forall p, part_of p G -> p \in PAR)-> 
@@ -667,7 +699,7 @@ translate p to something in the domain of L ()
           by move: (ral _ _ _ _ contL lcont0L); rewrite /upaco2; elim.
     * apply: ls_recv =>//=; rewrite /do_act envT lcontL eqTy => //=.
       by case: ifP; rewrite! eq_refl =>//=.
-  +
+  + move=> aa F T C0 C1 nF nT sd01 r01 IH pin qpro epro.
 
   Admitted.
 
