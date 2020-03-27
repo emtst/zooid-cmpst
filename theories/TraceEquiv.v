@@ -24,7 +24,6 @@ Definition PAR2 := (PAR `*` PAR)%fset.
 
 
 
-
   (*Definition Merge (F : lbl /-> mty * rl_ty) (L : rl_ty) : Prop :=
     forall Lb Ty L', F Lb = Some (Ty, L') -> EqL L' L.*)
  
@@ -573,37 +572,116 @@ translate p to something in the domain of L ()
   Qed.
 
 (*Next thing should be moved in Global.v*)
-  SearchAbout paco1.
-  Definition g_pr :=  rg_ty -> Prop.
-  Inductive g_wf_ (P : g_pr) : g_pr :=
-  | g_wf_end : g_wf_ P rg_end
-  | g_wf_msg o F T C L Ty G:
-      C L = Some (Ty, G) -> P G -> 
-      g_wf_ P (rg_msg o F T C).
-  Hint Constructors g_wf_.
-  Definition g_wf g := paco1 g_wf_ bot1 g.
 
-  Lemma g_wf_monotone : monotone1 g_wf_.
+
+  Definition g_pr :=  rg_ty -> Prop.
+  Inductive g_wform_ (P : g_pr) : g_pr :=
+  | g_wform_end : g_wform_ P rg_end
+  | g_wform_msg o F T C L Ty G:
+      C L = Some (Ty, G) -> P G ->
+      (forall LL TTy GG, 
+        C LL = Some (TTy, GG) -> P GG) ->
+      g_wform_ P (rg_msg o F T C).
+  Hint Constructors g_wform_.
+  Definition g_wform g := paco1 g_wform_ bot1 g.
+
+  Lemma g_wform_monotone : monotone1 g_wform_.
   Proof.
   rewrite /monotone1; move=> G P P'; case=>//=.
-  move=> o F T C L Ty G0 CLeq wfG hp.
-  by apply (g_wf_msg _ _ _ CLeq); apply hp.
+  move=> o F T C L Ty G0 CLeq wfG wfall hp.
+  apply (g_wform_msg _ _ _ CLeq); [by apply hp|].
+  move=> LL TTy GG CLL; apply hp.
+  by apply (wfall _ _ _ CLL).
   Qed.
-  Hint Resolve g_wf_monotone.
+  Hint Resolve g_wform_monotone.
+
+  Lemma g_wform_msg_inv_aux GG o F T C: 
+    g_wform GG -> GG = (rg_msg o F T C)->
+    (exists L Ty G, C L = Some (Ty, G) /\ g_wform G) /\
+    (forall LL TTy GG, C LL = Some (TTy, GG) -> g_wform GG).
+  Proof.
+  move=> wf; rewrite /g_wform in wf; punfold wf.
+  move: wf =>
+    [|o' F' T' C' L Ty G CL hp hpall [eq1 eq2 eq3 eq4]] //=.
+  split.
+  + exists L, Ty, G; split; [by rewrite -eq4|].
+    by move: hp; rewrite /upaco1; elim.
+  + move=> LL TTy GG' CLL; rewrite -eq4 in CLL.
+    by move: (hpall _ _ _ CLL); rewrite /upaco1; elim.
+  Qed.
+
+  Lemma g_wform_msg_inv o F T C: 
+    g_wform (rg_msg o F T C)->
+    (exists L Ty G, C L = Some (Ty, G) /\ g_wform G) /\
+    (forall LL TTy GG, C LL = Some (TTy, GG) -> g_wform GG).
+  Proof.
+  by move=> hp; apply (@g_wform_msg_inv_aux _ o F T _ hp).
+  Qed.
+
+
+
+
+  Lemma step_ind_str (P : act -> rg_ty -> rg_ty -> Prop) :
+    (forall L F T C Ty G, C L = Some (Ty, G) ->
+      P (a_send F T L Ty) (rg_msg None F T C) (rg_msg (Some L) F T C))
+    ->
+    (forall L F T C Ty G, C L = Some (Ty, G) -> 
+      P (a_recv F T L Ty) (rg_msg (Some L) F T C) G)
+    ->
+    (forall a F T C0 C1, subject a != F -> subject a != T ->
+      same_dom C0 C1 -> R_all (step a) C0 C1 ->
+      R_all (P a) C0 C1 ->
+        P a (rg_msg None F T C0) (rg_msg None F T C1))
+    ->
+    (forall a L F T C0 C1, subject a != T ->
+      same_dom C0 C1 -> R_only (step a) L C0 C1 ->
+      (*new property, mirroring R_only*)
+      R_only (P a) L C0 C1 ->
+      P a (rg_msg (Some L) F T C0) (rg_msg (Some L) F T C1)) 
+  -> forall (a : act) (G G' : rg_ty), step a G G' -> P a G G'.
+  Proof.
+  move=> P_send P_recv P_amsg1 P_amsg2; fix Ih 4.
+  move=> a G G'; case =>//=.
+  + move=> a' F T C0 C1 nF nT samed rall.
+    apply: P_amsg1 =>//=; move: rall; rewrite /R_all.
+    move=> rall L Ty G0 G1 C0L C1L; apply Ih.
+    by apply (rall _ _ _ _ C0L C1L).
+  + move=> a' L F T C0 C1 nT samed ronly.
+    apply: P_amsg2 =>//=; move: ronly; rewrite /R_only.
+    elim=> cond; elim=> Ty; elim=> G0; elim=> G1.
+    elim=> C0L; elim=> C1L step; split; [by []|].
+    exists Ty, G0, G1; split; [by []|split; [by []|]].
+    by apply Ih.
+  Qed.
 
   Lemma step_subject_part_of a G G':
-    step a G G' -> g_wf G -> part_of (subject a) G.
+    step a G G' -> g_wform G -> part_of (subject a) G.
   Proof.
-  elim.
+  elim/step_ind_str.
   + move=> L F T C Ty G0 CL wf; rewrite /subject.
     by apply pof_from.
   + move=> L F T C Ty G0 CL wf; rewrite /subject.
     by apply pof_to.
   + move=> a0 F T C0 C1 nF nT sd ra ih wf.
-    move: pof_cont.
-Admitted.
+    move: (g_wform_msg_inv wf); elim; elim=> L; elim=> Ty.
+    elim=> G0; elim=> C0L wf0 wfall0; apply: (pof_cont _ _ _ C0L).
+    have G1_aux: exists G1, C1 L = Some (Ty, G1).
+      by rewrite /same_dom in sd; apply sd; exists G0.
+    move: G1_aux; elim=> G1 C1L.
+    by apply (ih _ _ _ _ C0L C1L).
+  + move=> a0 L F T C0 C1 nT sd ron ronpof wf.
+    case: (@eqP _ (subject a0) F).
+    - by move => sa0F; rewrite sa0F; apply pof_from.
+    - rewrite (rwP eqP) (rwP negP); move=> sa0F.
+      move: (g_wform_msg_inv wf); elim; elim=> L0; elim=> Ty.
+      elim=> G0; elim=> C0L wf0 wfall0.
+      rewrite /R_only in ronpof; move: ronpof; elim=> hp.
+      elim=> Ty0; elim=> G0'; elim=> G1'; elim=> C0L'.
+      elim=> C1L' ih0; apply: (pof_cont  _ _ _ C0L').
+      by apply: ih0; apply: (wfall0 _ _ _ C0L').
+  Qed.
 
-
+(*g_wform to be added as a hypothesis*)
   Lemma Project_step G Q E a G':
     step a G G' -> 
     (forall p, part_of p G -> p \in PAR)-> 
