@@ -211,6 +211,36 @@ translate p to something in the domain of L ()
   by apply: qProject_Some_exists_aux.
   Qed.
 
+(*  Lemma enq_eval Q p p' L Ty: 
+    (enq Q (p, p') (L, Ty)).[? (p, p')] = 
+    match Q.
+    Some [((L, Ty)) :: Q.[? (p, p')]).
+  Proof.*)
+
+  Lemma deq_enq Q p p' L Ty: 
+    deq (enq Q (p, p') (L, Ty)) (p, p') = Some (L, Ty, Q).
+  Proof.
+  rewrite /deq /enq; case: (@eqP _ Q.[? (p, p')] None).
+  + move=> Qpp; rewrite Qpp; rewrite fnd_set.
+    case: eqP => //=; elim.
+(*I need estensionality; I'll do it tomorrow*)
+Admitted.
+
+  Lemma qProject_None_cont_eq F T CONT Q L Ty G:
+    qProject (rg_msg None F T CONT) Q ->
+    CONT L = Some (Ty, G) -> qProject G Q.
+  Proof.
+  move=> qpro contL.
+  move: (qProject_None_exists L Ty G (enq Q (F, T) (L, Ty)) qpro).
+  elim=> neq; rewrite contL; move=> qpro'_.
+  have qpro': qProject (rg_msg (Some L) F T CONT) (enq Q (F, T) (L, Ty)).
+    by apply qpro'_.
+  move: (qProject_Some_exists qpro'); elim=> _; elim=> Ty0; elim=> G0.
+  elim=> Q'; elim; rewrite contL; move=> [eqTy eqG]; elim=> eqQ.
+  rewrite -eqTy /deq // in eqQ.
+
+  Admitted.
+
 (*again lemmas to be moved elsewhere later*)
 
   Lemma step_send_inv_aux F T C L Ty aa GG: 
@@ -683,14 +713,14 @@ translate p to something in the domain of L ()
 
 (*g_wform to be added as a hypothesis*)
   Lemma Project_step G Q E a G':
-    step a G G' -> 
+    step a G G' -> g_wform G ->
     (forall p, part_of p G -> p \in PAR)-> 
     qProject G Q -> eProject G E
     -> exists E' Q', qProject G' Q' /\ eProject G' E'
        /\ lstep a (E, Q) (E', Q').
   Proof.
-  elim.
-  + move=> L F T C Ty G0 contL pin qpro epro.
+  elim/step_ind_str.
+  + move=> L F T C Ty G0 contL wf pin qpro epro.
     have Fin: F \in PAR.
       by apply: pin; apply: pof_from.
     move: (@eProject_send_none F T C E Fin epro); elim; move=> neq.
@@ -728,7 +758,7 @@ translate p to something in the domain of L ()
           by apply: (prj_mrg _ neq neqpF neqpT samed ral mer).
     * apply: ls_send =>//=; rewrite /do_act envF lcontL=> //=.
       by case: ifP; rewrite! eq_refl =>//=.
-  + move=> L F T C Ty G0 contL pin qpro epro.
+  + move=> L F T C Ty G0 contL wf pin qpro epro.
     have Tin: T \in PAR.
       by apply: pin; apply: pof_to.
     move: (@eProject_recv _ F T C E Tin epro); elim=> neq.
@@ -777,8 +807,15 @@ translate p to something in the domain of L ()
           by move: (ral _ _ _ _ contL lcont0L); rewrite /upaco2; elim.
     * apply: ls_recv =>//=; rewrite /do_act envT lcontL eqTy => //=.
       by case: ifP; rewrite! eq_refl =>//=.
-  + move=> aa F T C0 C1 nF nT sd01 r01 IH pin qpro epro.
-
+  + move=> aa F T C0 C1 nF nT sd01 r01 IH wf pin qpro epro.
+    have subjin: subject aa \in PAR.
+      apply: pin.
+      apply: (@step_subject_part_of _ _ (rg_msg None F T C1)); [|by []].
+      by apply: st_amsg1.
+    move: (g_wform_msg_inv wf); elim; elim=> L; elim=> Ty; elim=> G0.
+    elim=> C0L wf0 wfcont0.
+    (*E' = any of the E' in the IH*)
+    
   Admitted.
 
 
