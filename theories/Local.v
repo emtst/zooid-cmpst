@@ -584,8 +584,8 @@ Section Semantics.
     match qs.[? k] with
     | Some vs =>
       match vs with
-      | v :: vs => if vs == [::] then Some (v, qs.[~ k])
-                   else Some (v, qs.[k <- vs])
+      | v :: vs => (*if vs == [::] then Some (v, qs.[~ k])
+                   else*) Some (v, qs.[k <- vs])
       | [::] => None
       end
     | None => None

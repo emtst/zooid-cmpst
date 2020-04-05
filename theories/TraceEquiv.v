@@ -150,40 +150,58 @@ translate p to something in the domain of L ()
 
 
 
-(*L to D and F; about the next 4 lemmas:
+(*L to D and F; about the next 6 lemmas:
   - should be moved
   - might be be turned into 2 or even 0
 *)
-  Lemma qProject_None_exists_aux F T C l Ty G Q Q' GG: 
+
+  Lemma qProject_end_inv_aux Q GG: 
+    GG = rg_end -> qProject GG Q -> 
+    Q = ([fmap qq:PAR2 => [::]]).
+  Proof.
+  move=> eq hp; punfold hp.
+  move: hp eq => [||]//= [].
+  Qed.
+
+  Lemma qProject_end_inv Q:
+  qProject rg_end Q -> 
+    Q = ([fmap qq:PAR2 => [::]]).
+  Proof.
+  by apply qProject_end_inv_aux.
+  Qed.
+
+
+  Lemma qProject_None_inv_aux F T C l Ty G Q (*Q'*) GG: 
     GG = (rg_msg None F T C) ->
     qProject GG Q -> 
     F != T /\
     (C l = Some (Ty, G) ->
     (*deq Q' (F, T) == Some ((l, Ty), Q) /\*)
-    Q' == enq Q (F, T) (l, Ty) ->
-    qProject (rg_msg (Some l) F T C) Q').
+    (*Q' == enq Q (F, T) (l, Ty) ->*)
+    qProject (rg_msg (Some l) F T C) (enq Q (F, T) (l, Ty))).
   Proof.
   move=> eq hp; punfold hp.
   move: hp eq => [|p p' CONT {}Q neq hp |]//= [].
   move=> eq1 eq2 eq3; split; [by rewrite -eq1 -eq2 | ].
-  rewrite -eq1 -eq2 -eq3; move=> conteq qeq; move: (hp _ _ _ _ conteq qeq).
+  rewrite -eq1 -eq2 -eq3; move=> conteq.
+  move: (hp _ _ _ (enq Q (p, p') (l, Ty)) conteq).
   by rewrite /upaco2 /qProject /bot2; elim.
   Qed.
 
-  Lemma qProject_None_exists F T C l Ty G Q Q':
+  Lemma qProject_None_inv F T C l Ty G Q (*Q'*):
     qProject (rg_msg None F T C) Q -> 
     F != T /\
     (C l = Some (Ty, G) ->
     (*deq Q' (F, T) == Some ((l, Ty), Q) /\*)
-    Q' == enq Q (F, T) (l, Ty) ->
-    qProject (rg_msg (Some l) F T C) Q').
+    (*Q' == enq Q (F, T) (l, Ty) ->*)
+    qProject (rg_msg (Some l) F T C) (enq Q (F, T) (l, Ty))).
   Proof.
-  by apply: qProject_None_exists_aux.
+  by apply: qProject_None_inv_aux.
   Qed.
 
 
 
-  Lemma qProject_Some_exists_aux l F T C Q GG: 
+  Lemma qProject_Some_inv_aux l F T C Q GG: 
     GG = (rg_msg (Some l) F T C) ->
     qProject GG Q -> 
     F != T /\
@@ -200,7 +218,7 @@ translate p to something in the domain of L ()
   by move: H3; rewrite /upaco2 /qProject /bot2; elim.
   Qed.
 
-  Lemma qProject_Some_exists l F T C Q:
+  Lemma qProject_Some_inv l F T C Q:
     qProject (rg_msg (Some l) F T C) Q -> 
     F != T /\
     (exists Ty G Q', C l = Some (Ty, G) /\
@@ -208,7 +226,7 @@ translate p to something in the domain of L ()
     deq Q (F, T) == Some ((l, Ty), Q') /\
     qProject G Q').
   Proof.
-  by apply: qProject_Some_exists_aux.
+  by apply: qProject_Some_inv_aux.
   Qed.
 
 (*  Lemma enq_eval Q p p' L Ty: 
@@ -217,31 +235,44 @@ translate p to something in the domain of L ()
     Some [((L, Ty)) :: Q.[? (p, p')]).
   Proof.*)
 
-  Lemma deq_enq Q p p' L Ty: 
-    deq (enq Q (p, p') (L, Ty)) (p, p') = Some (L, Ty, Q).
+
+
+(*  Lemma qProj_ext_eq_qProj G (Q Q': {fmap role * role -> seq (lbl * mty) }): 
+    (forall p p', Q.[? (p, p')] = Q'.[? (p, p')]) ->
+    qProject G Q -> qProject G Q'.
   Proof.
-  rewrite /deq /enq; case: (@eqP _ Q.[? (p, p')] None).
-  + move=> Qpp; rewrite Qpp; rewrite fnd_set.
-    case: eqP => //=; elim.
-(*I need estensionality; I'll do it tomorrow*)
-Admitted.
+  move=> eqq prj; move: (conj eqq prj) => {eqq prj}.
+  move=> /(ex_intro (fun Q=> _) Q) {Q}.
+  move: G Q'; apply /paco2_acc; move=> r0 _ CIH G Q'.
+  elim=> Q; elim; case G.
+  + move=> exteq qpQ; rewrite /qProject in qpQ.
+    punfold qpQ; move: qprj_end.
+  Admitted.*)
+
+
+  Lemma qProject_Some_cont_eq F T CONT Q L Ty G:
+    qProject (rg_msg (Some L) F T CONT) Q ->
+    CONT L = Some (Ty, G) -> qProject G Q.
+  Admitted.
+
 
   Lemma qProject_None_cont_eq F T CONT Q L Ty G:
     qProject (rg_msg None F T CONT) Q ->
     CONT L = Some (Ty, G) -> qProject G Q.
   Proof.
   move=> qpro contL.
-  move: (qProject_None_exists L Ty G (enq Q (F, T) (L, Ty)) qpro).
+  move: (qProject_None_inv L Ty G  qpro).
   elim=> neq; rewrite contL; move=> qpro'_.
   have qpro': qProject (rg_msg (Some L) F T CONT) (enq Q (F, T) (L, Ty)).
     by apply qpro'_.
-  move: (qProject_Some_exists qpro'); elim=> _; elim=> Ty0; elim=> G0.
+  move: (qProject_Some_inv qpro'); elim=> _; elim=> Ty0; elim=> G0.
   elim=> Q'; elim; rewrite contL; move=> [eqTy eqG]; elim=> eqQ.
   rewrite -eqTy /deq // in eqQ.
 
   Admitted.
 
 (*again lemmas to be moved elsewhere later*)
+
 
   Lemma step_send_inv_aux F T C L Ty aa GG: 
     step aa GG (rg_msg (Some L) F T C) ->
@@ -273,7 +304,7 @@ Admitted.
   Proof.
   move=> ste qpro.
   move: (step_send_inv ste); elim; move=> G eqcont.
-  move: (@qProject_None_exists F T C L Ty G Q (enq Q (F, T) (L, Ty)) qpro).
+  move: (@qProject_None_inv F T C L Ty G Q qpro).
   elim; move=> neq hp; split => //=.
   exists G, (enq Q (F, T) (L, Ty)); split; [|split; [ |apply hp]] =>//=.
   Qed.
@@ -725,8 +756,8 @@ Admitted.
       by apply: pin; apply: pof_from.
     move: (@eProject_send_none F T C E Fin epro); elim; move=> neq.
     elim=> lC; elim=> envF; elim=> samedom rall.
-    move: (qProject_None_exists L Ty G0 (enq Q (F, T) (L, Ty)) qpro).
-    elim; elim; rewrite eq_refl; move=> qpro0; move: (qpro0 contL)=> {}qpro0.
+    move: (qProject_None_inv L Ty G0 qpro).
+    elim; elim; move=> qpro0; move: (qpro0 contL)=> {}qpro0.
     have lT_aux: exists lT, lC L = Some (Ty, lT).
       move: samedom; rewrite /same_dom; move=> sd; rewrite -sd.
       by exists G0.
@@ -763,7 +794,7 @@ Admitted.
       by apply: pin; apply: pof_to.
     move: (@eProject_recv _ F T C E Tin epro); elim=> neq.
     elim=> lC; elim=> envT; elim=> samedom rall.
-    move: (qProject_Some_exists qpro); elim; elim.
+    move: (qProject_Some_inv qpro); elim; elim.
     elim=> Ty0; elim=> GG; elim=> Q'.
     elim; rewrite contL; move=> [eqTy eqG0]; rewrite eqTy eqG0.
     elim=> deqeq qpro'.
