@@ -845,7 +845,7 @@ translate p to something in the domain of L ()
       by apply: st_amsg1.
     move: (g_wform_msg_inv wf); elim; elim=> L; elim=> Ty; elim=> G0.
     elim=> C0L wf0 wfcont0.
-    (*E' = any of the E' in the IH*)
+    (*E' = any of the E' in the IH, modified like E*)
     
   Admitted.
 
