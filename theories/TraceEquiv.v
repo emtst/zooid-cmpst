@@ -24,59 +24,7 @@ Definition PAR2 := (PAR `*` PAR)%fset.
 
 
 
-  (*Definition Merge (F : lbl /-> mty * rl_ty) (L : rl_ty) : Prop :=
-    forall Lb Ty L', F Lb = Some (Ty, L') -> EqL L' L.*)
- 
 
-
-
-(*In the following there is a problem, I think. However it is monotone...
-  Definition qproj_rel := rg_ty -> {fmap role * role -> seq (lbl * mty) } -> Prop.
-  Inductive qProj_ (*p p': role*) (r : qproj_rel) : qproj_rel :=
-  | qprj_end : qProj_ r rg_end ([fmap qq:PAR2 => [::]])
-  | qprj_none q q' CONT l Ty G Q:
-      q != q' -> CONT l = Some (Ty, G) ->
-      r (rg_msg None q q' CONT) Q ->
-      qProj_ r (rg_msg (Some l) q q' CONT) Q
-  | qprj_some q q' CONT l Ty G Q:
-      q != q' -> CONT l = Some (Ty, G) ->
-      r (rg_msg (Some l) q q' CONT) Q ->
-      qProj_ r G (enq Q (q,q') (l, Ty))
-  .
-  Hint Constructors qProj_.
-  Lemma Proj_monotone : monotone2 qProj_.
-  Proof.
-  rewrite /monotone2; move=> x0 x1 r r' it LE; move: it; case=>//.
-  + move=> p p' CONT l Ty G Q neq CONTeq rel; apply: (qprj_none neq CONTeq).
-    by apply (LE _ _ rel).
-  + move=> p p' CONT l Ty G Q neq CONTeq rel; apply: (qprj_some neq CONTeq).
-    by apply (LE _ _ rel).
-  Qed. *)
-
-(* first version: probably wrong.
-
-  Definition qproj_rel := rg_ty -> {fmap role * role -> seq (lbl * mty) } -> Prop.
-  Inductive qProj_ (r : qproj_rel) : qproj_rel :=
-  | qprj_end : qProj_ r rg_end ([fmap qq:PAR2 => [::]])
-  | qprj_none p p' CONT l Ty G Q:
-      p != p' -> CONT l = Some (Ty, G) ->
-      r (rg_msg (Some l) p p' CONT) Q ->
-      qProj_ r (rg_msg None p p' CONT) Q
-  | qprj_some p p' CONT l Ty G Q:
-      p != p' -> CONT l = Some (Ty, G) ->
-      r G (enq Q (p,p') (l, Ty)) ->
-      qProj_ r (rg_msg (Some l) p p' CONT) Q
-  .
-  Hint Constructors qProj_.
-  Lemma qProj_monotone : monotone2 qProj_.
-  Proof.
-  rewrite /monotone2; move=> x0 x1 r r' it LE; move: it; case=>//.
-  + move=> p p' CONT l Ty G Q neq CONTeq rel; apply: (qprj_none neq CONTeq).
-    by apply (LE _ _ rel).
-  + move=> p p' CONT l Ty G Q neq CONTeq rel; apply: (qprj_some neq CONTeq).
-    by apply (LE _ _ rel).
-  Qed.
-  Definition qProject CG Q := paco2 (qProj_) bot2 CG Q.*)
 
   Definition qproj_rel := rg_ty -> {fmap role * role -> seq (lbl * mty) } -> Prop.
   Inductive qProj_ (r : qproj_rel) : qproj_rel :=
