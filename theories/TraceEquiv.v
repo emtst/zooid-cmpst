@@ -165,34 +165,18 @@ translate p to something in the domain of L ()
 
 
 
-  
 
-(*The next two lemmas need some do not hold just this way.
-Let us go back to something similar after we have set 
-well-formedness conditions for coinductive global types.*)
 
+
+(* This is wrong!
 
   Lemma qProject_Some_cont_eq F T CONT Q L Ty G:
     qProject (rg_msg (Some L) F T CONT) Q ->
     CONT L = Some (Ty, G) -> qProject G Q.
   Proof.
   Admitted.
-
-
-  Lemma qProject_None_cont_eq F T CONT Q L Ty G:
-    qProject (rg_msg None F T CONT) Q ->
-    CONT L = Some (Ty, G) -> qProject G Q.
-  Proof.
-(*  move=> qpro contL.
-  move: (qProject_None_inv L Ty G  qpro).
-  elim=> neq; rewrite contL; move=> qpro'_.
-  have qpro': qProject (rg_msg (Some L) F T CONT) (enq Q (F, T) (L, Ty)).
-    by apply qpro'_.
-  move: (qProject_Some_inv qpro'); elim=> _; elim=> Ty0; elim=> G0.
-  elim=> Q'; elim; rewrite contL; move=> [eqTy eqG]; elim=> eqQ.
-  rewrite -eqTy /deq // in eqQ.
 *)
-  Admitted.
+
 
 (*again lemmas to be moved elsewhere later*)
 
@@ -218,7 +202,11 @@ well-formedness conditions for coinductive global types.*)
   by move=> hp; apply: (step_send_inv_aux hp).
   Qed.
 
-(*  Lemma step_qProject_send F T C L Ty Q:
+(* the following is kind of true if... Q is empty...
+at the moment it is only morally!
+
+
+  Lemma step_qProject_send F T C L Ty Q:
     step (a_send F T L Ty) (rg_msg None F T C) (rg_msg (Some L) F T C) ->
     qProject (rg_msg None F T C) Q ->
     F != T /\ (exists G Q',
@@ -230,7 +218,8 @@ well-formedness conditions for coinductive global types.*)
   move: (@qProject_None_inv F T C L Ty G Q qpro).
   elim; move=> neq hp; split => //=.
   exists G, (enq Q (F, T) (L, Ty)); split; [|split; [ |apply hp]] =>//=.
-  Qed.*)
+  Qed.
+*)
 
   Lemma cProj_end_inv_aux p GG lT:
     Project p GG lT -> GG = rg_end ->
@@ -555,36 +544,38 @@ well-formedness conditions for coinductive global types.*)
             move: (same_dom_const_some sdc) =>-> //=.
   Qed.
 
-(*Next thing should be moved in Global.v*)
+(*Next thing should be moved in WellFormed.v
+it's another condition of wellformednes, namely
+continuations are never empty*)
 
 
   Definition g_pr :=  rg_ty -> Prop.
-  Inductive g_wform_ (P : g_pr) : g_pr :=
-  | g_wform_end : g_wform_ P rg_end
-  | g_wform_msg o F T C L Ty G:
+  Inductive g_wfcont_ (P : g_pr) : g_pr :=
+  | g_wfcont_end : g_wfcont_ P rg_end
+  | g_wfcont_msg o F T C L Ty G:
       C L = Some (Ty, G) -> P G ->
       (forall LL TTy GG, 
         C LL = Some (TTy, GG) -> P GG) ->
-      g_wform_ P (rg_msg o F T C).
-  Hint Constructors g_wform_.
-  Definition g_wform g := paco1 g_wform_ bot1 g.
+      g_wfcont_ P (rg_msg o F T C).
+  Hint Constructors g_wfcont_.
+  Definition g_wfcont g := paco1 g_wfcont_ bot1 g.
 
-  Lemma g_wform_monotone : monotone1 g_wform_.
+  Lemma g_wfcont_monotone : monotone1 g_wfcont_.
   Proof.
   rewrite /monotone1; move=> G P P'; case=>//=.
   move=> o F T C L Ty G0 CLeq wfG wfall hp.
-  apply (g_wform_msg _ _ _ CLeq); [by apply hp|].
+  apply (g_wfcont_msg _ _ _ CLeq); [by apply hp|].
   move=> LL TTy GG CLL; apply hp.
   by apply (wfall _ _ _ CLL).
   Qed.
-  Hint Resolve g_wform_monotone.
+  Hint Resolve g_wfcont_monotone.
 
-  Lemma g_wform_msg_inv_aux GG o F T C: 
-    g_wform GG -> GG = (rg_msg o F T C)->
-    (exists L Ty G, C L = Some (Ty, G) /\ g_wform G) /\
-    (forall LL TTy GG, C LL = Some (TTy, GG) -> g_wform GG).
+  Lemma g_wfcont_msg_inv_aux GG o F T C: 
+    g_wfcont GG -> GG = (rg_msg o F T C)->
+    (exists L Ty G, C L = Some (Ty, G) /\ g_wfcont G) /\
+    (forall LL TTy GG, C LL = Some (TTy, GG) -> g_wfcont GG).
   Proof.
-  move=> wf; rewrite /g_wform in wf; punfold wf.
+  move=> wf; rewrite /g_wfcont in wf; punfold wf.
   move: wf =>
     [|o' F' T' C' L Ty G CL hp hpall [eq1 eq2 eq3 eq4]] //=.
   split.
@@ -594,12 +585,12 @@ well-formedness conditions for coinductive global types.*)
     by move: (hpall _ _ _ CLL); rewrite /upaco1; elim.
   Qed.
 
-  Lemma g_wform_msg_inv o F T C: 
-    g_wform (rg_msg o F T C)->
-    (exists L Ty G, C L = Some (Ty, G) /\ g_wform G) /\
-    (forall LL TTy GG, C LL = Some (TTy, GG) -> g_wform GG).
+  Lemma g_wfcont_msg_inv o F T C: 
+    g_wfcont (rg_msg o F T C)->
+    (exists L Ty G, C L = Some (Ty, G) /\ g_wfcont G) /\
+    (forall LL TTy GG, C LL = Some (TTy, GG) -> g_wfcont GG).
   Proof.
-  by move=> hp; apply (@g_wform_msg_inv_aux _ o F T _ hp).
+  by move=> hp; apply (@g_wfcont_msg_inv_aux _ o F T _ hp).
   Qed.
 
 
@@ -639,7 +630,7 @@ well-formedness conditions for coinductive global types.*)
   Qed.
 
   Lemma step_subject_part_of a G G':
-    step a G G' -> g_wform G -> part_of (subject a) G.
+    step a G G' -> g_wfcont G -> part_of (subject a) G.
   Proof.
   elim/step_ind_str.
   + move=> L F T C Ty G0 CL wf; rewrite /subject.
@@ -647,7 +638,7 @@ well-formedness conditions for coinductive global types.*)
   + move=> L F T C Ty G0 CL wf; rewrite /subject.
     by apply pof_to.
   + move=> a0 F T C0 C1 nF nT sd ra ih wf.
-    move: (g_wform_msg_inv wf); elim; elim=> L; elim=> Ty.
+    move: (g_wfcont_msg_inv wf); elim; elim=> L; elim=> Ty.
     elim=> G0; elim=> C0L wf0 wfall0; apply: (pof_cont _ _ _ C0L).
     have G1_aux: exists G1, C1 L = Some (Ty, G1).
       by rewrite /same_dom in sd; apply sd; exists G0.
@@ -657,7 +648,7 @@ well-formedness conditions for coinductive global types.*)
     case: (@eqP _ (subject a0) F).
     - by move => sa0F; rewrite sa0F; apply pof_from.
     - rewrite (rwP eqP) (rwP negP); move=> sa0F.
-      move: (g_wform_msg_inv wf); elim; elim=> L0; elim=> Ty.
+      move: (g_wfcont_msg_inv wf); elim; elim=> L0; elim=> Ty.
       elim=> G0; elim=> C0L wf0 wfall0.
       rewrite /R_only in ronpof; move: ronpof; elim=> hp.
       elim=> Ty0; elim=> G0'; elim=> G1'; elim=> C0L'.
@@ -667,7 +658,7 @@ well-formedness conditions for coinductive global types.*)
 
 (*g_wform to be added as a hypothesis*)
   Lemma Project_step G Q E a G':
-    step a G G' -> g_wform G ->
+    step a G G' -> g_wfcont G ->
     (forall p, part_of p G -> p \in PAR)-> 
     qProject G Q -> eProject G E
     -> exists E' Q', qProject G' Q' /\ eProject G' E'
