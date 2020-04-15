@@ -112,31 +112,23 @@ translate p to something in the domain of L ()
   Qed.
 
 
-  Lemma qProject_None_inv_aux F T C l Ty G Q (*Q'*) GG: 
+  Lemma qProject_None_inv_aux F T C l Ty G Q GG: 
     GG = (rg_msg None F T C) ->
     qProject GG Q -> 
     F != T /\
-    (C l = Some (Ty, G) ->
-    (*deq Q' (F, T) == Some ((l, Ty), Q) /\*)
-    (*Q' == enq Q (F, T) (l, Ty) ->*)
-    qProject (rg_msg (Some l) F T C) (enq Q (F, T) (l, Ty))).
+    (C l = Some (Ty, G) -> qProject G Q).
   Proof.
   move=> eq hp; punfold hp.
   move: hp eq => [|p p' CONT {}Q neq hp |]//= [].
   move=> eq1 eq2 eq3; split; [by rewrite -eq1 -eq2 | ].
-  rewrite -eq1 -eq2 -eq3; move=> conteq.
-  (*move: (hp _ _ _ (enq Q (p, p') (l, Ty)) conteq).
+  rewrite -eq3; move=> conteq;  move: (hp _ _ _ conteq).
   by rewrite /upaco2 /qProject /bot2; elim.
-  Qed.*)
-  Admitted.
+  Qed.
 
   Lemma qProject_None_inv F T C l Ty G Q (*Q'*):
     qProject (rg_msg None F T C) Q -> 
     F != T /\
-    (C l = Some (Ty, G) ->
-    (*deq Q' (F, T) == Some ((l, Ty), Q) /\*)
-    (*Q' == enq Q (F, T) (l, Ty) ->*)
-    qProject (rg_msg (Some l) F T C) (enq Q (F, T) (l, Ty))).
+    (C l = Some (Ty, G) -> qProject G Q).
   Proof.
   by apply: qProject_None_inv_aux.
   Qed.
@@ -191,7 +183,7 @@ well-formedness conditions for coinductive global types.*)
     qProject (rg_msg None F T CONT) Q ->
     CONT L = Some (Ty, G) -> qProject G Q.
   Proof.
-  move=> qpro contL.
+(*  move=> qpro contL.
   move: (qProject_None_inv L Ty G  qpro).
   elim=> neq; rewrite contL; move=> qpro'_.
   have qpro': qProject (rg_msg (Some L) F T CONT) (enq Q (F, T) (L, Ty)).
@@ -199,7 +191,7 @@ well-formedness conditions for coinductive global types.*)
   move: (qProject_Some_inv qpro'); elim=> _; elim=> Ty0; elim=> G0.
   elim=> Q'; elim; rewrite contL; move=> [eqTy eqG]; elim=> eqQ.
   rewrite -eqTy /deq // in eqQ.
-
+*)
   Admitted.
 
 (*again lemmas to be moved elsewhere later*)
@@ -226,7 +218,7 @@ well-formedness conditions for coinductive global types.*)
   by move=> hp; apply: (step_send_inv_aux hp).
   Qed.
 
-  Lemma step_qProject_send F T C L Ty Q:
+(*  Lemma step_qProject_send F T C L Ty Q:
     step (a_send F T L Ty) (rg_msg None F T C) (rg_msg (Some L) F T C) ->
     qProject (rg_msg None F T C) Q ->
     F != T /\ (exists G Q',
@@ -238,7 +230,7 @@ well-formedness conditions for coinductive global types.*)
   move: (@qProject_None_inv F T C L Ty G Q qpro).
   elim; move=> neq hp; split => //=.
   exists G, (enq Q (F, T) (L, Ty)); split; [|split; [ |apply hp]] =>//=.
-  Qed.
+  Qed.*)
 
   Lemma cProj_end_inv_aux p GG lT:
     Project p GG lT -> GG = rg_end ->
@@ -682,7 +674,7 @@ well-formedness conditions for coinductive global types.*)
        /\ lstep a (E, Q) (E', Q').
   Proof.
   elim/step_ind_str.
-  + move=> L F T C Ty G0 contL wf pin qpro epro.
+  + (*move=> L F T C Ty G0 contL wf pin qpro epro.
     have Fin: F \in PAR.
       by apply: pin; apply: pof_from.
     move: (@eProject_send_none F T C E Fin epro); elim; move=> neq.
@@ -777,7 +769,7 @@ well-formedness conditions for coinductive global types.*)
     move: (g_wform_msg_inv wf); elim; elim=> L; elim=> Ty; elim=> G0.
     elim=> C0L wf0 wfcont0.
     (*E' = any of the E' in the IH, modified like E*)
-    
+*)    
   Admitted.
 
 
