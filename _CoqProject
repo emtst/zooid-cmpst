@@ -10,4 +10,5 @@ theories/Global.v
 theories/Local.v
 theories/Session.v
 theories/Projection.v
+theories/WellFormed.v
 theories/TraceEquiv.v
