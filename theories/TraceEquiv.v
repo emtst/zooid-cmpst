@@ -56,7 +56,7 @@ Definition PAR2 := (PAR `*` PAR)%fset.
   Hint Resolve qProj_monotone.
   Definition qProject CG Q := paco2 (qProj_) bot2 CG Q.
 
-About Project.
+
 
 Open Scope fmap.
 
@@ -177,30 +177,19 @@ translate p to something in the domain of L ()
   by apply: qProject_Some_inv_aux.
   Qed.
 
-(*  Lemma enq_eval Q p p' L Ty: 
-    (enq Q (p, p') (L, Ty)).[? (p, p')] = 
-    match Q.
-    Some [((L, Ty)) :: Q.[? (p, p')]).
-  Proof.*)
 
 
+  
 
-(*  Lemma qProj_ext_eq_qProj G (Q Q': {fmap role * role -> seq (lbl * mty) }): 
-    (forall p p', Q.[? (p, p')] = Q'.[? (p, p')]) ->
-    qProject G Q -> qProject G Q'.
-  Proof.
-  move=> eqq prj; move: (conj eqq prj) => {eqq prj}.
-  move=> /(ex_intro (fun Q=> _) Q) {Q}.
-  move: G Q'; apply /paco2_acc; move=> r0 _ CIH G Q'.
-  elim=> Q; elim; case G.
-  + move=> exteq qpQ; rewrite /qProject in qpQ.
-    punfold qpQ; move: qprj_end.
-  Admitted.*)
+(*The next two lemmas need some do not hold just this way.
+Let us go back to something similar after we have set 
+well-formedness conditions for coinductive global types.*)
 
 
   Lemma qProject_Some_cont_eq F T CONT Q L Ty G:
     qProject (rg_msg (Some L) F T CONT) Q ->
     CONT L = Some (Ty, G) -> qProject G Q.
+  Proof.
   Admitted.
 
 
