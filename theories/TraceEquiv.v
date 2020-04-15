@@ -29,26 +29,21 @@ Definition PAR2 := (PAR `*` PAR)%fset.
   Definition qproj_rel := rg_ty -> {fmap role * role -> seq (lbl * mty) } -> Prop.
   Inductive qProj_ (r : qproj_rel) : qproj_rel :=
   | qprj_end : qProj_ r rg_end ([fmap qq:PAR2 => [::]])
-  | qprj_none p p' CONT (*l Ty G Q*) Q':
+  | qprj_none p p' CONT Q:
       p != p' -> 
-      (forall l Ty G Q, CONT l = Some (Ty, G) ->
-      (*deq Q (p, p') == Some ((l, Ty), Q') ->*)
-      Q == enq Q' (p, p') (l, Ty) ->
-      r (rg_msg (Some l) p p' CONT) Q ) ->
-      qProj_ r (rg_msg None p p' CONT) Q'
+      (forall l Ty G, CONT l = Some (Ty, G) -> r G Q) ->
+      qProj_ r (rg_msg None p p' CONT) Q
   | qprj_some p p' CONT l Ty G Q Q':
       p != p' -> CONT l = Some (Ty, G) ->
-      (*Q' == (enq Q (p,p') (l, Ty)) ->*)
-      deq Q' (p, p') == Some ((l, Ty), Q) ->
-      r G Q ->
+      deq Q' (p, p') == Some ((l, Ty), Q) -> r G Q ->
       qProj_ r (rg_msg (Some l) p p' CONT) Q'
   .
   Hint Constructors qProj_.
   Lemma qProj_monotone : monotone2 qProj_.
   Proof.
-  rewrite /monotone2; move=> x0 x1 r r' it LE; move: it; case=>//.
-  + move=> p p' CONT Q' neq hp.
-    apply: (qprj_none neq ); move=> l Ty G Q CONTeq enqu; apply LE.
+  move=> x0 x1 r r' it LE; move: it; case=>//.
+  + move=> p p' CONT Q neq hp.
+    apply: (qprj_none neq); move=> l Ty G CONTeq; apply LE.
     by apply: (hp l Ty G).
   + move=> p p' CONT l Ty G Q Q' neq CONTeq enqu rel.
     apply: (qprj_some neq CONTeq enqu); by apply (LE _ _ rel).
@@ -60,8 +55,6 @@ Definition PAR2 := (PAR `*` PAR)%fset.
 
 Open Scope fmap.
 
-
-Print R_all.
 
   Inductive part_of: role -> rg_ty -> Prop :=
     | pof_from o F T C: part_of F (rg_msg o F T C)
@@ -132,9 +125,10 @@ translate p to something in the domain of L ()
   move: hp eq => [|p p' CONT {}Q neq hp |]//= [].
   move=> eq1 eq2 eq3; split; [by rewrite -eq1 -eq2 | ].
   rewrite -eq1 -eq2 -eq3; move=> conteq.
-  move: (hp _ _ _ (enq Q (p, p') (l, Ty)) conteq).
+  (*move: (hp _ _ _ (enq Q (p, p') (l, Ty)) conteq).
   by rewrite /upaco2 /qProject /bot2; elim.
-  Qed.
+  Qed.*)
+  Admitted.
 
   Lemma qProject_None_inv F T C l Ty G Q (*Q'*):
     qProject (rg_msg None F T C) Q -> 
