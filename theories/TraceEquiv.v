@@ -456,54 +456,7 @@ at the moment it is only morally!
             move: (same_dom_const_some sdc) =>-> //=.
   Qed.
 
-(*Next thing should be moved in WellFormed.v
-it's another condition of wellformednes, namely
-continuations are never empty*)
 
-
-  Definition g_pr :=  rg_ty -> Prop.
-  Inductive g_wfcont_ (P : g_pr) : g_pr :=
-  | g_wfcont_end : g_wfcont_ P rg_end
-  | g_wfcont_msg o F T C L Ty G:
-      C L = Some (Ty, G) -> P G ->
-      (forall LL TTy GG, 
-        C LL = Some (TTy, GG) -> P GG) ->
-      g_wfcont_ P (rg_msg o F T C).
-  Hint Constructors g_wfcont_.
-  Definition g_wfcont g := paco1 g_wfcont_ bot1 g.
-
-  Lemma g_wfcont_monotone : monotone1 g_wfcont_.
-  Proof.
-  rewrite /monotone1; move=> G P P'; case=>//=.
-  move=> o F T C L Ty G0 CLeq wfG wfall hp.
-  apply (g_wfcont_msg _ _ _ CLeq); [by apply hp|].
-  move=> LL TTy GG CLL; apply hp.
-  by apply (wfall _ _ _ CLL).
-  Qed.
-  Hint Resolve g_wfcont_monotone.
-
-  Lemma g_wfcont_msg_inv_aux GG o F T C: 
-    g_wfcont GG -> GG = (rg_msg o F T C)->
-    (exists L Ty G, C L = Some (Ty, G) /\ g_wfcont G) /\
-    (forall LL TTy GG, C LL = Some (TTy, GG) -> g_wfcont GG).
-  Proof.
-  move=> wf; rewrite /g_wfcont in wf; punfold wf.
-  move: wf =>
-    [|o' F' T' C' L Ty G CL hp hpall [eq1 eq2 eq3 eq4]] //=.
-  split.
-  + exists L, Ty, G; split; [by rewrite -eq4|].
-    by move: hp; rewrite /upaco1; elim.
-  + move=> LL TTy GG' CLL; rewrite -eq4 in CLL.
-    by move: (hpall _ _ _ CLL); rewrite /upaco1; elim.
-  Qed.
-
-  Lemma g_wfcont_msg_inv o F T C: 
-    g_wfcont (rg_msg o F T C)->
-    (exists L Ty G, C L = Some (Ty, G) /\ g_wfcont G) /\
-    (forall LL TTy GG, C LL = Some (TTy, GG) -> g_wfcont GG).
-  Proof.
-  by move=> hp; apply (@g_wfcont_msg_inv_aux _ o F T _ hp).
-  Qed.
 
 
 

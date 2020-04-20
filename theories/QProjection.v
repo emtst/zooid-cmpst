@@ -157,4 +157,81 @@ Open Scope fmap.
     by move=>->.
   Qed.
 
+  Lemma rcv_Free_None_inv_aux GG FROM TO CONT p q l Ty G:
+    GG = (rg_msg None FROM TO CONT) -> rcv_Free (p,q) GG -> 
+    CONT l = Some (Ty, G) ->
+    rcv_Free (p,q) G.
+  Proof.
+  move=> eq hp; punfold hp; [|by apply rFree_monotone].
+  move: hp eq  => [ | | ] =>//[].
+  + move=> {}p {}q C hp [peq qeq CONTeq] CONTl.
+    rewrite -CONTeq in CONTl; move: (hp _ _ _ CONTl).
+    by rewrite /upaco2 /rcv_Free /bot2; elim.
+  + move=> {}p p' {}q q' o C hp neq [opteq peq qeq CONTeq] CONTl.
+    rewrite -CONTeq in CONTl; move: (hp _ _ _ CONTl).
+    by rewrite /upaco2 /rcv_Free /bot2; elim.
+  Qed.
+
+  Lemma rcv_Free_None_inv FROM TO CONT p q l Ty G:
+    rcv_Free (p,q) (rg_msg None FROM TO CONT) -> 
+    CONT l = Some (Ty, G) ->
+    rcv_Free (p,q) G.
+  Proof.
+  by apply: rcv_Free_None_inv_aux.
+  Qed.
+
+  Lemma rcv_Free_Some_inv_aux GG FROM TO L CONT p q :
+    GG = (rg_msg (Some L) FROM TO CONT) -> rcv_Free (p,q) GG -> 
+    (p,q) != (FROM, TO) /\
+    (forall l Ty G, CONT l = Some (Ty, G) -> rcv_Free (p,q) G).
+  Proof.
+  move=> eq hp; punfold hp; [|by apply rFree_monotone].
+  move: hp eq  => [ | | ] =>//[].
+  move=> {}p p' {}q q' o C hp neq [opteq peq qeq CONTeq].
+  split; [by rewrite peq qeq in neq| move=> l Ty G CONTl].
+  rewrite -CONTeq in CONTl; move: (hp _ _ _ CONTl).
+  by rewrite /upaco2 /rcv_Free /bot2; elim.
+  Qed.
+
+  Lemma rcv_Free_Some_inv FROM TO CONT p q L:
+    rcv_Free (p,q) (rg_msg (Some L) FROM TO CONT) -> 
+    (p,q) != (FROM, TO) /\
+    (forall l Ty G, CONT l = Some (Ty, G) -> rcv_Free (p,q) G).
+  Proof.
+  by apply: rcv_Free_Some_inv_aux.
+  Qed.
+
+  Lemma deq_eq_where_notempty Q Q0 p q FROM TO L Ty Qc :
+    Q = Q0.[~(p,q)] -> (p, q) != (FROM, TO) ->
+    deq Q0 (FROM, TO) == Some (L, Ty, Qc) ->
+    deq Q (FROM, TO) == Some (L, Ty, Qc.[~(p,q)]).
+  Admitted.
+
+  Lemma rcv_Free_qProject p q G Q0 Q:
+    rcv_Free (p,q) G -> qProject G Q0
+    -> Q = Q0.[~ (p,q)]
+    -> qProject G Q.
+  Proof.
+  move=> hp1 hp2 hp3; move: (conj hp1 (conj hp2 hp3)) => {hp1 hp2 hp3}.
+  move=> /(ex_intro (fun Q=> _) Q0) {Q0};  move: G Q.
+  apply /paco2_acc; move=> r0 _ CIH G Q; elim=> Q0.
+  elim=> rfree; elim=> qpro Qeq; move: rfree qpro; case: G.
+  + move=> rfree qpro; move: (qProject_end_inv qpro) Qeq=>->=>->.
+    by rewrite remf1_id //=; apply /paco2_fold; apply qprj_end.
+  + move=> o FROM TO CONT rfree qpro; apply /paco2_fold.
+    move: rfree qpro; case: o.
+    * move=> L rfree qpro; move: (rcv_Free_Some_inv rfree).
+      elim=> neqpq contfree; move: (qProject_Some_inv qpro).
+      elim=> neq; elim=> Ty; elim=> G; elim=> Qc.
+      elim=> CONTL; elim=> deqeq qproc.
+      apply: (@qprj_some _ _ _ _ _ _ _ (Qc.[~(p,q)]) _ neq CONTL ).
+      - by apply (deq_eq_where_notempty Qeq neqpq deqeq).
+      - right; apply CIH; exists Qc; split; [|split; by[]].
+        by apply (contfree _ _ _ CONTL).
+    * move=> rfree qpro; apply: qprj_none.
+  Admitted.
+
+
+
+
 End QProjection.
