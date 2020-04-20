@@ -208,27 +208,32 @@ Open Scope fmap.
   Admitted.
 
   Lemma rcv_Free_qProject p q G Q0 Q:
-    rcv_Free (p,q) G -> qProject G Q0
-    -> Q = Q0.[~ (p,q)]
+    rcv_Free (p,q) G -> qProject G Q0 ->
+    g_wfcont G -> Q = Q0.[~ (p,q)]
     -> qProject G Q.
   Proof.
-  move=> hp1 hp2 hp3; move: (conj hp1 (conj hp2 hp3)) => {hp1 hp2 hp3}.
+  move=> hp1 hp2 hp3 hp4.
+  move: (conj hp1 (conj hp2 (conj hp3 hp4))) => {hp1 hp2 hp3 hp4}.
   move=> /(ex_intro (fun Q=> _) Q0) {Q0};  move: G Q.
   apply /paco2_acc; move=> r0 _ CIH G Q; elim=> Q0.
-  elim=> rfree; elim=> qpro Qeq; move: rfree qpro; case: G.
-  + move=> rfree qpro; move: (qProject_end_inv qpro) Qeq=>->=>->.
+  elim=> rfree; elim=> qpro; elim=> wfco Qeq.
+  move: wfco rfree qpro; case: G.
+  + move=> wfco rfree qpro; move: (qProject_end_inv qpro) Qeq=>->=>->.
     by rewrite remf1_id //=; apply /paco2_fold; apply qprj_end.
-  + move=> o FROM TO CONT rfree qpro; apply /paco2_fold.
-    move: rfree qpro; case: o.
-    * move=> L rfree qpro; move: (rcv_Free_Some_inv rfree).
+  + move=> o FROM TO CONT wfco rfree qpro; apply /paco2_fold.
+    move: wfco rfree qpro; case: o.
+    * move=> L wfco rfree qpro; move: (rcv_Free_Some_inv rfree).
       elim=> neqpq contfree; move: (qProject_Some_inv qpro).
       elim=> neq; elim=> Ty; elim=> G; elim=> Qc.
       elim=> CONTL; elim=> deqeq qproc.
       apply: (@qprj_some _ _ _ _ _ _ _ (Qc.[~(p,q)]) _ neq CONTL ).
       - by apply (deq_eq_where_notempty Qeq neqpq deqeq).
-      - right; apply CIH; exists Qc; split; [|split; by[]].
-        by apply (contfree _ _ _ CONTL).
-    * move=> rfree qpro; apply: qprj_none.
+      - right; apply CIH; exists Qc; split;
+          [by apply (contfree _ _ _ CONTL) 
+          |split; [by []| split; [|by[]]]].
+        move: (g_wfcont_msg_inv wfco).
+        elim=> nn it; apply: (it _ _ _ CONTL).
+    * move=> wfco rfree qpro; apply: qprj_none.
   Admitted.
 
 
