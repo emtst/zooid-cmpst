@@ -11,4 +11,5 @@ theories/Local.v
 theories/Session.v
 theories/Projection.v
 theories/WellFormed.v
+theories/QProjection.v
 theories/TraceEquiv.v
