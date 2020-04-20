@@ -31,7 +31,7 @@ continuations are never empty*)
         C LL = Some (TTy, GG) -> P GG) ->
       g_wfcont_ P (rg_msg o F T C).
   Hint Constructors g_wfcont_.
-  Definition g_wfcont g := paco1 g_wfcont_ bot1 g.
+  Definition g_wfcont G := paco1 g_wfcont_ bot1 G.
 
   Lemma g_wfcont_monotone : monotone1 g_wfcont_.
   Proof.
