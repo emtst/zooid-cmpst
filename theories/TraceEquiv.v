@@ -503,8 +503,9 @@ at the moment it is only morally!
   + move=> L F T C Ty G0 CL wf; rewrite /subject.
     by apply pof_to.
   + move=> a0 F T C0 C1 nF nT sd ra ih wf.
-    move: (g_wfcont_msg_inv wf); elim; elim=> L; elim=> Ty.
-    elim=> G0; elim=> C0L wf0 wfall0; apply: (pof_cont _ _ _ C0L).
+    move: (g_wfcont_msg_inv wf); elim=> neqFT.
+    elim; elim=> L; elim=> Ty; elim=> G0.
+    elim=> C0L wf0 wfall0; apply: (pof_cont _ _ _ C0L).
     have G1_aux: exists G1, C1 L = Some (Ty, G1).
       by rewrite /same_dom in sd; apply sd; exists G0.
     move: G1_aux; elim=> G1 C1L.
@@ -513,8 +514,8 @@ at the moment it is only morally!
     case: (@eqP _ (subject a0) F).
     - by move => sa0F; rewrite sa0F; apply pof_from.
     - rewrite (rwP eqP) (rwP negP); move=> sa0F.
-      move: (g_wfcont_msg_inv wf); elim; elim=> L0; elim=> Ty.
-      elim=> G0; elim=> C0L wf0 wfall0.
+      move: (g_wfcont_msg_inv wf); elim=> neq; elim.
+      elim=> L0; elim=> Ty; elim=> G0; elim=> C0L wf0 wfall0.
       rewrite /R_only in ronpof; move: ronpof; elim=> hp.
       elim=> Ty0; elim=> G0'; elim=> G1'; elim=> C0L'.
       elim=> C1L' ih0; apply: (pof_cont  _ _ _ C0L').

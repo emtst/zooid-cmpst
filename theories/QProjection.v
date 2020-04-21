@@ -205,7 +205,20 @@ Open Scope fmap.
     Q = Q0.[~(p,q)] -> (p, q) != (FROM, TO) ->
     deq Q0 (FROM, TO) == Some (L, Ty, Qc) ->
     deq Q (FROM, TO) == Some (L, Ty, Qc.[~(p,q)]).
-  Admitted.
+  Proof.
+  move=> Qeq neqpq. rewrite /deq.
+  have QFTeq: Q0.[? (FROM, TO)] = Q.[? (FROM, TO)].
+    rewrite Qeq fnd_rem1; rewrite eq_sym in neqpq.
+    by move: neqpq; case: ifP =>//.
+  rewrite QFTeq; case eqm1: Q.[? (FROM, TO)] => [qs|] //=.
+  case eqm2: qs  => [|q0 qs0] //=; case: ifP.
+  + move=> _; rewrite -(rwP eqP); move=> [eqq0 eqQc].
+    rewrite -(rwP eqP); apply f_equal, injective_projections =>//=.
+    by rewrite -eqQc Qeq remf_comp remf_comp fsetUC //=.
+  + move=> _; rewrite -(rwP eqP); move=> [eqq0 eqQc].
+    rewrite -(rwP eqP); apply f_equal, injective_projections =>//=.
+    by rewrite -eqQc Qeq remf1_set; move: neqpq; case: ifP =>//=.
+  Qed.
 
   Lemma rcv_Free_qProject p q G Q0 Q:
     rcv_Free (p,q) G -> qProject G Q0 ->
@@ -231,10 +244,42 @@ Open Scope fmap.
       - right; apply CIH; exists Qc; split;
           [by apply (contfree _ _ _ CONTL) 
           |split; [by []| split; [|by[]]]].
-        move: (g_wfcont_msg_inv wfco).
+        move: (g_wfcont_msg_inv wfco); elim=> neqq.
         elim=> nn it; apply: (it _ _ _ CONTL).
-    * move=> wfco rfree qpro; apply: qprj_none.
-  Admitted.
+    * move=> wfco rfree qpro; move: (g_wfcont_msg_inv wfco); elim=> neqq.
+      elim; elim=> L; elim=> Ty; elim=> G; elim=> CONTL wfcoG wfcoall.
+      move: (qProject_None_inv L Ty G qpro); elim=> neq qpro0'.
+      apply: qprj_none =>//=; move=> Lc Tyc Gc CONTLc; right.
+      apply CIH; exists Q0.
+      split; [by apply (rcv_Free_None_inv rfree CONTLc)| split].
+      - move: (qProject_None_inv Lc Tyc Gc qpro); elim=> _.
+        by move=> hp; apply hp.
+      - by split; [apply (wfcoall _ _ _ CONTLc)|].
+  Qed.
+
+  Lemma RCV_Free_qProject_empty G :
+    RCV_Free G -> g_wfcont G -> qProject G [fmap].
+  Proof.
+  have Qeq: exists (Q: {fmap role * role -> seq (lbl * mty) }), Q = [fmap].
+    by exists [fmap].
+  move: Qeq; elim=> Q Qeq; rewrite -Qeq.
+  move=> hp1 hp2; move: (conj Qeq (conj hp1 hp2)) => {Qeq hp1 hp2}.
+  move: G Q; apply /paco2_acc; move=> r0 _ CIH G Q.
+  elim=> Qeq; elim; case: G.
+  + by rewrite Qeq; move=> _ _; apply /paco2_fold; apply qprj_end.
+  + move=> o FROM TO CONT rfree wfco; apply /paco2_fold.
+    move: wfco rfree; case: o.
+    * move=> L wfco rfree; move: (rfree FROM TO)=> contra.
+      move: (rcv_Free_Some_inv contra); elim; rewrite eq_refl //=.
+    * move=> wfco rfree; move: (g_wfcont_msg_inv wfco).
+      elim=> neq; elim; elim=> Lc; elim=> Tyc; elim=> Gc.
+      elim=> CONTLc wfcoc wfcoall.
+      apply: qprj_none; [by []|].
+      move=> L Ty G CONTL; right; apply CIH; split; [by []|].
+      split;[| by apply (wfcoall _ _ _ CONTL)].
+      move=> p q; move: (rfree p q) => rfreehp.
+      by apply (rcv_Free_None_inv rfreehp CONTL).
+  Qed.
 
 
 
