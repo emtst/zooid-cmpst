@@ -282,6 +282,15 @@ Open Scope fmap.
   Qed.
 
 
-
+  Inductive rcv_no (p q : role) : nat -> rg_ty -> Prop :=
+  | rcv_no_0 G: rcv_Free (p,q) G -> rcv_no p q 0 G
+  | rcv_no_send n F T C: 
+    (forall L Ty G, C L = Some (Ty, G) -> rcv_no p q n G)
+    -> rcv_no p q n (rg_msg None F T C)
+  | rcv_no_rcv n L C Ty G:
+    C L = Some (Ty, G) -> rcv_no p q n G ->
+    rcv_no p q (n.+1) (rg_msg (Some L) p q C)
+  .
+    
 
 End QProjection.
