@@ -26,7 +26,7 @@ continuations are never empty*)
   Inductive g_wfcont_ (P : g_pr) : g_pr :=
   | g_wfcont_end : g_wfcont_ P rg_end
   | g_wfcont_msg o F T C L Ty G:
-      C L = Some (Ty, G) -> P G ->
+      F !=T -> C L = Some (Ty, G) -> P G ->
       (forall LL TTy GG, 
         C LL = Some (TTy, GG) -> P GG) ->
       g_wfcont_ P (rg_msg o F T C).
@@ -36,22 +36,22 @@ continuations are never empty*)
   Lemma g_wfcont_monotone : monotone1 g_wfcont_.
   Proof.
   rewrite /monotone1; move=> G P P'; case=>//=.
-  move=> o F T C L Ty G0 CLeq wfG wfall hp.
-  apply (g_wfcont_msg _ _ _ CLeq); [by apply hp|].
+  move=> o F T C L Ty G0 neq CLeq wfG wfall hp.
+  apply (g_wfcont_msg _ neq CLeq); [by apply hp|].
   move=> LL TTy GG CLL; apply hp.
   by apply (wfall _ _ _ CLL).
   Qed.
   Hint Resolve g_wfcont_monotone.
 
   Lemma g_wfcont_msg_inv_aux GG o F T C: 
-    g_wfcont GG -> GG = (rg_msg o F T C)->
+    g_wfcont GG -> GG = (rg_msg o F T C)-> F != T /\
     (exists L Ty G, C L = Some (Ty, G) /\ g_wfcont G) /\
     (forall LL TTy GG, C LL = Some (TTy, GG) -> g_wfcont GG).
   Proof.
   move=> wf; rewrite /g_wfcont in wf; punfold wf.
   move: wf =>
-    [|o' F' T' C' L Ty G CL hp hpall [eq1 eq2 eq3 eq4]] //=.
-  split.
+    [|o' F' T' C' L Ty G neq CL hp hpall [eq1 eq2 eq3 eq4]] //=.
+  split; [by rewrite -eq2 -eq3|split].
   + exists L, Ty, G; split; [by rewrite -eq4|].
     by move: hp; rewrite /upaco1; elim.
   + move=> LL TTy GG' CLL; rewrite -eq4 in CLL.
@@ -59,7 +59,7 @@ continuations are never empty*)
   Qed.
 
   Lemma g_wfcont_msg_inv o F T C: 
-    g_wfcont (rg_msg o F T C)->
+    g_wfcont (rg_msg o F T C)-> F != T /\
     (exists L Ty G, C L = Some (Ty, G) /\ g_wfcont G) /\
     (forall LL TTy GG, C LL = Some (TTy, GG) -> g_wfcont GG).
   Proof.
