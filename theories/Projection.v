@@ -694,33 +694,24 @@ Section CProject.
 
   Open Scope mpst_scope.
 
-
-
-
   Definition Merge (F : lbl /-> mty * rl_ty) (L : rl_ty) : Prop :=
     forall Lb Ty L', F Lb = Some (Ty, L') -> EqL L' L.
 
   Definition proj_rel := rg_ty -> rl_ty -> Prop.
   Inductive Proj_ (p : role) (r : proj_rel) : proj_rel :=
   | prj_end : Proj_ p r rg_end rl_end
-  | prj_send1 q KsG KsL :
+  | prj_send q KsG KsL :
       p != q ->
       same_dom KsG KsL ->
       R_all r KsG KsL ->
-      Proj_ p r (rg_msg None p q KsG) (rl_msg l_send q KsL)
-  | prj_send2 l t q KsG KsL L :
+      Proj_ p r (rg_msg p q KsG) (rl_msg l_send q KsL)
+  | prj_recv q KsG KsL :
       p != q ->
       same_dom KsG KsL ->
       R_all r KsG KsL ->
-      KsL l = Some (t, L) ->
-      Proj_ p r (rg_msg (Some l) p q KsG) L
-  | prj_recv o q KsG KsL :
-      p != q ->
-      same_dom KsG KsL ->
-      R_all r KsG KsL ->
-      Proj_ p r (rg_msg o q p KsG) (rl_msg l_recv q KsL)
+      Proj_ p r (rg_msg q p KsG) (rl_msg l_recv q KsL)
   (* | prj_end2 G : ~ In r G -> Proj_ r G rl_end *)
-  | prj_mrg o q s KsG KsL L :
+  | prj_mrg q s KsG KsL L :
       q != s ->
       p != q ->
       p != s ->
@@ -728,7 +719,7 @@ Section CProject.
       same_dom KsG KsL ->
       R_all r KsG KsL ->
       Merge KsL L ->
-      Proj_ p r (rg_msg o q s KsG) L
+      Proj_ p r (rg_msg q s KsG) L
   .
   Hint Constructors Proj_.
   Lemma Proj_monotone p : monotone2 (Proj_ p).
@@ -736,13 +727,10 @@ Section CProject.
   rewrite /monotone2; move=> x0 x1 r r' it LE; move: it; case=>//.
   + move=> q KsG KsL neq samed HP; constructor =>//; move: HP; rewrite /R_all.
     move=> HP l Ty G L KsG_l KsL_l; apply: LE; by apply: (@HP l Ty G L KsG_l KsL_l).
-  + move=> l t q KsG KsL L neq samed rall; apply: (@prj_send2 _ _ l t _ _ KsL) => //.
-    move: rall; rewrite /R_all; move=> rall l0 t0 G0 L0 KsG_l0 KsL_l0; apply LE.
-    by apply: (@rall l0 _ _ _ KsG_l0 KsL_l0).
-  + move=> o q KsG KsL neq samed rall; constructor =>//; move: rall; rewrite /R_all.
+  + move=> q KsG KsL neq samed rall; constructor =>//; move: rall; rewrite /R_all.
     move=> rall l t G L KsG_l KsL_l; apply: LE. by apply: (rall _ _ _ _ KsG_l KsL_l).
-  + move=> o q s KsG KsL L0 neq_qs neq_pq neq_ps samed rall merg.
-    apply (@prj_mrg _ _ _ _ _ KsG KsL _) =>//; move: rall; rewrite /R_all.
+  + move=> q s KsG KsL L0 neq_qs neq_pq neq_ps samed rall merg.
+    apply (@prj_mrg _ _ _ _ KsG KsL _) =>//; move: rall; rewrite /R_all.
     move=> rall l t G L KsG_l KsL_l; apply: LE; by apply: (rall _ _ _ _ KsG_l KsL_l).
   Qed.
   Hint Resolve Proj_monotone.
@@ -1138,7 +1126,7 @@ Section CProject.
       case:ifP=>[F_r | F_ne_r].
       + move=>[EL]; move: EL LU=><- {L} /lu_unfold-LU.
         case EL: _ _/LU=>[||a p Ks C LU]//; move: EL LU=>[<-<-<-] LU {a p Ks}.
-        move: F_r CIH E=>/eqP<-{r} CIH E; apply/prj_send1; first by apply/negPf.
+        move: F_r CIH E=>/eqP<-{r} CIH E; apply/prj_send; first by apply/negPf.
         * by apply (cproj_samedom GU LU E).
         * by apply/(cproj_all CIH cG gG GU LU).
       + case:ifP=>[T_r | T_ne_r].
@@ -1190,4 +1178,36 @@ Section CProject.
     move: (g_closed_unroll (rec_depth iG) ciG)=>cuiG {ciG giG iGiL}.
     by apply/(project_nonrec CIH cuiG guiG nrG proj).
   Qed.
+
+  Inductive IProj (p : role) : ig_ty -> rl_ty -> Prop :=
+  | iprj_end CG CL : 
+      Project p CG CL ->
+      IProj p (ig_end CG) CL
+  | iprj_send1 q KsG KsL :
+      p != q ->
+      same_dom KsG KsL ->
+      R_all (IProj p) KsG KsL ->
+      IProj p (ig_msg None p q KsG) (rl_msg l_send q KsL)
+  | iprj_send2 l t q KsG KsL L :
+      p != q ->
+      same_dom KsG KsL ->
+      R_all (IProj p) KsG KsL ->
+      KsL l = Some (t, L) ->
+      IProj p (ig_msg (Some l) p q KsG) L
+  | iprj_recv o q KsG KsL :
+      p != q ->
+      same_dom KsG KsL ->
+      R_all (IProj p) KsG KsL ->
+      IProj p (ig_msg o q p KsG) (rl_msg l_recv q KsL)
+  (* | prj_end2 G : ~ In r G -> Proj_ r G rl_end *)
+  | iprj_mrg o q s KsG KsL L :
+      q != s ->
+      p != q ->
+      p != s ->
+      (* InAll r KsG -> *)
+      same_dom KsG KsL ->
+      R_all (IProj p) KsG KsL ->
+      Merge KsL L ->
+      IProj p (ig_msg o q s KsG) L
+  .
 End CProject.
