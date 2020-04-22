@@ -14,7 +14,7 @@ Require Import MPST.Global.
 Require Import MPST.Local.
 Require Import MPST.Actions.
 Require Import MPST.Projection.
-Require Import MPST.WellFormed.
+(* Require Import MPST.WellFormed. *)
 
 
 Section QProjection.
@@ -26,30 +26,19 @@ Definition PAR2 := (PAR `*` PAR)%fset.
 
 Open Scope fmap.
 
-  Definition qproj_rel := rg_ty -> {fmap role * role -> seq (lbl * mty) } -> Prop.
-  Inductive qProj_ (r : qproj_rel) : qproj_rel :=
-  | qprj_end : qProj_ r rg_end [fmap]%fmap(*[fmap qq:PAR2 => [::]]*)
-  | qprj_none p p' CONT Q:
+  Definition qproj_rel := ig_ty -> {fmap role * role -> seq (lbl * mty) } -> Prop.
+  Inductive qProject : qproj_rel :=
+  | qprj_end G : qProject (ig_end G) [fmap]%fmap(*[fmap qq:PAR2 => [::]]*)
+  | qprj_none p p' CONT Q :
       p != p' -> 
-      (forall l Ty G, CONT l = Some (Ty, G) -> r G Q) ->
-      qProj_ r (rg_msg None p p' CONT) Q
+      (forall l Ty G, CONT l = Some (Ty, G) -> qProject G Q) ->
+      qProject (ig_msg None p p' CONT) Q
   | qprj_some p p' CONT l Ty G Q Q':
       p != p' -> CONT l = Some (Ty, G) ->
-      deq Q' (p, p') == Some ((l, Ty), Q) -> r G Q ->
-      qProj_ r (rg_msg (Some l) p p' CONT) Q'
+      deq Q' (p, p') == Some ((l, Ty), Q) -> qProject G Q ->
+      qProject (ig_msg (Some l) p p' CONT) Q'
   .
-  Hint Constructors qProj_.
-  Lemma qProj_monotone : monotone2 qProj_.
-  Proof.
-  move=> x0 x1 r r' it LE; move: it; case=>//.
-  + move=> p p' CONT Q neq hp.
-    apply: (qprj_none neq); move=> l Ty G CONTeq; apply LE.
-    by apply: (hp l Ty G).
-  + move=> p p' CONT l Ty G Q Q' neq CONTeq enqu rel.
-    apply: (qprj_some neq CONTeq enqu); by apply (LE _ _ rel).
-  Qed.
-  Hint Resolve qProj_monotone.
-  Definition qProject CG Q := paco2 (qProj_) bot2 CG Q.
+  Hint Constructors qProject.
 
 
 
