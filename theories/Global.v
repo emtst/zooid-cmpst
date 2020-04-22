@@ -513,9 +513,14 @@ Section Semantics.
   Open Scope mpst_scope.
   CoInductive rg_ty :=
   | rg_end
-  | rg_msg (ST : option lbl)
-           (FROM TO : role)
+  | rg_msg (FROM TO : role)
            (CONT : lbl /-> mty * rg_ty).
+
+  Inductive ig_ty :=
+  | ig_end (CONT : rg_ty)
+  | ig_msg (ST : option lbl)
+           (FROM TO : role)
+           (CONT : lbl /-> mty * ig_ty).
 
   Definition grel := g_ty -> rg_ty -> Prop.
 
@@ -524,7 +529,7 @@ Section Semantics.
   | gu_rec IG CG : r (g_open 0 (g_rec IG) IG) CG -> @g_unroll r (g_rec IG) CG
   | gu_msg FROM TO iCONT cCONT :
       @unroll_all r iCONT cCONT ->
-      @g_unroll r (g_msg FROM TO iCONT) (rg_msg None FROM TO cCONT)
+      @g_unroll r (g_msg FROM TO iCONT) (rg_msg FROM TO cCONT)
   with unroll_all (r : grel)
        : rel2 (seq (lbl * (mty * g_ty))) (fun=>lbl /-> mty * rg_ty) :=
   | gu_nil : @unroll_all r [::] (empty _)
@@ -570,8 +575,8 @@ Section Semantics.
     Q x' y' -> P.
   Proof. by move=>H /H/( _ erefl erefl).  Qed.
 
-  Lemma r_in_unroll_msg r G a p q Ks :
-    GUnroll G (rg_msg a p q Ks) ->
+  Lemma r_in_unroll_msg r G p q Ks :
+    GUnroll G (rg_msg p q Ks) ->
     guarded 0 G ->
     g_closed G ->
     (r == p) || (r == q) ->
@@ -586,7 +591,7 @@ Section Semantics.
     - by move=>/(_ G')/eqP.
     - move=>_; apply: gen2=>iG cG /gunroll_unfold-[]//.
       move=> p'' q'' Ks'' CC GU E; move: E GU=> [->->->]{p'' q'' Ks''} GU.
-      by move=>[_->-> _]/=; rewrite !in_cons orbA =>->.
+      by move=>[->-> _]/=; rewrite !in_cons orbA =>->.
   Qed.
 
 
@@ -610,43 +615,58 @@ Section Semantics.
   Qed.
 
 
-  Definition R_only (R : rg_ty -> rg_ty -> Prop)
-             L0 (C C' : lbl /-> mty * rg_ty) :=
+  Definition R_only (R : ig_ty -> ig_ty -> Prop)
+             L0 (C C' : lbl /-> mty * ig_ty) :=
     (forall L1 K, L0 != L1 -> C L1 = Some K <-> C' L1 = Some K)
     /\ exists Ty G0 G1,
       C L0 = Some (Ty, G0)
       /\ C' L0 = Some (Ty, G1)
       /\ R G0 G1.
 
-  Inductive step : act -> rg_ty -> rg_ty -> Prop :=
+  Definition rg_unr (G : rg_ty) : ig_ty :=
+    match G with
+    | rg_msg F T C
+        => ig_msg None F T 
+                  (fun lbl => 
+                    match C lbl with
+                    | None => None
+                    | Some (t, G) => Some (t, ig_end G)
+                    end)
+    | rg_end => ig_end rg_end
+    end.
+
+  Inductive step : act -> ig_ty -> ig_ty -> Prop :=
   (* Basic rules *)
   | st_send L F T C Ty G :
       C L = Some (Ty, G) ->
-      step (a_send F T L Ty) (rg_msg None F T C) (rg_msg (Some L) F T C)
+      step (a_send F T L Ty) (ig_msg None F T C) (ig_msg (Some L) F T C)
   | st_recv L F T C Ty G :
       C L = Some (Ty, G) ->
-      step (a_recv F T L Ty) (rg_msg (Some L) F T C) G
+      step (a_recv F T L Ty) (ig_msg (Some L) F T C) G
   (* Struct *)
   | st_amsg1 a F T C0 C1 :
       subject a != F ->
       subject a != T ->
       same_dom C0 C1 ->
       R_all (step a) C0 C1 ->
-      step a (rg_msg None F T C0) (rg_msg None F T C1)
+      step a (ig_msg None F T C0) (ig_msg None F T C1)
   | st_amsg2 a L F T C0 C1 :
       subject a != T ->
       same_dom C0 C1 ->
       R_only (step a) L C0 C1 ->
-      step a (rg_msg (Some L) F T C0) (rg_msg (Some L) F T C1)
+      step a (ig_msg (Some L) F T C0) (ig_msg (Some L) F T C1)
+  | st_unr a CG G :
+      step a (rg_unr CG) G -> 
+      step a (ig_end CG) G
   .
 
   Derive Inversion step_inv with (forall a G G', step a G G') Sort Prop.
 
   Scheme step_ind1 := Induction for step Sort Prop.
 
-  Definition gtrc_rel := trace -> rg_ty -> Prop.
+  Definition gtrc_rel := trace -> ig_ty -> Prop.
   Inductive g_lts_ (r : gtrc_rel) : gtrc_rel :=
-  | eg_end : @g_lts_ r tr_end rg_end
+  | eg_end : @g_lts_ r tr_end (ig_end rg_end)
   | eg_trans a t G G' :
       step a G G' ->
       r t G' ->
