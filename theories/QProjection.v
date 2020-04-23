@@ -47,73 +47,71 @@ Open Scope fmap.
   - might be be turned into 2 or even 0
 *)
 
-  Lemma qProject_end_inv_aux Q GG: 
-    GG = rg_end -> qProject GG Q -> 
+  Lemma qProject_end_inv_aux Q iG G: 
+    qProject iG Q ->  iG = (ig_end G) -> 
     Q = ([fmap]%fmap).
   Proof.
-  move=> eq hp; punfold hp.
-  move: hp eq => [||]//= [].
+  case =>//=.
   Qed.
 
-  Lemma qProject_end_inv Q:
-  qProject rg_end Q -> 
+  Lemma qProject_end_inv Q G:
+  qProject (ig_end G) Q -> 
     Q = ([fmap]%fmap).
   Proof.
-  by apply qProject_end_inv_aux.
+  by move=> hp; apply: (@qProject_end_inv_aux Q _ G hp).
   Qed.
 
 
   Lemma qProject_None_inv_aux F T C l Ty G Q GG: 
-    GG = (rg_msg None F T C) ->
     qProject GG Q -> 
+    GG = (ig_msg None F T C) ->
     F != T /\
     (C l = Some (Ty, G) -> qProject G Q).
   Proof.
-  move=> eq hp; punfold hp.
-  move: hp eq => [|p p' CONT {}Q neq hp |]//= [].
-  move=> eq1 eq2 eq3; split; [by rewrite -eq1 -eq2 | ].
-  rewrite -eq3; move=> conteq;  move: (hp _ _ _ conteq).
-  by rewrite /upaco2 /qProject /bot2; elim.
+  case =>//=.
+  move=> p p' CONT Q0 neq IH [eq1 eq2 eq3].
+  split; [by rewrite -eq1 -eq2| rewrite -eq3].
+  by apply IH.
   Qed.
 
   Lemma qProject_None_inv F T C l Ty G Q (*Q'*):
-    qProject (rg_msg None F T C) Q -> 
+    qProject (ig_msg None F T C) Q -> 
     F != T /\
     (C l = Some (Ty, G) -> qProject G Q).
   Proof.
-  by apply: qProject_None_inv_aux.
+  move=> hp; move: (@ qProject_None_inv_aux F T C l Ty G _ _ hp).
+  by move=> triv; apply triv.
   Qed.
-
 
 
   Lemma qProject_Some_inv_aux l F T C Q GG: 
-    GG = (rg_msg (Some l) F T C) ->
     qProject GG Q -> 
+    GG = (ig_msg (Some l) F T C) ->
     F != T /\
     (exists Ty G Q',
     C l = Some (Ty, G) /\
-    (*Q == (enq Q' (F,T) (l, Ty)) /\*)
     deq Q (F, T) == Some ((l, Ty), Q') /\
     qProject G Q').
   Proof.
-  move=> eq hp; punfold hp.
-  move: hp eq  => [| | p p' CONT l0 Ty G {}Q Q' H0 H1 H2 H3] //= [].
-  move=> H4 H5 H6 H7. split; [by rewrite -H5 -H6 | exists  Ty, G, Q].
-  split; [by rewrite -H1 H7 H4 | split; [ by rewrite -H5 -H6 -H4|]].
-  by move: H3; rewrite /upaco2 /qProject /bot2; elim.
+  case =>//.
+  move=> p p' CONT l0 Ty G Q0 Q' neq CONTL0 deqQ' qpro [eq1 eq2 eq3 eq4].
+  rewrite -eq1 -eq2 -eq3 -eq4; split; [by []| exists Ty, G, Q0].
+  by split; [| split; [|]].
   Qed.
 
   Lemma qProject_Some_inv l F T C Q:
-    qProject (rg_msg (Some l) F T C) Q -> 
+    qProject (ig_msg (Some l) F T C) Q -> 
     F != T /\
     (exists Ty G Q', C l = Some (Ty, G) /\
-    (*Q == (enq Q' (F,T) (l, Ty)) /\*)
     deq Q (F, T) == Some ((l, Ty), Q') /\
     qProject G Q').
   Proof.
-  by apply: qProject_Some_inv_aux.
+  move=> hp; move: (@qProject_Some_inv_aux l F T C Q _ hp).
+  by move=> triv; apply triv.
   Qed.
 
+
+(*
   Definition deq_rinv 
     p p' l Ty (Q: {fmap role * role -> seq (lbl * mty) }):=
   match Q.[? (p,p')] with
@@ -289,6 +287,6 @@ SearchAbout rcv_no.
 
 
   (* *)
-
+*)
 
 End QProjection.
