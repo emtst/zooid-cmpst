@@ -374,7 +374,7 @@ at the moment it is only morally!
   Qed.
 
 
-
+(*to be moved in Local.v*)
 
 
   Lemma EqL_r_end_inv_aux lT lT': 
@@ -410,7 +410,30 @@ at the moment it is only morally!
   by move=> hp; apply: (EqL_r_msg_inv_aux hp).
   Qed.
 
-(*to be moved in Local.v*)
+
+  Lemma EqL_l_msg_inv_aux lT lT' a p C: 
+    EqL lT lT' -> lT = rl_msg a p C ->
+    exists C', same_dom C C' /\ 
+       R_all EqL C C' /\ lT' = rl_msg a p C'.
+  Proof.
+  move=> hp; punfold hp; move: hp => [] //=.
+  move=> a0 p0 C1 C2 samed rall [eq1 eq2 eq3].
+  exists C2; rewrite eq1 eq2 -eq3; split; [|split] => //=.
+  rewrite /R_all; move=> L Ty lT1 lT2 ceq1 ceq2.
+  rewrite /R_all in rall; move: (rall L Ty lT1 lT2 ceq1 ceq2).
+  by rewrite /upaco2; elim; rewrite //=.
+  Qed.
+  
+  Lemma EqL_l_msg_inv a p C lT': 
+    EqL (rl_msg a p C) lT' ->
+    exists C', same_dom C C' /\ 
+       R_all EqL C C' /\ lT' = rl_msg a p C'.
+  Proof.
+  by move=> hp; apply: (EqL_l_msg_inv_aux hp).
+  Qed.
+
+
+
 
   Lemma EqL_trans lT1 lT2 lT3:
     EqL lT1 lT2 -> EqL lT2 lT3 -> EqL lT1 lT3.
@@ -439,7 +462,8 @@ at the moment it is only morally!
       by split; [apply (rall12 L Ty)|apply (rall23 L Ty)].
   Qed.
 
-
+(*next two admitted lemmas should have similar proofs
+actually they should be doubled*)
 
   Lemma EqL_Project p G lT lT': 
     EqL lT lT' -> Project p G lT -> Project p G lT'.
@@ -454,34 +478,12 @@ at the moment it is only morally!
   + move=> a q C eql; move: (EqL_r_msg_inv eql).
     elim=> C0; elim=> samed; elim=> rall lTeq; rewrite lTeq.
     case G; [by move => hp; move: (cProj_end_inv hp)|].
-    move=> op F T CONT; case: (@eqP _ p F).
-    * move=> pF; rewrite pF; case: op.
-      - move=> L hpro; move: (cProj_send_some_inv hpro); elim=> neq.
-        elim=> lC0; elim=> Ty; elim=> lC0eq; elim=> sam ral.
-        apply /paco2_fold.
-        apply: (@prj_send2 _ _ _ Ty _ _ (extend L (Ty, rl_msg a q C) lC0))=>//=.
-        + have exCONT: exists GG, CONT L = Some (Ty, GG).
-            rewrite /same_dom in sam; move: (sam L Ty); elim=> _ sam'.
-            by apply sam'; exists (rl_msg a q C0).
-          move: exCONT; elim; move=> GG contL.
-          by apply: (same_dom_extend_some_l (rl_msg a q C) sam contL).
-        + rewrite /R_all; move=> LL Tyy GG lTT contLL; rewrite /extend.
-          case: ifP.
-          * rewrite -(rwP eqP); move=> eqLLL [eq1 eq2].
-            rewrite /upaco2; right; apply CIH; rewrite -eq2.
-            exists (rl_msg a q C0); split; [by rewrite -lTeq|].
-            rewrite /R_all in ral; rewrite -eq1 -eqLLL in contLL. 
-            move: (ral _ _ _ _ contLL lC0eq); rewrite /upaco2.
-            elim; [by rewrite pF |by []].
-          * move=> neqLLL lC0LL; rewrite /R_all in ral.
-            move: upaco2_mon; rewrite /monotone2; move=> up.
-            apply (up _ _ _ _ _ _ _ (ral _ _ _ _ contLL lC0LL)).
-            by rewrite /bot2.
-        + by rewrite /extend; case: ifP; [|rewrite eq_refl].
-      - move=> hpro; move: (cProj_send_none_inv hpro); elim=> neq.
+    move=> (*op*) F T CONT; case: (@eqP _ p F).
+    * move=> pF; rewrite pF.
+      - move=> hpro; move: (cProj_send_inv hpro); elim=> neq.
         elim=> lC0; elim; move=> [eq1 eq2 eq3]; elim=> samed0 ral.
         apply /paco2_fold; rewrite eq1 eq2.
-        apply (prj_send1 neq).
+        apply (prj_send neq).
         + rewrite /same_dom; rewrite /same_dom in samed samed0.
           by move=> LL Tyy; rewrite (samed0 LL Tyy) -eq3.
         + rewrite /R_all; move=> LL Tyy GG lTT contLL lcontLL.
@@ -498,7 +500,7 @@ at the moment it is only morally!
         move: (cProj_recv_inv hpro); elim=> neqFT; elim=> lC; elim.
         move=> [eq1 eq2 eq3]; elim=> samed0 ral; apply /paco2_fold.
         rewrite eq_sym in neqFT.
-        rewrite eq1 eq2; apply: (prj_recv _ neqFT).
+        rewrite eq1 eq2; apply: (prj_recv neqFT).
         + rewrite /same_dom; rewrite /same_dom in samed samed0.
           by move=> LL Tyy; rewrite (samed0 LL Tyy) -eq3.
         + rewrite /R_all; move=> LL Tyy GG lTT contLL lcontLL.
@@ -514,7 +516,7 @@ at the moment it is only morally!
         move: (cProj_mrg_inv hpro neq neqpT); elim=> neqFT.
         elim=> lC0; elim=> samed0; elim=> ral mer.
         apply /paco2_fold.
-        apply: (@prj_mrg _ _ _ _ _ _ 
+        apply: (@prj_mrg _ _ _ _ _ 
           (same_dom_const CONT (rl_msg a q C)) _ neqFT neq neqpT).
         + by apply same_dom_const_same_dom.
         + rewrite /R_all; move=> LL Tyy GG lTT contLL lcontLL.
@@ -541,52 +543,116 @@ at the moment it is only morally!
 
 
 
+About extend.
 
-
-
-  Lemma step_ind_str (P : act -> rg_ty -> rg_ty -> Prop) :
-    (forall L F T C Ty G, C L = Some (Ty, G) ->
-      P (a_send F T L Ty) (rg_msg None F T C) (rg_msg (Some L) F T C))
-    ->
-    (forall L F T C Ty G, C L = Some (Ty, G) -> 
-      P (a_recv F T L Ty) (rg_msg (Some L) F T C) G)
-    ->
-    (forall a F T C0 C1, subject a != F -> subject a != T ->
-      same_dom C0 C1 -> R_all (step a) C0 C1 ->
-      R_all (P a) C0 C1 ->
-        P a (rg_msg None F T C0) (rg_msg None F T C1))
-    ->
-    (forall a L F T C0 C1, subject a != T ->
-      same_dom C0 C1 -> R_only (step a) L C0 C1 ->
-      (*new property, mirroring R_only*)
-      R_only (P a) L C0 C1 ->
-      P a (rg_msg (Some L) F T C0) (rg_msg (Some L) F T C1)) 
-  -> forall (a : act) (G G' : rg_ty), step a G G' -> P a G G'.
+  Lemma EqL_IProj p G lT lT': 
+    IProj p G lT -> EqL lT lT' -> IProj p G lT'.
   Proof.
-  move=> P_send P_recv P_amsg1 P_amsg2; fix Ih 4.
-  move=> a G G'; case =>//=.
-  + move=> a' F T C0 C1 nF nT samed rall.
-    apply: P_amsg1 =>//=; move: rall; rewrite /R_all.
-    move=> rall L Ty G0 G1 C0L C1L; apply Ih.
-    by apply (rall _ _ _ _ C0L C1L).
-  + move=> a' L F T C0 C1 nT samed ronly.
-    apply: P_amsg2 =>//=; move: ronly; rewrite /R_only.
-    elim=> cond; elim=> Ty; elim=> G0; elim=> G1.
-    elim=> C0L; elim=> C1L step; split; [by []|].
-    exists Ty, G0, G1; split; [by []|split; [by []|]].
-    by apply Ih.
+  move=> hp; move: hp lT'; elim.
+  + move=> CG {}lT Pro lT' eqL; apply: iprj_end.
+    by apply: (EqL_Project eqL Pro).
+  + move=> q C lC neq samed rall Ih lT' eqL.
+    move: (EqL_l_msg_inv eqL); elim=> lC'; elim=> samedom.
+    elim=> rall' ->; apply: (iprj_send1 neq).
+    * by move=> L Ty; rewrite (samed L Ty).
+    * move=> L Ty G0 lT0' CL lCL'.
+      move: (samedom L Ty); elim=> _.
+      elim; [move=> lT0 lCL | by exists lT0'].
+      apply: (Ih _ _ _ _ CL lCL).
+      by apply: (rall' _ _ _ _ lCL lCL').
+  + move=> L Ty q C lC lT0 neq samed rall Ih lCL lT0' eqL.
+    move:(samed L Ty);elim=> _;elim;[move=> G0 CL|by exists lT0].
+    apply: (@iprj_send2 p L Ty q C (extend L (Ty, lT0') lC) _ neq).
+    * apply: (same_dom_extend_some_l _ samed CL).
+    * move=> LL TTy GG lTT CLL; rewrite /extend; case: ifP.
+      - rewrite -(rwP eqP); move=> eqLL [eqTy eqlT0'].
+        rewrite -eqlT0'; rewrite -eqLL in CLL.
+        move: CLL; rewrite CL; move=> [_ eqG0]; rewrite -eqG0.
+        by apply: (Ih _ _ _ _ CL lCL).
+      - by move=> neqLL lCLL; apply: rall CLL lCLL.
+    * by rewrite /extend; case: ifP =>//; rewrite eq_refl //.
+  + move=> o q C lC neq samed rall Ih lT' eqL.
+    move: (EqL_l_msg_inv eqL); elim=> lC'; elim=> samedom.
+    elim=> rall' ->; apply: (iprj_recv o neq).
+    * by move=> L Ty; rewrite (samed L Ty).
+    * move=> L Ty G0 lT0' CL lCL'.
+      move: (samedom L Ty); elim=> _.
+      elim; [move=> lT0 lCL | by exists lT0'].
+      apply: (Ih _ _ _ _ CL lCL).
+      by apply: (rall' _ _ _ _ lCL lCL').
+  + move=> o q s C lC lT0 neqqs neqpq neqps samed rall Ih mer lT' eqL.
+    apply: (@iprj_mrg _ _ _ _ _ 
+          (same_dom_const C lT') _ neqqs neqpq neqps).
+    * by apply: same_dom_const_same_dom.
+    * move=> L Ty G0 lTT' CL sdLa.
+      move: (same_dom_const_some sdLa)=>->.
+      move: (samed L Ty); elim=> sam _; move: sam.
+      elim; [move=> lTT lCL | by exists G0].
+      by apply: (Ih _ _ _ _ CL lCL) (EqL_trans (mer _ _ _ lCL) eqL).
+    * move=> Ln Tn lTn sdc; move: (same_dom_const_some sdc) =>-> //=.
   Qed.
 
-  Lemma step_subject_part_of a G G':
-    step a G G' -> g_wfcont G -> part_of (subject a) G.
+
+
+
+  Lemma step_ind_str
+    (P : forall (a : act) (i i0 : ig_ty), step a i i0 -> Prop):
+    (forall L F T C Ty G (e: C L = Some (Ty, G)),
+      P (a_send F T L Ty) (ig_msg None F T C) (ig_msg (Some L) F T C)
+        (st_send F T e) )
+    ->
+    (forall L F T C Ty G (e: C L = Some (Ty, G)), 
+      P (a_recv F T L Ty) (ig_msg (Some L) F T C) G (st_recv F T e))
+    ->
+    (forall a F T C0 C1 (i : subject a != F) (i0 : subject a != T) 
+          (s : same_dom C0 C1) (r : R_all (step a) C0 C1),
+        (forall (L : lbl) (Ty : mty) (G G' : ig_ty) 
+           (e : C0 L = Some (Ty, G)) (e0 : C1 L = Some (Ty, G')),
+         P a G G' (r L Ty G G' e e0)) ->
+        P a (ig_msg None F T C0) (ig_msg None F T C1) (st_amsg1 i i0 s r))
+    ->
+    (*new property, mirroring R_only...*)
+    (forall (a : act) (L : lbl) (F T : role)
+          (C0 C1 : lbl -> option (mty * ig_ty)) (i : subject a != T)
+          (s : same_dom C0 C1) (r : R_only (step a) L C0 C1),
+      ((forall (L' : lbl) (K : mty * ig_ty),
+      L != L' -> C0 L' = Some K <-> C1 L' = Some K) /\
+      (exists (Ty : mty) (G0 G1 : ig_ty),
+      C0 L = Some (Ty, G0) /\ C1 L = Some (Ty, G1) 
+      /\ (exists (r: step a G0 G1), P a G0 G1 r)))
+      ->
+      (*... with dependent types*)
+      P a (ig_msg (Some L) F T C0) (ig_msg (Some L) F T C1) 
+          (st_amsg2 F i s r)) 
+      ->
+     (forall (a : act) (CG : rg_ty) (G : ig_ty) (s : step a (rg_unr CG) G),
+        P a (rg_unr CG) G s -> P a (ig_end CG) G (st_unr s))
+  -> forall (a : act) (i i0 : ig_ty) (s : step a i i0), P a i i0 s.
+  Proof.
+  move=> P_send P_recv P_amsg1 P_amsg2 P_unr; fix Ih 4.
+  move=> a G G'; case; [by[]|by[]| | | ].
+  + move=> a0 F T C0 C1 nF nT samed rall.
+    by apply: P_amsg1 =>//=.
+  + move=> a0 L F T C0 C1 nT samed ronly.
+    apply: P_amsg2 =>//=; split.
+    - by move: ronly; rewrite /R_only; elim=> hp _.
+    - move: ronly; rewrite /R_only; elim=> hp.
+      elim=> Ty; elim=> G0; elim=> G1; elim=> C0L; elim=> C1L r.
+      exists Ty, G0, G1; split; [by[]|split; [by[]| exists r]].
+      by apply Ih.
+  + move=> a0 CG G0 s; apply: P_unr =>//=.
+  Qed.
+
+  Lemma step_subject_iPart_of a G G':
+    step a G G' -> ig_wfcont G -> iPart_of (subject a) G.
   Proof.
   elim/step_ind_str.
   + move=> L F T C Ty G0 CL wf; rewrite /subject.
-    by apply pof_from.
+    by apply ipof_from.
   + move=> L F T C Ty G0 CL wf; rewrite /subject.
-    by apply pof_to.
+    by apply ipof_to.
   + move=> a0 F T C0 C1 nF nT sd ra ih wf.
-    move: (g_wfcont_msg_inv wf); elim=> neqFT.
+    (*move: (g_wfcont_msg_inv wf); elim=> neqFT.
     elim; elim=> L; elim=> Ty; elim=> G0.
     elim=> C0L wf0 wfall0; apply: (pof_cont _ _ _ C0L).
     have G1_aux: exists G1, C1 L = Some (Ty, G1).
@@ -603,8 +669,8 @@ at the moment it is only morally!
       elim=> Ty0; elim=> G0'; elim=> G1'; elim=> C0L'.
       elim=> C1L' ih0; apply: (pof_cont  _ _ _ C0L').
       by apply: ih0; apply: (wfall0 _ _ _ C0L').
-  Qed.
-
+  Qed.*)
+Admitted.
 
 
 
@@ -623,7 +689,7 @@ also wellformedness from WellFormed.v*)
     qProject G Q -> eProject G E
     -> exists E' Q', qProject G' Q' /\ eProject G' E'
        /\ lstep a (E, Q) (E', Q').
-  Proof.
+(*  Proof.
   elim/step_ind_str.
   + move=> L F T C Ty G0 contL wfq wf pin qpro epro.
     have Fin: F \in PAR.
@@ -666,7 +732,7 @@ also wellformedness from WellFormed.v*)
           move: (cProj_mrg_inv pro_p neqpF neqpT); elim; elim; elim=> lC0.
           elim=> samed; elim=> ral mer.
           by apply: (prj_mrg _ neq neqpF neqpT samed ral mer).
-    * apply: ls_send =>//=; admit.
+    * apply: ls_send =>//=; admit.*)
 (*; rewrite /do_act envF lcontL=> //=.
       by case: ifP; rewrite! eq_refl =>//=.
   + move=> L F T C Ty G0 contL wf pin qpro epro.
