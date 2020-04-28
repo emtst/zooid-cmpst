@@ -516,11 +516,13 @@ Section Semantics.
   | rg_msg (FROM TO : role)
            (CONT : lbl /-> mty * rg_ty).
 
+  Unset Elimination Schemes.
   Inductive ig_ty :=
   | ig_end (CONT : rg_ty)
   | ig_msg (ST : option lbl)
            (FROM TO : role)
            (CONT : lbl /-> mty * ig_ty).
+  Set Elimination Schemes.
 
   Definition P_option A (P : A -> Prop) (C : option A) : Prop :=
     match C with
@@ -533,7 +535,7 @@ Section Semantics.
     | (X, Y)=> P Y
     end.
 
-  Lemma ig_ty_ind2
+  Lemma ig_ty_ind'
     (P : ig_ty -> Prop)
     (P_end : forall CONT, P (ig_end CONT))
     (P_msg : (forall ST FROM TO CONT, 
@@ -547,6 +549,19 @@ Section Semantics.
       case: (C L)=>[[Ty G]|].
       + by rewrite /P_option/P_prod; apply/Ih.
       + by rewrite /P_option.
+  Qed.
+
+  Lemma ig_ty_ind
+    (P : ig_ty -> Prop)
+    (P_end : forall CONT, P (ig_end CONT))
+    (P_msg : (forall ST FROM TO CONT, 
+      (forall L Ty G, CONT L = Some (Ty, G) -> P G) ->
+      P (ig_msg ST FROM TO CONT)))
+  : forall G, P G.
+  Proof. 
+    elim/ig_ty_ind'=>// ST FROM TO CONT Ih.
+    apply/P_msg => L Ty G; move: (Ih L); case: (CONT L) =>[[Ty' G']|]//=.
+    by move=> P_G' [_ <-].
   Qed.
 
   Definition grel := g_ty -> rg_ty -> Prop.
@@ -662,6 +677,7 @@ Section Semantics.
     | rg_end => ig_end rg_end
     end.
 
+  Unset Elimination Schemes.
   Inductive step : act -> ig_ty -> ig_ty -> Prop :=
   (* Basic rules *)
   | st_send L F T C Ty G :
@@ -686,12 +702,13 @@ Section Semantics.
       step a (rg_unr CG) G -> 
       step a (ig_end CG) G
   .
+  Set Elimination Schemes.
 
   Derive Inversion step_inv with (forall a G G', step a G G') Sort Prop.
 
   Scheme step_ind1 := Induction for step Sort Prop.
 
-  Lemma step_ind_str
+  Lemma step_ind
     (P : forall (a : act) (i i0 : ig_ty), step a i i0 -> Prop):
     (forall L F T C Ty G (e: C L = Some (Ty, G)),
       P (a_send F T L Ty) (ig_msg None F T C) (ig_msg (Some L) F T C)
