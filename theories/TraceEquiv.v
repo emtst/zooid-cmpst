@@ -645,13 +645,41 @@ actually they should be doubled*)
     iPart_of p (ig_end CG) <-> iPart_of p (rg_unr CG).
   Proof.
   split.
-  + case CG =>//=; move=> F T C hp; case: (@eqP _ p F).
-    - by move=>->; apply ipof_from.
-    - move=> neq; case: (@eqP _ p T).
-      * by move=>->; apply ipof_to.
-      * move=> neq'. (*move: (ipof_end_inv hp).*)
-Admitted.
-(*I need some inversion lemmas.*)
+  + case E: _ / =>[{}p cG P_OF|||]//; move: E=>[->] {CG}.
+    case: P_OF =>[F T C||]/=; try by constructor.
+    move=>{}p F T C L G Ty C_L part_G.
+    pose C' L :=
+      match C L with
+      | Some (Ty, G) => Some (Ty, ig_end G)
+      | None => None
+      end.
+    have C_L': C' L = Some (Ty, ig_end G) by rewrite /C' C_L.
+    apply/(ipof_cont None F T C_L')/ipof_end/part_G.
+  + case: CG=>//= F T C.
+    set C' := fun lbl=>_.
+    case E: _ /
+      =>[ //
+        | O F' T' C0
+        | O F' T' C0
+        | {}p O F' T' C0 {}L G Ty C0_L part_G
+        ]; constructor.
+    + by move: E=>[_ <- _ _]; constructor.
+    + by move: E=>[_ _ <- _]; constructor.
+    + move: E C0_L=>[_ _ _ <-] C_L {F' T' C0 O}.
+      move: C_L; rewrite /C'; case C_L: (C L)=>[[{}Ty cG]|//] [_ cG_G].
+      move: cG_G part_G=><-; case E: _ / =>[{}p cG' part_CG|||]//.
+      move: E part_CG=>[<-] part_CG {cG'}.
+      by apply/(pof_cont F T C_L)/part_CG.
+Qed.
+(* I need some inversion lemmas
+*
+* Update 28/04/2020, DC comment: Fixed. True, you can try and see how to add
+* inversion lemmas. However, I think it is generally easier to use [case E: _ /
+* H]. I Recommend to check how it works. It can be confusing (I still do not
+* understand it fully, but ...). Another approach is using [Deriving Scheme]
+* for deriving an inversion scheme, and using [elim/...]. This saves loads of
+* time proving inversion lemmas
+*)
 
   Lemma step_subject_iPart_of a G G':
     step a G G' -> ig_wfcont G -> iPart_of (subject a) G.
@@ -681,16 +709,9 @@ Admitted.
       move: ih0; elim=> st ih; apply ih, (wfall0 _ _ _ C0L').
   + move=> a0 CG G0 st ih wf; apply ipof_end.
     move: (ih (ig_wfcont_rg_unr wf)).
-
- Print rg_unr.
-  Admitted.
-
-
-
-
-
-
-
+    move=>/iPart_of_end_unr; move: (subject a0) => p.
+    by case E: _ / =>[{}p cG part_CG|||]//; move: E=>[->].
+  Qed.
 
 (*g_wfcont added as a hypothesis, we'll probably need
 also wellformedness from WellFormed.v*)
