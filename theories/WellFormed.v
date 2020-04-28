@@ -45,7 +45,7 @@ continuations are never empty*)
 
   Definition ig_pr :=  ig_ty -> Prop.
   Inductive ig_wfcont : ig_pr :=
-  | ig_wfcont_end cG: ig_wfcont (ig_end cG)
+  | ig_wfcont_end cG: g_wfcont cG -> ig_wfcont (ig_end cG)
   | ig_wfcont_msg o F T C L Ty G:
       F !=T -> C L = Some (Ty, G) -> ig_wfcont G ->
       (forall LL TTy GG, 
