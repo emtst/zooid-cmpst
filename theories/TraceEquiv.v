@@ -590,6 +590,96 @@ actually they should be doubled*)
     * move=> Ln Tn lTn sdc; move: (same_dom_const_some sdc) =>-> //=.
   Qed.
 
+(*next 5 lemmas, to be moved in WellFormed*)
+  Lemma ig_wfcont_end_inv_aux GG CG: 
+    ig_wfcont GG -> GG = (ig_end CG)-> g_wfcont CG.
+  Proof.
+  case =>//=.
+  by move=> cG wf [eq]; rewrite eq in wf.
+  Qed.
+
+  Lemma ig_wfcont_end_inv CG: 
+    ig_wfcont (ig_end CG)-> g_wfcont CG.
+  Proof.
+  by move=> hp; apply (@ig_wfcont_end_inv_aux _ _ hp).
+  Qed.
+
+  Lemma ig_wfcont_msg_inv_aux GG o F T C: 
+    ig_wfcont GG ->  GG = (ig_msg o F T C)-> F != T /\
+    (exists L Ty G, C L = Some (Ty, G) /\ ig_wfcont G) /\
+    (forall LL TTy GG, C LL = Some (TTy, GG) -> ig_wfcont GG).
+  Proof.
+  case =>//=.
+  move=> o0 F0 T0 C0 L Ty G neq C0L wfG wfall [eq1 eq2 eq3 eq4].
+  split; [by rewrite eq2 eq3 in neq|split].
+  + by rewrite eq4 in C0L; exists L, Ty, G.
+  + by rewrite eq4 in wfall.
+  Qed.
+
+  Lemma ig_wfcont_msg_inv o F T C: 
+    ig_wfcont (ig_msg o F T C)-> F != T /\
+    (exists L Ty G, C L = Some (Ty, G) /\ ig_wfcont G) /\
+    (forall LL TTy GG, C LL = Some (TTy, GG) -> ig_wfcont GG).
+  Proof.
+  by move=> hp; apply (@ig_wfcont_msg_inv_aux _ o F T _ hp).
+  Qed.
+
+
+  Lemma ig_wfcont_rg_unr CG: 
+    ig_wfcont (ig_end CG)
+    -> ig_wfcont (rg_unr CG).
+  Proof.
+  case CG =>//=; move=> F T C iwf.
+  move: (g_wfcont_msg_inv (ig_wfcont_end_inv iwf)).
+  elim=>neq; elim; elim=>L; elim=>Ty; elim=>cG; elim=>CL wfG hp.
+  apply: (@ig_wfcont_msg _ _ _ _ L Ty (ig_end cG) neq).
+  + by rewrite CL.
+  + by apply ig_wfcont_end.
+  + move=> LL TTy GG; case E: (C LL)=> [P0|] //=.
+    move: E; case P0; move=> Ty0 cG0 CLL [eqTy eqGG].
+    by rewrite -eqGG; apply: ig_wfcont_end (hp _ _ _ CLL).
+  Qed.
+
+
+  Lemma iPart_of_end_unr p CG:
+    iPart_of p (ig_end CG) <-> iPart_of p (rg_unr CG).
+  Proof.
+  split.
+  + case E: _ / =>[{}p cG P_OF|||]//; move: E=>[->] {CG}.
+    case: P_OF =>[F T C||]/=; try by constructor.
+    move=>{}p F T C L G Ty C_L part_G.
+    pose C' L :=
+      match C L with
+      | Some (Ty, G) => Some (Ty, ig_end G)
+      | None => None
+      end.
+    have C_L': C' L = Some (Ty, ig_end G) by rewrite /C' C_L.
+    apply/(ipof_cont None F T C_L')/ipof_end/part_G.
+  + case: CG=>//= F T C.
+    set C' := fun lbl=>_.
+    case E: _ /
+      =>[ //
+        | O F' T' C0
+        | O F' T' C0
+        | {}p O F' T' C0 {}L G Ty C0_L part_G
+        ]; constructor.
+    + by move: E=>[_ <- _ _]; constructor.
+    + by move: E=>[_ _ <- _]; constructor.
+    + move: E C0_L=>[_ _ _ <-] C_L {F' T' C0 O}.
+      move: C_L; rewrite /C'; case C_L: (C L)=>[[{}Ty cG]|//] [_ cG_G].
+      move: cG_G part_G=><-; case E: _ / =>[{}p cG' part_CG|||]//.
+      move: E part_CG=>[<-] part_CG {cG'}.
+      by apply/(pof_cont F T C_L)/part_CG.
+Qed.
+(* I need some inversion lemmas
+*
+* Update 28/04/2020, DC comment: Fixed. True, you can try and see how to add
+* inversion lemmas. However, I think it is generally easier to use [case E: _ /
+* H]. I Recommend to check how it works. It can be confusing (I still do not
+* understand it fully, but ...). Another approach is using [Deriving Scheme]
+* for deriving an inversion scheme, and using [elim/...]. This saves loads of
+* time proving inversion lemmas
+*)
 
   Lemma step_subject_iPart_of a G G':
     step a G G' -> ig_wfcont G -> iPart_of (subject a) G.
@@ -619,16 +709,9 @@ actually they should be doubled*)
       move: ih0; elim=> st ih; apply ih, (wfall0 _ _ _ C0L').
   + move=> a0 CG G0 st ih wf; apply ipof_end.
     move: (ih (ig_wfcont_rg_unr wf)).
-
- Print rg_unr.
-  Admitted.
-
-
-
-
-
-
-
+    move=>/iPart_of_end_unr; move: (subject a0) => p.
+    by case E: _ / =>[{}p cG part_CG|||]//; move: E=>[->].
+  Qed.
 
 (*g_wfcont added as a hypothesis, we'll probably need
 also wellformedness from WellFormed.v*)
