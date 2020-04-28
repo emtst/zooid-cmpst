@@ -543,8 +543,6 @@ actually they should be doubled*)
 
 
 
-About extend.
-
   Lemma EqL_IProj p G lT lT': 
     IProj p G lT -> EqL lT lT' -> IProj p G lT'.
   Proof.
@@ -643,6 +641,31 @@ About extend.
   + move=> a0 CG G0 s; apply: P_unr =>//=.
   Qed.
 
+
+
+
+(*next 2 lemmas, to be moved in WellFormed*)
+Lemma ig_wfcont_msg_inv_aux GG o F T C: 
+    ig_wfcont GG ->  GG = (ig_msg o F T C)-> F != T /\
+    (exists L Ty G, C L = Some (Ty, G) /\ ig_wfcont G) /\
+    (forall LL TTy GG, C LL = Some (TTy, GG) -> ig_wfcont GG).
+  Proof.
+  case =>//=.
+  move=> o0 F0 T0 C0 L Ty G neq C0L wfG wfall [eq1 eq2 eq3 eq4].
+  split; [by rewrite eq2 eq3 in neq|split].
+  + by rewrite eq4 in C0L; exists L, Ty, G.
+  + by rewrite eq4 in wfall.
+  Qed.
+
+  Lemma ig_wfcont_msg_inv o F T C: 
+    ig_wfcont (ig_msg o F T C)-> F != T /\
+    (exists L Ty G, C L = Some (Ty, G) /\ ig_wfcont G) /\
+    (forall LL TTy GG, C LL = Some (TTy, GG) -> ig_wfcont GG).
+  Proof.
+  by move=> hp; apply (@ig_wfcont_msg_inv_aux _ o F T _ hp).
+  Qed.
+
+
   Lemma step_subject_iPart_of a G G':
     step a G G' -> ig_wfcont G -> iPart_of (subject a) G.
   Proof.
@@ -652,25 +675,27 @@ About extend.
   + move=> L F T C Ty G0 CL wf; rewrite /subject.
     by apply ipof_to.
   + move=> a0 F T C0 C1 nF nT sd ra ih wf.
-    (*move: (g_wfcont_msg_inv wf); elim=> neqFT.
+    move: (ig_wfcont_msg_inv wf); elim=> neqFT.
     elim; elim=> L; elim=> Ty; elim=> G0.
-    elim=> C0L wf0 wfall0; apply: (pof_cont _ _ _ C0L).
+    elim=> C0L wf0 wfall0; apply: (ipof_cont _ _ _ C0L).
     have G1_aux: exists G1, C1 L = Some (Ty, G1).
       by rewrite /same_dom in sd; apply sd; exists G0.
     move: G1_aux; elim=> G1 C1L.
     by apply (ih _ _ _ _ C0L C1L).
   + move=> a0 L F T C0 C1 nT sd ron ronpof wf.
     case: (@eqP _ (subject a0) F).
-    - by move => sa0F; rewrite sa0F; apply pof_from.
+    - by move => sa0F; rewrite sa0F; apply ipof_from.
     - rewrite (rwP eqP) (rwP negP); move=> sa0F.
-      move: (g_wfcont_msg_inv wf); elim=> neq; elim.
+      move: (ig_wfcont_msg_inv wf); elim=> neq; elim.
       elim=> L0; elim=> Ty; elim=> G0; elim=> C0L wf0 wfall0.
       rewrite /R_only in ronpof; move: ronpof; elim=> hp.
       elim=> Ty0; elim=> G0'; elim=> G1'; elim=> C0L'.
-      elim=> C1L' ih0; apply: (pof_cont  _ _ _ C0L').
-      by apply: ih0; apply: (wfall0 _ _ _ C0L').
-  Qed.*)
-Admitted.
+      elim=> C1L' ih0; apply: (ipof_cont  _ _ _ C0L').
+      move: ih0; elim=> st ih; apply ih, (wfall0 _ _ _ C0L').
+  + move=> a0 CG G0 st ih wf; apply ipof_end.
+ Print rg_unr.
+  Admitted.
+
 
 
 
