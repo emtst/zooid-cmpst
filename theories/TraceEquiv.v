@@ -644,8 +644,21 @@ actually they should be doubled*)
 
 
 
-(*next 2 lemmas, to be moved in WellFormed*)
-Lemma ig_wfcont_msg_inv_aux GG o F T C: 
+(*next 5 lemmas, to be moved in WellFormed*)
+  Lemma ig_wfcont_end_inv_aux GG CG: 
+    ig_wfcont GG -> GG = (ig_end CG)-> g_wfcont CG.
+  Proof.
+  case =>//=.
+  by move=> cG wf [eq]; rewrite eq in wf.
+  Qed.
+
+  Lemma ig_wfcont_end_inv CG: 
+    ig_wfcont (ig_end CG)-> g_wfcont CG.
+  Proof.
+  by move=> hp; apply (@ig_wfcont_end_inv_aux _ _ hp).
+  Qed.
+
+  Lemma ig_wfcont_msg_inv_aux GG o F T C: 
     ig_wfcont GG ->  GG = (ig_msg o F T C)-> F != T /\
     (exists L Ty G, C L = Some (Ty, G) /\ ig_wfcont G) /\
     (forall LL TTy GG, C LL = Some (TTy, GG) -> ig_wfcont GG).
@@ -664,6 +677,35 @@ Lemma ig_wfcont_msg_inv_aux GG o F T C:
   Proof.
   by move=> hp; apply (@ig_wfcont_msg_inv_aux _ o F T _ hp).
   Qed.
+
+
+  Lemma ig_wfcont_rg_unr CG: 
+    ig_wfcont (ig_end CG)
+    -> ig_wfcont (rg_unr CG).
+  Proof.
+  case CG =>//=; move=> F T C iwf.
+  move: (g_wfcont_msg_inv (ig_wfcont_end_inv iwf)).
+  elim=>neq; elim; elim=>L; elim=>Ty; elim=>cG; elim=>CL wfG hp.
+  apply: (@ig_wfcont_msg _ _ _ _ L Ty (ig_end cG) neq).
+  + by rewrite CL.
+  + by apply ig_wfcont_end.
+  + move=> LL TTy GG; case E: (C LL)=> [P0|] //=.
+    move: E; case P0; move=> Ty0 cG0 CLL [eqTy eqGG].
+    by rewrite -eqGG; apply: ig_wfcont_end (hp _ _ _ CLL).
+  Qed.
+
+
+  Lemma iPart_of_end_unr p CG:
+    iPart_of p (ig_end CG) <-> iPart_of p (rg_unr CG).
+  Proof.
+  split.
+  + case CG =>//=; move=> F T C hp; case: (@eqP _ p F).
+    - by move=>->; apply ipof_from.
+    - move=> neq; case: (@eqP _ p T).
+      * by move=>->; apply ipof_to.
+      * move=> neq'. (*move: (ipof_end_inv hp).*)
+Admitted.
+(*I need some inversion lemmas.*)
 
 
   Lemma step_subject_iPart_of a G G':
@@ -693,6 +735,8 @@ Lemma ig_wfcont_msg_inv_aux GG o F T C:
       elim=> C1L' ih0; apply: (ipof_cont  _ _ _ C0L').
       move: ih0; elim=> st ih; apply ih, (wfall0 _ _ _ C0L').
   + move=> a0 CG G0 st ih wf; apply ipof_end.
+    move: (ih (ig_wfcont_rg_unr wf)).
+
  Print rg_unr.
   Admitted.
 
