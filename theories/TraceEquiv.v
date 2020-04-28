@@ -656,7 +656,7 @@ Admitted.
   Lemma step_subject_iPart_of a G G':
     step a G G' -> ig_wfcont G -> iPart_of (subject a) G.
   Proof.
-  elim/step_ind_str.
+  elim.
   + move=> L F T C Ty G0 CL wf; rewrite /subject.
     by apply ipof_from.
   + move=> L F T C Ty G0 CL wf; rewrite /subject.

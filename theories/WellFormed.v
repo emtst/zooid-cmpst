@@ -144,7 +144,7 @@ continuations are never empty*)
       rcv_Free F T G ->
       rcv_Free F T G'.
   Proof.
-    move=>ST; elim/step_ind_str: ST a_F a_T
+    move=>ST; elim: ST a_F a_T
       =>[ L F' T' C Ty G0 C_L
         | L F' T' C Ty G0 C_L
         | {}a F' T' C0 C1 a_F' a_T' dom_C0_C1 step_C0_C1 Ih
@@ -182,7 +182,7 @@ continuations are never empty*)
     well_Formed G -> step a G G' -> well_Formed G'.
   Proof.
     move=>WF_G STEP;
-      elim/step_ind_str: STEP
+      elim: STEP
         =>[ L F T C Ty G0 C_L
           | L F T C Ty G0 C_L
           |{}a F T C0 C1 a_F a_T dom_C0_C1 step_C0_C1 Ih
@@ -216,7 +216,7 @@ continuations are never empty*)
   Lemma wform_RCV_Free G: 
     RCV_Free G -> well_Formed G.
   Proof.
-    elim/ig_ty_ind2: G=>[CG _|ST FROM TO C Ih]; first by constructor.
+    elim: G=>[CG _|ST FROM TO C Ih]; first by constructor.
     move=> RF; have {}RF: forall L Ty G, C L = Some (Ty, G) -> RCV_Free G.
     { move=> L Ty G H P Q; move: (RF P Q).
       elim/rcvFree_inv=>// _.
@@ -227,8 +227,8 @@ continuations are never empty*)
     }
     case: ST=>[L|]; constructor=> L' Ty G; 
       move: (RF L') (Ih L'); case E: (C L')=>[[Ty' G']|]//= RF_L' Ih_L' [_ <-].
-    + by apply/Ih_L'=> P Q; apply/(RF_L' Ty' G' erefl).
-    + by apply/Ih_L'=> P Q; apply/(RF_L' Ty' G' erefl).
+    + by apply/(Ih_L' _ _ erefl)=> P Q; apply/(RF_L' Ty' G' erefl).
+    + by apply/(Ih_L' _ _ erefl)=> P Q; apply/(RF_L' Ty' G' erefl).
     + by apply/(RF_L' Ty' G' erefl).
   Qed.
 
