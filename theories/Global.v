@@ -522,6 +522,33 @@ Section Semantics.
            (FROM TO : role)
            (CONT : lbl /-> mty * ig_ty).
 
+  Definition P_option A (P : A -> Prop) (C : option A) : Prop :=
+    match C with
+    | Some X => P X
+    | None => True 
+    end.
+
+  Definition P_prod A B (P : B -> Prop) (C : A * B) : Prop :=
+    match C with
+    | (X, Y)=> P Y
+    end.
+
+  Lemma ig_ty_ind2
+    (P : ig_ty -> Prop)
+    (P_end : forall CONT, P (ig_end CONT))
+    (P_msg : (forall ST FROM TO CONT, 
+      (forall L, P_option (P_prod P) (CONT L)) ->
+      P (ig_msg ST FROM TO CONT)))
+  : forall G, P G.
+  Proof. 
+    fix Ih 1; case.
+    - by apply: P_end.
+    - move=> ST F T C; apply: P_msg => L. 
+      case: (C L)=>[[Ty G]|].
+      + by rewrite /P_option/P_prod; apply/Ih.
+      + by rewrite /P_option.
+  Qed.
+
   Definition grel := g_ty -> rg_ty -> Prop.
 
   Inductive g_unroll (r : grel) : grel :=
@@ -663,6 +690,54 @@ Section Semantics.
   Derive Inversion step_inv with (forall a G G', step a G G') Sort Prop.
 
   Scheme step_ind1 := Induction for step Sort Prop.
+
+  Lemma step_ind_str
+    (P : forall (a : act) (i i0 : ig_ty), step a i i0 -> Prop):
+    (forall L F T C Ty G (e: C L = Some (Ty, G)),
+      P (a_send F T L Ty) (ig_msg None F T C) (ig_msg (Some L) F T C)
+        (st_send F T e) )
+    ->
+    (forall L F T C Ty G (e: C L = Some (Ty, G)), 
+      P (a_recv F T L Ty) (ig_msg (Some L) F T C) G (st_recv F T e))
+    ->
+    (forall a F T C0 C1 (i : subject a != F) (i0 : subject a != T) 
+          (s : same_dom C0 C1) (r : R_all (step a) C0 C1),
+        (forall (L : lbl) (Ty : mty) (G G' : ig_ty) 
+           (e : C0 L = Some (Ty, G)) (e0 : C1 L = Some (Ty, G')),
+         P a G G' (r L Ty G G' e e0)) ->
+        P a (ig_msg None F T C0) (ig_msg None F T C1) (st_amsg1 i i0 s r))
+    ->
+    (*new property, mirroring R_only...*)
+    (forall (a : act) (L : lbl) (F T : role)
+          (C0 C1 : lbl -> option (mty * ig_ty)) (i : subject a != T)
+          (s : same_dom C0 C1) (r : R_only (step a) L C0 C1),
+      ((forall (L' : lbl) (K : mty * ig_ty),
+      L != L' -> C0 L' = Some K <-> C1 L' = Some K) /\
+      (exists (Ty : mty) (G0 G1 : ig_ty),
+      C0 L = Some (Ty, G0) /\ C1 L = Some (Ty, G1) 
+      /\ (exists (r: step a G0 G1), P a G0 G1 r)))
+      ->
+      (*... with dependent types*)
+      P a (ig_msg (Some L) F T C0) (ig_msg (Some L) F T C1) 
+          (st_amsg2 F i s r)) 
+      ->
+     (forall (a : act) (CG : rg_ty) (G : ig_ty) (s : step a (rg_unr CG) G),
+        P a (rg_unr CG) G s -> P a (ig_end CG) G (st_unr s))
+  -> forall (a : act) (i i0 : ig_ty) (s : step a i i0), P a i i0 s.
+  Proof.
+  move=> P_send P_recv P_amsg1 P_amsg2 P_unr; fix Ih 4.
+  move=> a G G'; case; [by[]|by[]| | | ].
+  + move=> a0 F T C0 C1 nF nT samed rall.
+    by apply: P_amsg1 =>//=.
+  + move=> a0 L F T C0 C1 nT samed ronly.
+    apply: P_amsg2 =>//=; split.
+    - by move: ronly; rewrite /R_only; elim=> hp _.
+    - move: ronly; rewrite /R_only; elim=> hp.
+      elim=> Ty; elim=> G0; elim=> G1; elim=> C0L; elim=> C1L r.
+      exists Ty, G0, G1; split; [by[]|split; [by[]| exists r]].
+      by apply Ih.
+  + move=> a0 CG G0 s; apply: P_unr =>//=.
+  Qed.
 
   Definition gtrc_rel := trace -> ig_ty -> Prop.
   Inductive g_lts_ (r : gtrc_rel) : gtrc_rel :=
