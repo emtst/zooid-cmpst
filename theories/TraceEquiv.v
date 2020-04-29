@@ -711,15 +711,16 @@ Qed.
 
 (*g_wfcont added as a hypothesis, we'll probably need
 also wellformedness from WellFormed.v*)
-  Lemma Project_step 
-      G (Q : {fmap role * role -> seq (lbl * mty) }) E a G':
+  Lemma Project_step G (Q : {fmap role * role -> seq (lbl * mty) }) E a G':
     step a G G' -> 
     (forall q q' : role, Q.[? (q, q')] != Some [::]) ->
-    g_wfcont G ->
-    (forall p, part_of p G -> p \in PAR)-> 
+    ig_wfcont G ->
+    (forall p, iPart_of p G -> p \in PAR)-> 
     qProject G Q -> eProject G E
     -> exists E' Q', qProject G' Q' /\ eProject G' E'
        /\ lstep a (E, Q) (E', Q').
+  Proof.
+  elim=>//=.
 (*  Proof.
   elim/step_ind_str.
   + move=> L F T C Ty G0 contL wfq wf pin qpro epro.
