@@ -648,13 +648,9 @@ actually they should be doubled*)
   + case E: _ / =>[{}p cG P_OF|||]//; move: E=>[->] {CG}.
     case: P_OF =>[F T C||]/=; try by constructor.
     move=>{}p F T C L G Ty C_L part_G.
-    pose C' L :=
-      match C L with
-      | Some (Ty, G) => Some (Ty, ig_end G)
-      | None => None
-      end.
+    set C' := fun L=>_.
     have C_L': C' L = Some (Ty, ig_end G) by rewrite /C' C_L.
-    apply/(ipof_cont None F T C_L')/ipof_end/part_G.
+    by apply/(ipof_cont None F T C_L')/ipof_end/part_G.
   + case: CG=>//= F T C.
     set C' := fun lbl=>_.
     case E: _ /
