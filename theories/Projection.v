@@ -1162,7 +1162,8 @@ Section CProject.
     move => /(ex_intro (fun iG=> _) iG) {iG}.
     move: cG cL; apply/paco2_acc=> r0 _ CIH.
 
-    move: CIH=>/(_ _ _ (ex_intro _ _ (ex_intro _ _ (conj _ (conj _ (conj _ (conj _ _)))))))-CIH.
+    move: CIH =>/(_ _ _ (ex_intro _ _ (ex_intro _ _
+                          (conj _ (conj _ (conj _ (conj _ _)))))))-CIH.
     move=> cG cL [iG] [cG'] [ciG] [giG] [iGiL] [GU LU].
 
     move: iGiL  => /eqP-iGiL.
