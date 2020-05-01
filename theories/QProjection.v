@@ -110,6 +110,16 @@ Open Scope fmap.
   by move=> triv; apply triv.
   Qed.
 
+(*next lemma to be renamed and moved*)
+  Lemma deq_elsewhere Q Q' k0 k L Ty: 
+    deq Q' k0 == Some (L, Ty, Q) -> k != k0 ->
+  Q'.[?k]=Q.[?k].
+  Proof.
+  rewrite /deq; case E: (Q'.[? k0]) =>[qs|] //=; case qs => [|q qs0] //=.
+  case: ifP; move=> _; rewrite -(rwP eqP); move=> [_ <-].
+  + by rewrite fnd_rem1; case: ifP.
+  + by rewrite fnd_set; case: ifP.
+  Qed.
 
 
   Lemma qProject_rcv_Free_None p q G Q: 
@@ -119,8 +129,25 @@ Open Scope fmap.
   elim.
   + by move=> G0 wfc triv; apply fnd_fmap0.
   + move=> F T C {}Q neq qpro_all ih wfc.
+    move: (ig_wfcont_msg_inv wfc).
+    elim=> _; elim; elim=> L; elim=> Ty; elim=> G0.
+    elim=> CL wfc0 wfcall.
     elim/rcvFree_inv =>//=.
     - move=> rfree p' q' C' rfree0 eqp eqq [eq1 eq2 eq3].
+      apply: (ih _ _ _ CL wfc0); rewrite eq3 in rfree0.
+      by apply: (rfree0 _ _ _ CL).
+    - move=> rfree p0 p' q0 q' o C' rfree0 or eqp eqq [eq1 eq2 eq3 eq4].
+      apply: (ih _ _ _ CL wfc0); rewrite eq4 in rfree0.
+      by apply: (rfree0 _ _ _ CL).
+  + move=> F T C L Ty G0 {}Q Q' neq CL deqQ' qpro ih wfc.
+    move: (ig_wfcont_msg_inv wfc).
+    elim=> _; elim=> _ wfcall.
+    elim/rcvFree_inv =>//=.
+    move=> rfree p0 p' q0 q' o C' rfree0 or eqp eqq [eq1 eq2 eq3 eq4].
+    rewrite (deq_elsewhere deqQ'); [|].
+    - by rewrite eq4 in rfree0; apply (ih (wfcall _ _ _ CL) (rfree0 _ _ _ CL)).
+    - by rewrite -eq2 -eq3 xpair_eqE negb_and.
+  Qed.
 
 
 
