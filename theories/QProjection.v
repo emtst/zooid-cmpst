@@ -14,7 +14,7 @@ Require Import MPST.Global.
 Require Import MPST.Local.
 Require Import MPST.Actions.
 Require Import MPST.Projection.
-(* Require Import MPST.WellFormed. *)
+Require Import MPST.WellFormed.
 
 
 Section QProjection.
@@ -109,6 +109,19 @@ Open Scope fmap.
   move=> hp; move: (@qProject_Some_inv_aux l F T C Q _ hp).
   by move=> triv; apply triv.
   Qed.
+
+
+
+  Lemma qProject_rcv_Free_None p q G Q: 
+  qProject G Q -> ig_wfcont G -> rcv_Free p q G -> 
+  Q.[?(p,q)] = None.
+  Proof. 
+  elim.
+  + by move=> G0 wfc triv; apply fnd_fmap0.
+  + move=> F T C {}Q neq qpro_all ih wfc.
+    elim/rcvFree_inv =>//=.
+    - move=> rfree p' q' C' rfree0 eqp eqq [eq1 eq2 eq3].
+
 
 
 (*
