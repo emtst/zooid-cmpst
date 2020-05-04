@@ -686,40 +686,42 @@ also wellformedness from WellFormed.v*)
       move: samedom; rewrite /same_dom; move=> sd; rewrite -sd.
       by exists G0.
     move: lT_aux; elim=> lT lcontL.
-    (*exists (E.[F <- lT]), (deq_rinv F T L Ty Q).
+    exists (E.[F <- lT]), (Q.[(F,T)<-[::(L,Ty)]]).
     split.
-    * apply /paco2_fold.
-      apply: (@qprj_some _ _ _ _ _ Ty G0 Q _ neq contL).
-      - by rewrite -(rwP eqP); apply deq_rinv_deq.
-      - by rewrite /upaco2; left.
+    * apply: (qprj_some neq contL _ qpro0); rewrite -(rwP eqP).
+      apply: deq_singleton; rewrite -(rwP eqP).
+      apply: (qProject_rcv_Free_None qpro wfc).
+      move: wf; elim /wellFormed_inv =>//=.
+      move=> wf p q CONT wfcont rfreecont [eq1 eq2 eq3].
+      by rewrite -eq1 -eq2; apply rfree_send.
     split.
     * move: epro; rewrite /eProject; move=> it p.
       case: (@eqP _ p F).
-      - move =>->; elim; exists lT; split.
-        + rewrite /Project; apply /paco2_fold.
-          apply: (@prj_send2 F (upaco2 (Proj_ F) bot2) L Ty T C lC lT) => //=.
-          move: rall; rewrite /Project /R_all /upaco2.
-          by move=> hp L0 Ty0 G1 T1 hp1 hp2; left; apply (hp _ _ _ _ hp1 hp2).
+      - move=>-> _; exists lT; split.
+        + by apply: (iprj_send2 neq samedom rall lcontL).
         + by rewrite fnd_set; case: ifP; rewrite eq_refl //=.
       - rewrite (rwP eqP); rewrite fnd_set; case: ifP =>//=.
-        move=> hp1 hp2 hp3 hp4;  move: (it _ hp3 (part_of_label_label _ hp4)).
+        move=> hp1 _ hp2; move: (it _ (iPart_of_label_label _ hp2)).
         elim; move=> L0; elim=> pro_p E_p; exists L0; split; [| by []].
         case: (@eqP _ p T).
         + move=> pT; move: pro_p; rewrite pT;  move=> pro_T.
-          rewrite /Project; apply /paco2_fold.
-          move: (@cProj_recv_inv _ _ _ _ _ pro_T); elim; rewrite eq_sym.
-          move=>neq2; elim=> lC0; elim=> L0eq; elim=> samed ral.
-          by rewrite L0eq; apply: (prj_recv (Some L) neq2 samed ral).
-        + rewrite (rwP eqP)=> neqpT; rewrite /Project; apply /paco2_fold.
-          move: hp1; rewrite (rwP negPf)=> neqpF.
-          move: neqpT; rewrite (rwP negP)=> neqpT.
-          move: (cProj_mrg_inv pro_p neqpF neqpT); elim; elim; elim=> lC0.
-          elim=> samed; elim=> ral mer.
-          by apply: (prj_mrg _ neq neqpF neqpT samed ral mer).
-    * apply: ls_send =>//=; admit.*)
-(*; rewrite /do_act envF lcontL=> //=.
-      by case: ifP; rewrite! eq_refl =>//=.
-  + move=> L F T C Ty G0 contL wf pin qpro epro.
+          move: (IProj_recv_inv pro_T); elim=>_.
+          elim=> lC0; elim=> L0eq; elim=> samedom0 rall0.
+          rewrite L0eq; apply: (iprj_recv)=> //=.
+          by rewrite eq_sym.
+        + rewrite (rwP eqP); rewrite (rwP negP).
+          move: (negbT hp1)=> neqpF neqpT.
+          move: (IProj_mrg_inv pro_p neqpF neqpT); elim=> _.
+          elim=> lC0; elim=> samedom0; elim=> rall0 mer.
+          by apply: (iprj_mrg _ _ _ _ samedom0) =>//=.
+    * apply: ls_send =>//=.
+      - rewrite /enq (qProject_rcv_Free_None qpro) =>//=.
+        move: wf; elim /wellFormed_inv =>//=.
+        move=> wf p q CONT wfcont rfreecont [eq1 eq2 eq3].
+        by rewrite -eq1 -eq2; apply rfree_send.
+      - rewrite /do_act envF lcontL; case: ifP =>//=.
+        by rewrite! eq_refl //=.
+(*+ move=> L F T C Ty G0 contL wf pin qpro epro.
     have Tin: T \in PAR.
       by apply: pin; apply: pof_to.
     move: (@eProject_recv _ F T C E Tin epro); elim=> neq.

@@ -150,6 +150,21 @@ Open Scope fmap.
   Qed.
 
 
+(*maybe to be moved*)
+
+  Lemma deq_singleton (Q:{fmap role * role -> seq (lbl * mty) }) p q v: 
+    Q.[?(p,q)] == None -> 
+    deq Q.[(p, q) <- [:: v]] (p, q) = Some (v, Q).
+  Proof.
+  move=> Qnone; rewrite /deq fnd_set; case: ifP; rewrite eq_refl //=; elim.
+  apply: f_equal; apply: injective_projections =>//=.
+  rewrite -fmapP; move=> pq; rewrite fnd_rem1; case: ifP.
+  + move=> neq; rewrite fnd_set; case: ifP =>//=.
+    by rewrite (negbTE neq) //=.
+  + move=> eq; move: (negbNE (negbT eq)).
+    by rewrite -(rwP eqP) =>->; rewrite (rwP eqP) eq_sym.
+  Qed.
+
 
 (*
   Definition deq_rinv 

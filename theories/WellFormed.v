@@ -164,6 +164,8 @@ continuations are never empty*)
     well_Formed (ig_msg (Some l) p q CONT)
  .
 
+  Derive Inversion wellFormed_inv with (forall G, well_Formed G) Sort Prop.
+
   Lemma wform_unr CG : well_Formed (rg_unr CG).
   Proof.
     case: CG=>[|F T C]/=; constructor =>//=; move=>l Ty G; 
