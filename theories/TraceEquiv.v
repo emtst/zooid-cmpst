@@ -721,56 +721,55 @@ also wellformedness from WellFormed.v*)
         by rewrite -eq1 -eq2; apply rfree_send.
       - rewrite /do_act envF lcontL; case: ifP =>//=.
         by rewrite! eq_refl //=.
-(*+ move=> L F T C Ty G0 contL wf pin qpro epro.
-    have Tin: T \in PAR.
-      by apply: pin; apply: pof_to.
-    move: (@eProject_recv _ F T C E Tin epro); elim=> neq.
+  + move=> L F T C Ty0 G0 contL wfc wf (*pin*) qpro epro.
+    (*have Tin: T \in PAR.
+      by apply: pin; apply: pof_to.*)
+    move: (@eProject_recv _ F T C E (*Tin*) epro); elim=> neq.
     elim=> lC; elim=> envT; elim=> samedom rall.
     move: (qProject_Some_inv qpro); elim; elim.
-    elim=> Ty0; elim=> GG; elim=> Q'.
+    elim=> TTy; elim=> GG; elim=> Q'.
     elim; rewrite contL; move=> [eqTy eqG0]; rewrite eqTy eqG0.
     elim=> deqeq qpro'.
-    have lT_aux: exists lT, lC L = Some (Ty, lT).
+    have lT_aux: exists lT, lC L = Some (Ty0, lT).
       move: samedom; rewrite /same_dom; move=> sd; rewrite -sd.
       by exists G0.
     move: lT_aux; elim=> lT lcontL.
     exists (E.[T <- lT]), Q'.
-    split; [by apply qpro' | split].
+    split; [by [] | split].
     * move: epro; rewrite /eProject; move=> it p.
       case: (@eqP _ p T).
-      - move =>->; elim; exists lT; split.
+      - move =>-> partGG;  exists lT; split.
         + move: rall contL; rewrite /R_all eqG0; move=> rallu contL.
           by apply: (rallu _ _ _ _ contL lcontL).
         + by rewrite fnd_set; case: ifP; rewrite eq_refl //=.
-      - rewrite (rwP eqP); rewrite fnd_set; case: ifP =>//=.
-        move=> hp1 hp2 hp3 hp4; move: contL; rewrite eqG0; move=> contL.
-        move: (it p hp3 (pof_cont (Some L) F T contL hp4)).
-        elim=> L0; elim=> pro_p E_p; exists L0; split; [| by []].
-        case: (@eqP _ p F).
-        + move=> pF; move: pro_p; rewrite pF; move=> pro_F.
-          rewrite /Project; apply /paco2_fold.
-          move: (@cProj_send_some_inv _ _ _ _ _ pro_F); elim; elim.
-          elim=> lC0; elim=> Ty1; elim=> lcontL0; elim=> samed ral.
-          have eqTy1: Ty1 = Ty.
-            rewrite /same_dom in samed.
-            move: (samed L Ty); elim=> sd1 sd2; move: sd1. 
-            by elim; [ rewrite lcontL0; move=> L0' [d0 d1]|exists GG].
-          rewrite eqTy1 in lcontL0; rewrite /R_all in ral.
-          apply paco2_unfold; [by apply Proj_monotone| ].
-          by move: (ral _ _ _ _ contL lcontL0); rewrite /upaco2; elim.
-        + rewrite (rwP eqP)=> neqpF.
-          move: hp1; rewrite (rwP negPf)=> neqpT.
-          move: neqpF; rewrite (rwP negP)=> neqpF.
-          move: (cProj_mrg_inv pro_p neqpF neqpT); elim; elim; elim=> lC0.
-          elim=> samed; rewrite /R_all /Merge /EqL; elim=> ral mer.
-          have lT'aux: exists lT', lC0 L = Some (Ty, lT').
-            by rewrite /same_dom in samed; rewrite -samed; exists GG.
-          move: lT'aux; elim=> lT' lcont0L.
-          apply: (@EqL_Project _ _ lT'); [by apply (mer _ _ _ lcont0L)|].
-          by move: (ral _ _ _ _ contL lcont0L); rewrite /upaco2; elim.
+      - rewrite (rwP eqP) (rwP negP); move=> neqpT ipartGG.
+        rewrite eqG0 eqTy in contL.
+        move: (ipof_cont (Some L) F T contL ipartGG) => ipartsome.
+        move: (it _ ipartsome); elim=> lT0; elim=> ipro eva.
+        exists lT0; split.
+        + case: (@eqP _ p F).
+          * move=> eqpF; rewrite eqpF in ipro.
+            move: (IProj_send2_inv ipro); elim=> _.
+            elim=> lC0; elim=> Tyc; elim=> lC0L; elim=> samedom0.
+            move: (samedom0 L Ty0); elim.
+            elim; [|by rewrite eqTy; exists GG].
+            move=> lT_aux; rewrite lC0L; move=> [eq1 eq2] _.
+            rewrite eq1 eqTy in lC0L; move=> rall0.
+            by rewrite eqpF; apply: (rall0 _ _ _ _ contL lC0L).
+          * rewrite (rwP eqP); rewrite (rwP negP); move=> neqpF.
+            move: (IProj_mrg_inv ipro neqpF neqpT); elim=> _.
+            elim=> lC0; elim=> samedom0; elim=> rall0 mer.
+            move: (samedom0 L Ty0); elim.
+            elim; [|by rewrite eqTy; exists GG].
+            move=> lTT lC0L _; apply: (@EqL_IProj _ _ lTT _).
+            - by rewrite eqTy in lC0L; apply: (rall0 _ _ _ _ contL lC0L).
+            - by apply: (mer _ _ _ lC0L).
+        + rewrite fnd_set; case: ifP =>//=.
+          rewrite -(rwP eqP); move=> eqpT; move: neqpT; rewrite eqpT.
+          by rewrite -(rwP negP) eq_refl.
     * apply: ls_recv =>//=; rewrite /do_act envT lcontL eqTy => //=.
       by case: ifP; rewrite! eq_refl =>//=.
-  + move=> aa F T C0 C1 nF nT sd01 r01 IH wf pin qpro epro.
+(*  + move=> aa F T C0 C1 nF nT sd01 r01 IH wf pin qpro epro.
     have subjin: subject aa \in PAR.
       apply: pin.
       apply: (@step_subject_part_of _ _ (rg_msg None F T C1)); [|by []].
