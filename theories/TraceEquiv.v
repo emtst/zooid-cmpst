@@ -674,8 +674,9 @@ also wellformedness from WellFormed.v*)
     -> exists E' Q', qProject G' Q' /\ eProject G' E'
        /\ lstep a (E, Q) (E', Q').
   Proof.
-  elim/step_ind.
-  + move=> L F T C Ty G0 contL wfc wf (*pin*) qpro epro.
+  move=> stephp.
+  elim/step_ind: stephp E Q.
+  + move=> L F T C Ty G0 contL E Q wfc wf (*pin*) qpro epro.
     (*have Fin: F \in PAR.
       by apply: pin; apply: pof_from.*)
     move: (@eProject_send_none F T C E (*Fin*) epro).
@@ -721,7 +722,7 @@ also wellformedness from WellFormed.v*)
         by rewrite -eq1 -eq2; apply rfree_send.
       - rewrite /do_act envF lcontL; case: ifP =>//=.
         by rewrite! eq_refl //=.
-  + move=> L F T C Ty0 G0 contL wfc wf (*pin*) qpro epro.
+  + move=> L F T C Ty0 G0 contL E Q wfc wf (*pin*) qpro epro.
     (*have Tin: T \in PAR.
       by apply: pin; apply: pof_to.*)
     move: (@eProject_recv _ F T C E (*Tin*) epro); elim=> neq.
@@ -769,15 +770,14 @@ also wellformedness from WellFormed.v*)
           by rewrite -(rwP negP) eq_refl.
     * apply: ls_recv =>//=; rewrite /do_act envT lcontL eqTy => //=.
       by case: ifP; rewrite! eq_refl =>//=.
-(*  + move=> aa F T C0 C1 nF nT sd01 r01 IH wf pin qpro epro.
-    have subjin: subject aa \in PAR.
+  + move=> aa F T C0 C1 nF nT sd01 ra01 IH E Q wfc wf (*pin*) qpro epro.
+    (*have subjin: subject aa \in PAR.
       apply: pin.
       apply: (@step_subject_part_of _ _ (rg_msg None F T C1)); [|by []].
-      by apply: st_amsg1.
-    move: (g_wform_msg_inv wf); elim; elim=> L; elim=> Ty; elim=> G0.
-    elim=> C0L wf0 wfcont0.
-    (*E' = any of the E' in the IH, modified like E*)
-*)    
+      by apply: st_amsg1.*)
+    (*move: (g_wform_msg_inv wf); elim; elim=> L; elim=> Ty; elim=> G0.
+    elim=> C0L wf0 wfcont0.*)
+    
   Admitted.
 
 
