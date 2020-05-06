@@ -663,6 +663,20 @@ actually they should be doubled*)
     by case E: _ / =>[{}p cG part_CG|||]//; move: E=>[->].
   Qed.
 
+
+Lemma eProject_cont o F T C E L Ty G: 
+  eProject (ig_msg o F T C) E -> C L = Some (Ty, G)
+  -> exists E0, eProject G E0.
+Proof.
+  rewrite /eProject. 
+  move=> epro CL.
+(*  exists (fun p => (if p == F then E.[? p] else E.[? p])).*)
+(*I need finiteness of the domain.*)
+
+
+
+Admitted.
+
 (*g_wfcont added as a hypothesis, we'll probably need
 also wellformedness from WellFormed.v*)
   Lemma Project_step G (Q : {fmap role * role -> seq (lbl * mty) }) E a G':
@@ -775,8 +789,38 @@ also wellformedness from WellFormed.v*)
       apply: pin.
       apply: (@step_subject_part_of _ _ (rg_msg None F T C1)); [|by []].
       by apply: st_amsg1.*)
-    (*move: (g_wform_msg_inv wf); elim; elim=> L; elim=> Ty; elim=> G0.
-    elim=> C0L wf0 wfcont0.*)
+
+    (*
+    L to D and F: from now on I'll keep track of the different steps
+    for this case. Right now (06/05/2020) it appears to me that 
+    it is going to be a long one. I want to build E'. I have a plan.
+    I will define it by cases: for participants F, T and s different
+    from F and T; I start from s. I will extensively use the induction
+    hypothesis.
+    *)
+
+    (*STEP 1. Selecting a label L_s.*)
+    move: (ig_wfcont_msg_inv wfc); elim=> neq.
+    elim; elim=> L_s; elim=> Ty_s; elim=> G0_s.
+    elim=> C0L_s wfc_s wfcC0.
+
+    (*STEP 2. The label L_s works also for C1.*)
+    move: (sd01 L_s Ty_s); elim; elim; [|by exists G0_s].
+    move=> G1_s C1L_s _.
+
+    (*STEP 3. Getting well-formedness and projections for G0_s.*)
+    move: wf; elim /wellFormed_inv =>//=; move=> wf.
+    move=> p q CONT wfC0 rfreeFTC0 [eq1 eq2 eq3].
+    rewrite eq3 in wfC0; rewrite eq1 eq2 eq3 in rfreeFTC0.
+    move: (wfC0 _ _ _ C0L_s) (rfreeFTC0 _ _ _ C0L_s).
+    move=> wfG0_s rfreeFTG0_s; clear p q CONT eq1 eq2 eq3.
+
+    (*STEP 5. Getting projection for G0_s.*)
+    move: epro; rewrite /eProject.
+
+    (*STEP 6. Getting queue-projection for G0_s.*)
+
+    (*STEP 7. Getting E'_s from the induction hypothesis.*)
     
   Admitted.
 
