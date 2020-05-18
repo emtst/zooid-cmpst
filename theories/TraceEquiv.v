@@ -38,48 +38,17 @@ Definition PAR2 := (PAR `*` PAR)%fset.
 Open Scope fmap.
 
 
-  Inductive part_of: role -> rg_ty -> Prop :=
-    | pof_from F T C: part_of F (rg_msg F T C)
-    | pof_to F T C: part_of T (rg_msg F T C)
-    | pof_cont p F T C L G Ty: C L = Some (Ty, G) 
-      -> part_of p G -> part_of p (rg_msg F T C).
 
 
-
-  Inductive iPart_of: role -> ig_ty -> Prop :=
-    | ipof_end p cG: part_of p cG -> iPart_of p (ig_end cG)
-    | ipof_from o F T C: iPart_of F (ig_msg o F T C)
-    | ipof_to o F T C: iPart_of T (ig_msg o F T C)
-    | ipof_cont p o F T C L G Ty: C L = Some (Ty, G) 
-      -> iPart_of p G -> iPart_of p (ig_msg o F T C).
-
-  Lemma iPart_of_label_label_aux p o o' F T C GG: 
-    iPart_of p GG -> GG = ig_msg o F T C ->
-        iPart_of p (ig_msg o' F T C).
-  Proof.
-  elim.
-  + by [].
-  + by move=> o0 F0 T0 C0 [hp1 hp2 hp3 hp4]; rewrite hp2; apply ipof_from.
-  + by move=> o0 F0 T0 C0 [hp1 hp2 hp3 hp4]; rewrite hp3; apply ipof_to.
-  + move=> p0 o0 F0 T0 C0 L G Ty contL ipartof ih [eq1 eq2 eq3 eq4].
-    by rewrite -eq4; apply: (ipof_cont o' F T contL ipartof).
-  Qed.
-
-  Lemma iPart_of_label_label p o o' F T C: 
-    iPart_of p (ig_msg o F T C) ->
-        iPart_of p (ig_msg o' F T C).
-  Proof.
-  by move=> hp; apply: (@iPart_of_label_label_aux p o o' F T C _ hp).
-  Qed.
-
-
-
+Axiom IProj_end : 
+forall p G, ~ iPart_of p G -> (forall L, IProj p G L -> L = rl_end).
 
 (*
 maybe the (p \in PAR) condition can be removed
 *)
   Definition eProject (G: ig_ty) (E : {fmap role -> rl_ty}) : Prop :=
-  (forall p, (*p \in PAR ->*)  iPart_of p G ->
+  (forall p, iPart_of p G -> p \in PAR) /\
+  (forall p, p \in PAR ->
       (exists L,  IProj p G L /\ E.[? p] = Some L)).
 
 
@@ -335,7 +304,7 @@ at the moment it is only morally!
     F != T /\ (exists lC, E.[? F]%fmap = Some (rl_msg l_send T lC) /\ 
     same_dom C lC /\ R_all (IProj F) C lC).
   Proof.
-  rewrite /eProject; move=> (*Fin*) hp. (*; move: hp _ Fin.
+  (*rewrite /eProject; move=> (*Fin*) hp. (*; move: hp _ Fin.
   move=> hp_part; move: (hp_part (ipof_from None F T C)).*)
   move: (hp _ (ipof_from None F T C)); elim=> lT.
   elim=> pro eq; move: (IProj_send1_inv pro).
@@ -344,7 +313,7 @@ at the moment it is only morally!
   split; [by rewrite eq; apply f_equal| split; [ by []|]].
   move: rall; rewrite /R_all; move=> rall L Ty G lTT someg somel.
   by apply: (rall _ _ _ _ someg somel).
-  Qed.
+  Qed.*) Admitted.
 
 
   Lemma eProject_send_some L F T C E:
@@ -352,7 +321,7 @@ at the moment it is only morally!
     F != T /\ (exists lC Ty lT, lC L = Some (Ty, lT) /\
     E.[? F]%fmap = Some lT /\ same_dom C lC /\ R_all (IProj F) C lC).
   Proof.
-  rewrite /eProject; move=> (*Fin*) hp. (*; move: (hp _ Fin).
+(*  rewrite /eProject; move=> (*Fin*) hp. (*; move: (hp _ Fin).
   move=> hp_part; move: (hp_part (ipof_from (Some L) F T C)).*)
   move: (hp _ (ipof_from (Some L) F T C)); elim=> lT.
   elim=> pro eq; move: (IProj_send2_inv pro).
@@ -361,7 +330,7 @@ at the moment it is only morally!
   split; [by []| split; [ by []|split; [by []|]]].
   move: rall; rewrite /R_all; move=> rall L0 Ty0 G lTT someg somel.
   by apply: (rall _ _ _ _ someg somel).
-  Qed.
+  Qed.*) Admitted.
 
 
  
@@ -370,7 +339,7 @@ at the moment it is only morally!
     F != T /\ (exists lC, E.[? T]%fmap = Some (rl_msg l_recv F lC) /\ 
     same_dom C lC /\ R_all (IProj T) C lC).
   Proof.
-  rewrite /eProject; move=> (*Fin*) hp. (*; move: (hp _ Fin).
+  (*rewrite /eProject; move=> (*Fin*) hp. (*; move: (hp _ Fin).
   move=> hp_part; move: (hp_part (ipof_to o F T C)).*)
   move: (hp _ (ipof_to o F T C)); elim=> lT.
   elim=> pro eq; move: (IProj_recv_inv pro).
@@ -379,7 +348,7 @@ at the moment it is only morally!
   split; [by rewrite -lTeq | split; [ by []|]].
   move: rall; rewrite /R_all; move=> rall L0 Ty0 G lTT someg somel.
   by apply: (rall _ _ _ _ someg somel).
-  Qed.
+  Qed.*) Admitted.
 
 
 (*to be moved in Local.v*)
@@ -721,8 +690,31 @@ actually they should be doubled*)
   + elim; move=> _ Px; elim; [|by apply Px].
     by move=> u Rxu; exists u.
   + elim=> hp1 hp2 hp3; exists uu; move=> Px.
-    by move: (hp1 Px).
-  Qed.
+     by move: (hp1 Px).
+Qed.
+(*move: hp2; 
+    - move: hp1.
+    - move: xin; elim /finSet_rect: FS. 
+
+
+elim; [by move=> u; exists u|].
+
+
+      move=> X IH xin. 
+
+
+
+admit.
+
+  Admitted.
+
+(@eqP _ FS fset0 ).
+
+
+elim /finSet_rect: FS.
+
+move=> impl.
+*)
 
 
 
@@ -733,7 +725,7 @@ actually they should be doubled*)
     -> forall p, iPart_of p G -> 
     (exists L0 : rl_ty, IProj p G L0).
   Proof.
-  move=> epro CL p ipofG.
+(*  move=> epro CL p ipofG.
   move: (epro _ (ipof_cont o F T CL ipofG)).
   elim=> lT;  case: (@eqP _ p F).
   + move =>->; case eq: o=> [L0|].
@@ -757,7 +749,7 @@ actually they should be doubled*)
       elim=> neq; elim=> lC; elim=> samedom; elim=> rall mrg.
       move: (samedom L Ty); elim; elim; [|by exists G].
       move=> lT0 lCL _; exists lT0; by apply: (rall L Ty).
-  Qed.
+  Qed.*) Admitted.
 
 
 
@@ -814,7 +806,7 @@ also wellformedness from WellFormed.v*)
       move=> wf p q CONT wfcont rfreecont [eq1 eq2 eq3].
       by rewrite -eq1 -eq2; apply rfree_send.
     split.
-    * move: epro; rewrite /eProject; move=> it p.
+    (* * move: epro; rewrite /eProject; move=> it p.
       case: (@eqP _ p F).
       - move=>->; exists lT; split.
         + by apply: (iprj_send2 neq samedom rall lcontL).
