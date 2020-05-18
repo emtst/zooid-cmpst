@@ -44,7 +44,9 @@ Open Scope fmap.
     | pof_cont p F T C L G Ty: C L = Some (Ty, G) 
       -> part_of p G -> part_of p (rg_msg F T C).
 
-   Inductive iPart_of: role -> ig_ty -> Prop :=
+
+
+  Inductive iPart_of: role -> ig_ty -> Prop :=
     | ipof_end p cG: part_of p cG -> iPart_of p (ig_end cG)
     | ipof_from o F T C: iPart_of F (ig_msg o F T C)
     | ipof_to o F T C: iPart_of T (ig_msg o F T C)
@@ -706,43 +708,21 @@ actually they should be doubled*)
   Qed.
 
 
-(*  Lemma pred_finset_exists_impl_iff
+  Lemma finpred_exists_impl
     (K : choiceType) (FS: {fset K}) (x : K)
     (P: K -> Prop) (U : Type) (uu : U)
     (R: K -> U -> Prop):
-    (P x -> x \in FS) ->
-    (
-    (exists u, P x -> R x u)
-    <-> 
+    (P x <-> x \in FS) ->
     (P x -> exists u, R x u)
-    ).
+    ->
+    (exists u, P x -> R x u).
   Proof.
-  move=> hp; split.
-  + by elim=> u impl Px; exists u; apply: impl.
-  + move: hp; case xin: (x \in FS).
-    - case: (P x).
-    - move: xin; elim /finSet_rect: FS. 
-
-
-elim; [by move=> u; exists u|].
-
-
-      move=> X IH xin. 
-
-
-
-admit.
-    - move=> hp1 hp2; exists uu; move=> Px.
-      by move: (hp1 Px).
-  Admitted.
-
-(@eqP _ FS fset0 ).
-
-
-elim /finSet_rect: FS.
-
-move=> impl.
-*)
+  case xin: (x \in FS).
+  + elim; move=> _ Px; elim; [|by apply Px].
+    by move=> u Rxu; exists u.
+  + elim=> hp1 hp2 hp3; exists uu; move=> Px.
+    by move: (hp1 Px).
+  Qed.
 
 
 
@@ -750,13 +730,12 @@ move=> impl.
 
   Lemma eProject_cont_aux o F T C E L Ty G: 
     eProject (ig_msg o F T C) E -> C L = Some (Ty, G)
-    -> forall p, p \in domf E -> 
-    (exists L0 : rl_ty, iPart_of p G -> IProj p G L0).
+    -> forall p, iPart_of p G -> 
+    (exists L0 : rl_ty, IProj p G L0).
   Proof.
-  (*move=> epro CL p.
-  move: (epro p); elim=> lMSG.  ipro.
-  move: (ipro (ipof_cont o F T CL ipofG)).
-  case: (@eqP _ p F).
+  move=> epro CL p ipofG.
+  move: (epro _ (ipof_cont o F T CL ipofG)).
+  elim=> lT;  case: (@eqP _ p F).
   + move =>->; case eq: o=> [L0|].
     * elim=> {}ipro _; move: (IProj_send2_inv ipro); elim=> neq.
       elim=> lC; elim=> Ty0; elim=> _; elim=> samedom rall.
@@ -778,7 +757,7 @@ move=> impl.
       elim=> neq; elim=> lC; elim=> samedom; elim=> rall mrg.
       move: (samedom L Ty); elim; elim; [|by exists G].
       move=> lT0 lCL _; exists lT0; by apply: (rall L Ty).
-  Qed.*) Admitted.
+  Qed.
 
 
 
@@ -793,6 +772,9 @@ Proof.
   
   move=> epro CL.
   move: (eProject_cont_aux epro CL); move=> build.
+  rewrite /eProject.
+
+move: all_fmap.
 Admitted.
 
 
