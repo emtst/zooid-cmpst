@@ -760,8 +760,14 @@ Proof.
   Qed.
 
 
-
-
+  Lemma iproj_send1_exists p q KsG:
+      p != q ->
+      (exists KsL, same_dom KsG KsL /\ R_all (IProj p) KsG KsL) ->
+      exists lT, IProj p (ig_msg None p q KsG) lT. (*rl_msg l_send q KsL*)
+  Proof.
+  move=> neq; elim=> KsL; elim=> sd rall.
+  by exists (rl_msg l_send q KsL); apply: iprj_send1.
+  Qed.
 
 (*g_wfcont added as a hypothesis, we'll probably need
 also wellformedness from WellFormed.v*)
@@ -884,12 +890,33 @@ also wellformedness from WellFormed.v*)
     (*
     L to D and F: from now on I'll keep track of the different steps
     for this case. Right now (06/05/2020) it appears to me that 
-    it is going to be a long one. I want to build E'. I have a plan.
-    I will define it by cases: for participants F, T and s different
-    from F and T; I start from s. I will extensively use the induction
+    it is going to be a long one. I want to build E'.
+    I have a plan (updated 18/05/2020).
+    I will use the theorem I have proved for building
+    finite functions, so that I can build E' extensionally,
+    for each participant. I will extensively use the induction
     hypothesis.
-    *)
+    
+New update (19/05/2020: change of plans! :) 
+)
+*)
+    have: exists E':{fmap role -> rl_ty}, (forall p : role, p \in PAR ->
+      exists lT : rl_ty, IProj p (ig_msg None F T C1) lT /\
+      E'.[? p] = Some lT).
+      apply: (@all_fmap _ _ _
+        (fun p oL => exists lT : rl_ty, IProj p (ig_msg None F T C1) lT /\
+        oL = Some lT) ).
+      move=> p.
+      apply: (@exists_rel_finset_inhabited role PAR p (option rl_ty) None
+        (fun p oL => exists lT : rl_ty, IProj p (ig_msg None F T C1) lT /\
+        oL = Some lT) ).
+      move=> pinPAR.
+      suffices: exists (lT : rl_ty), IProj p (ig_msg None F T C1) lT.
+        by elim=> lT ipro; exists (Some lT), lT; split.
+      move: pinPAR; case: (@eqP _ p F).
+      + move=>-> FinPAR; apply: iproj_send1_exists.
 
+      admit.
     (*STEP 1. Selecting a label L_s.*)
     move: (ig_wfcont_msg_inv wfc); elim=> neq.
     elim; elim=> L_s; elim=> Ty_s; elim=> G0_s.
@@ -901,7 +928,7 @@ also wellformedness from WellFormed.v*)
 
     (*STEP 3. Getting well-formedness and projections for G0_s.*)
     move: wf; elim /wellFormed_inv =>//=; move=> wf.
-    move=> p q CONT wfC0 rfreeFTC0 [eq1 eq2 eq3].
+  (*  move=> p q CONT wfC0 rfreeFTC0 [eq1 eq2 eq3].
     rewrite eq3 in wfC0; rewrite eq1 eq2 eq3 in rfreeFTC0.
     move: (wfC0 _ _ _ C0L_s) (rfreeFTC0 _ _ _ C0L_s).
     move=> wfG0_s rfreeFTG0_s; clear p q CONT eq1 eq2 eq3.
@@ -912,7 +939,7 @@ also wellformedness from WellFormed.v*)
     (*STEP 5. Getting queue-projection for G0_s.*)
 
     (*STEP 6. Getting E'_s from the induction hypothesis.*)
-    
+    *)
   Admitted.
 
 
