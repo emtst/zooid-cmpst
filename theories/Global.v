@@ -726,9 +726,10 @@ Section Semantics.
       C L = Some (Ty, G) ->
       step (mk_act l_recv T F L Ty) (ig_msg (Some L) F T C) G
   (* Struct *)
-  | st_amsg1 a F T C0 C1 :
+  | st_amsg1 a L F T C0 C1 :
       subject a != F ->
       subject a != T ->
+      (exists Ty G, C0 L = Some (Ty, G)) ->
       same_dom C0 C1 ->
       R_all (step a) C0 C1 ->
       step a (ig_msg None F T C0) (ig_msg None F T C1)
@@ -756,12 +757,13 @@ Section Semantics.
     (forall L F T C Ty G (e: C L = Some (Ty, G)),
       P (mk_act l_recv T F L Ty) (ig_msg (Some L) F T C) G (st_recv F T e))
     ->
-    (forall a F T C0 C1 (i : subject a != F) (i0 : subject a != T)
+    (forall a L F T C0 C1 (i : subject a != F) (i0 : subject a != T)
+          (ne : exists Ty G, C0 L = Some (Ty, G))
           (s : same_dom C0 C1) (r : R_all (step a) C0 C1),
         (forall (L : lbl) (Ty : mty) (G G' : ig_ty)
            (e : C0 L = Some (Ty, G)) (e0 : C1 L = Some (Ty, G')),
          P a G G' (r L Ty G G' e e0)) ->
-        P a (ig_msg None F T C0) (ig_msg None F T C1) (st_amsg1 i i0 s r))
+        P a (ig_msg None F T C0) (ig_msg None F T C1) (st_amsg1 i i0  ne s r))
     ->
     (*new property, mirroring R_only...*)
     (forall (a : act) (L : lbl) (F T : role)
@@ -783,7 +785,7 @@ Section Semantics.
   Proof.
   move=> P_send P_recv P_amsg1 P_amsg2 P_unr; fix Ih 4.
   move=> a G G'; case; [by[]|by[]| | | ].
-  + move=> a0 F T C0 C1 nF nT samed rall.
+  + move=> a0 L F T C0 C1 nF nT NE samed rall.
     by apply: P_amsg1 =>//=.
   + move=> a0 L F T C0 C1 nT samed ronly.
     apply: P_amsg2 =>//=; split.

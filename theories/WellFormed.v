@@ -16,7 +16,7 @@ Require Import MPST.Actions.
 Require Import MPST.Projection.
 
 Section WellFormed.
-  
+
 
   (*Next thing is a furst condition of wellformednes, namely
 continuations are never empty*)
@@ -27,7 +27,7 @@ continuations are never empty*)
   | g_wfcont_end : g_wfcont_ P rg_end
   | g_wfcont_msg F T C L Ty G:
       F !=T -> C L = Some (Ty, G) -> P G ->
-      (forall LL TTy GG, 
+      (forall LL TTy GG,
         C LL = Some (TTy, GG) -> P GG) ->
       g_wfcont_ P (rg_msg F T C).
   Hint Constructors g_wfcont_.
@@ -48,7 +48,7 @@ continuations are never empty*)
   | ig_wfcont_end cG: g_wfcont cG -> ig_wfcont (ig_end cG)
   | ig_wfcont_msg o F T C L Ty G:
       F !=T -> C L = Some (Ty, G) -> ig_wfcont G ->
-      (forall LL TTy GG, 
+      (forall LL TTy GG,
         C LL = Some (TTy, GG) -> ig_wfcont GG) ->
       ig_wfcont (ig_msg o F T C).
   Hint Constructors ig_wfcont.
@@ -56,7 +56,7 @@ continuations are never empty*)
 
 
 
-  Lemma g_wfcont_msg_inv_aux GG F T C: 
+  Lemma g_wfcont_msg_inv_aux GG F T C:
     g_wfcont GG -> GG = (rg_msg F T C)-> F != T /\
     (exists L Ty G, C L = Some (Ty, G) /\ g_wfcont G) /\
     (forall LL TTy GG, C LL = Some (TTy, GG) -> g_wfcont GG).
@@ -71,7 +71,7 @@ continuations are never empty*)
     by move: (hpall _ _ _ CLL); rewrite /upaco1; elim.
   Qed.
 
-  Lemma g_wfcont_msg_inv F T C: 
+  Lemma g_wfcont_msg_inv F T C:
     g_wfcont (rg_msg F T C)-> F != T /\
     (exists L Ty G, C L = Some (Ty, G) /\ g_wfcont G) /\
     (forall LL TTy GG, C LL = Some (TTy, GG) -> g_wfcont GG).
@@ -82,20 +82,20 @@ continuations are never empty*)
 
 
 
-  Lemma ig_wfcont_end_inv_aux GG CG: 
+  Lemma ig_wfcont_end_inv_aux GG CG:
     ig_wfcont GG -> GG = (ig_end CG)-> g_wfcont CG.
   Proof.
   case =>//=.
   by move=> cG wf [eq]; rewrite eq in wf.
   Qed.
 
-  Lemma ig_wfcont_end_inv CG: 
+  Lemma ig_wfcont_end_inv CG:
     ig_wfcont (ig_end CG)-> g_wfcont CG.
   Proof.
   by move=> hp; apply (@ig_wfcont_end_inv_aux _ _ hp).
   Qed.
 
-  Lemma ig_wfcont_msg_inv_aux GG o F T C: 
+  Lemma ig_wfcont_msg_inv_aux GG o F T C:
     ig_wfcont GG ->  GG = (ig_msg o F T C)-> F != T /\
     (exists L Ty G, C L = Some (Ty, G) /\ ig_wfcont G) /\
     (forall LL TTy GG, C LL = Some (TTy, GG) -> ig_wfcont GG).
@@ -107,7 +107,7 @@ continuations are never empty*)
   + by rewrite eq4 in wfall.
   Qed.
 
-  Lemma ig_wfcont_msg_inv o F T C: 
+  Lemma ig_wfcont_msg_inv o F T C:
     ig_wfcont (ig_msg o F T C)-> F != T /\
     (exists L Ty G, C L = Some (Ty, G) /\ ig_wfcont G) /\
     (forall LL TTy GG, C LL = Some (TTy, GG) -> ig_wfcont GG).
@@ -116,7 +116,7 @@ continuations are never empty*)
   Qed.
 
 
-  Lemma ig_wfcont_rg_unr CG: 
+  Lemma ig_wfcont_rg_unr CG:
     ig_wfcont (ig_end CG)
     -> ig_wfcont (rg_unr CG).
   Proof.
@@ -168,12 +168,12 @@ continuations are never empty*)
 
   Lemma wform_unr CG : well_formed (rg_unr CG).
   Proof.
-    case: CG=>[|F T C]/=; constructor =>//=; move=>l Ty G; 
+    case: CG=>[|F T C]/=; constructor =>//=; move=>l Ty G;
       case: (C l) =>[[MTy G'']|]//[_<-]; by constructor.
   Qed.
 
   Lemma rcvFree_cont F T F' T' C
-    : rcv_Free F T (ig_msg None F' T' C) -> 
+    : rcv_Free F T (ig_msg None F' T' C) ->
       forall L Ty G, C L = Some (Ty, G) -> rcv_Free F T G.
   Proof.
     elim/rcvFree_inv=>
@@ -192,7 +192,7 @@ continuations are never empty*)
       by case: (C L)=>[[Ty' CG] [_ <-]|]//.
   Qed.
 
-  Lemma rfree_step G G' a F T 
+  Lemma rfree_step G G' a F T
     (a_F: subject a != F) (a_T: subject a != T)
     : step a G G' ->
       rcv_Free F T G ->
@@ -201,7 +201,7 @@ continuations are never empty*)
     move=>ST; elim: ST a_F a_T
       =>[ L F' T' C Ty G0 C_L
         | L F' T' C Ty G0 C_L
-        | {}a F' T' C0 C1 a_F' a_T' dom_C0_C1 step_C0_C1 Ih
+        | {}a l F' T' C0 C1 a_F' a_T' NE dom_C0_C1 step_C0_C1 Ih
         | {}a L F' T' C0 C1 a_T' dom_C0_C1 step_C0_C1 Ih
         | {}a CG G0 step_a0_CG_G0 Ih
         ]/= a_F a_T.
@@ -226,7 +226,7 @@ continuations are never empty*)
         apply: rfree_diff=>// L' Ty G'' C1_L'.
         move: Ih=>[same_K [Ty' [G0 [G1 [C0_L [C1_L [ST /(_ a_F a_T)-Ih]]]]]]].
         case: (boolP (L == L'))=>[/eqP-L_L'|L_L'].
-        + move: L_L' C1_L'=><-; rewrite C1_L=>[[Eq_Ty Eq_G]]. 
+        + move: L_L' C1_L'=><-; rewrite C1_L=>[[Eq_Ty Eq_G]].
           by move: Eq_G Eq_Ty Ih C0_L C1_L=>->->Ih /H/Ih-RF_G'' _.
         + by apply/H/(same_K _ _ L_L')/C1_L'.
       - move=>_; apply/(Ih a_F a_T)/rfree_unr.
@@ -239,7 +239,7 @@ continuations are never empty*)
       elim: STEP
         =>[ L F T C Ty G0 C_L
           | L F T C Ty G0 C_L
-          |{}a F T C0 C1 a_F a_T dom_C0_C1 step_C0_C1 Ih
+          |{}a l F T C0 C1 a_F a_T NE dom_C0_C1 step_C0_C1 Ih
           |{}a L F T C0 C1 a_T dom_C0_C1 step_C0_C1 Ih
           |{}a CG G0 step_a0_CG_G0 Ih
           ] in WF_G *.
@@ -267,7 +267,7 @@ continuations are never empty*)
     - by apply/Ih/wform_unr.
   Qed.
 
-  Lemma wform_RCV_Free G: 
+  Lemma wform_RCV_Free G:
     RCV_Free G -> well_formed G.
   Proof.
     elim: G=>[CG _|ST FROM TO C Ih]; first by constructor.
@@ -279,7 +279,7 @@ continuations are never empty*)
       - move=> P' P'' Q' Q'' O_L C' RF_C _ _ _ [_ _ _ C_C'].
         move: C_C' RF_C=>->RF_C; by apply/RF_C/H.
     }
-    case: ST=>[L|]; constructor=> L' Ty G; 
+    case: ST=>[L|]; constructor=> L' Ty G;
       move: (RF L') (Ih L'); case E: (C L')=>[[Ty' G']|]//= RF_L' Ih_L' [_ <-].
     + by apply/(Ih_L' _ _ erefl)=> P Q; apply/(RF_L' Ty' G' erefl).
     + by apply/(Ih_L' _ _ erefl)=> P Q; apply/(RF_L' Ty' G' erefl).
