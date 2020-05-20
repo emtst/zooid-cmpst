@@ -1,4 +1,4 @@
-image: coqorg/coq:8.11
+image: coqorg/coq:8.10
 
 build:
   script:
