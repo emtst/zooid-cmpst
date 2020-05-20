@@ -86,7 +86,7 @@ maybe the (p \in PAR) condition can be removed
 
   Lemma step_send_inv_aux F T C L Ty aa GG: 
     step aa GG (ig_msg (Some L) F T C) ->
-    aa = a_send F T L Ty -> GG = ig_msg None F T C ->
+    aa = mk_act l_send F T L Ty -> GG = ig_msg None F T C ->
     exists G, C L = Some (Ty, G).
   Proof.
   elim/step_ind => //=.
@@ -99,7 +99,7 @@ maybe the (p \in PAR) condition can be removed
   Qed.
 
   Lemma step_send_inv F T C L Ty: 
-    step (a_send F T L Ty) (ig_msg None F T C) (ig_msg (Some L) F T C) ->
+    step (mk_act l_send F T L Ty) (ig_msg None F T C) (ig_msg (Some L) F T C) ->
     exists G, C L = Some (Ty, G).
   Proof.
   by move=> hp; apply: (step_send_inv_aux hp).
@@ -647,8 +647,7 @@ actually they should be doubled*)
   split.
   + case E: _ / =>[{}p cG P_OF|||]//; move: E=>[->] {CG}.
     case: P_OF =>[F T C||]/=; try by constructor.
-    move=>{}p F T C L G Ty C_L part_G.
-    set C' := fun L=>_.
+    move=>{}p F T C L G Ty C_L part_G; set C' := fun L=>_.
     have C_L': C' L = Some (Ty, ig_end G) by rewrite /C' C_L.
     by apply/(ipof_cont None F T C_L')/ipof_end/part_G.
   + case: CG=>//= F T C.

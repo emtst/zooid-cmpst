@@ -682,10 +682,10 @@ Section Semantics.
   (* Basic rules *)
   | st_send L F T C Ty G :
       C L = Some (Ty, G) ->
-      step (a_send F T L Ty) (ig_msg None F T C) (ig_msg (Some L) F T C)
+      step (mk_act l_send F T L Ty) (ig_msg None F T C) (ig_msg (Some L) F T C)
   | st_recv L F T C Ty G :
       C L = Some (Ty, G) ->
-      step (a_recv F T L Ty) (ig_msg (Some L) F T C) G
+      step (mk_act l_recv F T L Ty) (ig_msg (Some L) F T C) G
   (* Struct *)
   | st_amsg1 a F T C0 C1 :
       subject a != F ->
@@ -711,11 +711,11 @@ Section Semantics.
   Lemma step_ind
     (P : forall (a : act) (i i0 : ig_ty), step a i i0 -> Prop):
     (forall L F T C Ty G (e: C L = Some (Ty, G)),
-      P (a_send F T L Ty) (ig_msg None F T C) (ig_msg (Some L) F T C)
+      P (mk_act l_send F T L Ty) (ig_msg None F T C) (ig_msg (Some L) F T C)
         (st_send F T e) )
     ->
     (forall L F T C Ty G (e: C L = Some (Ty, G)), 
-      P (a_recv F T L Ty) (ig_msg (Some L) F T C) G (st_recv F T e))
+      P (mk_act l_recv F T L Ty) (ig_msg (Some L) F T C) G (st_recv F T e))
     ->
     (forall a F T C0 C1 (i : subject a != F) (i0 : subject a != T) 
           (s : same_dom C0 C1) (r : R_all (step a) C0 C1),
@@ -771,5 +771,5 @@ Section Semantics.
   Hint Resolve g_lts_monotone.
 
   Close Scope mpst_scope.
-
+  
 End Semantics.

@@ -37,18 +37,22 @@ Canonical lact_eqType := Eval hnf in EqType l_act lact_eqMixin.
 
 
 Inductive act :=
-| a_send (p : role) (q : role) (l : lbl) (t : mty)
-| a_recv (p : role) (q : role) (l : lbl) (t : mty)
-.
+| mk_act (a : l_act) (p : role) (q : role) (l : lbl) (t : mty).
 
 CoInductive trace :=
 | tr_end : trace
 | tr_next : act -> trace -> trace.
 
+Definition act_ty a :=
+  let: mk_act a _ _ _ _ := a in a.
+
 Definition subject a :=
   match a with
-  | a_send p _ _ _ => p
-  | a_recv _ q _ _ => q
+  | mk_act a p q _ _ =>
+    match a with
+    | l_send => p
+    | l_recv => q 
+    end
   end.
 
 Fixpoint lookup (E : eqType) A (p : E) (K : seq (E * A)) : option A :=
@@ -110,7 +114,7 @@ Lemma fsetUs_fset0 (A : choiceType) (Ks : seq {fset A}) :
   fsetUs Ks == fset0 <-> (forall K, member K Ks -> K == fset0).
 Proof.
   elim: Ks=>// K Ks Ih/=; rewrite fsetUs_list -(rwP andP) Ih {Ih}; split.
-  - by move=>[/eqP-[-> H]] K' [->//|/H].
+  - by move=>[/eqP-> H] K' [/eqP|/H].
   - by move=> H; split; [apply: H; left| move=>K' K'Ks; apply: H; right].
 Qed.
 
