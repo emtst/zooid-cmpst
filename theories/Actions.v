@@ -43,7 +43,7 @@ CoInductive trace :=
 | tr_end : trace
 | tr_next : act -> trace -> trace.
 
-Definition subject A := let: mk_act a p q _ _ := A in a.
+Definition subject A := let: mk_act a p q _ _ := A in p.
 
 Fixpoint lookup (E : eqType) A (p : E) (K : seq (E * A)) : option A :=
   match K with
