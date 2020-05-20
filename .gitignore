@@ -12,6 +12,7 @@
 # Generated makefiles
 Makefile
 Makefile.conf
+.Makefile.d
 
 # Emacs files
 
@@ -39,6 +40,8 @@ Makefile.conf
 # Coq files
 
 *.vo
+*.vos
+*.vok
 *.glob
 .coqdeps.d
 
