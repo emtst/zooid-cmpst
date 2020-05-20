@@ -591,7 +591,8 @@ Section Semantics.
     | None => None
     end%fmap.
 
-  Definition do_act (P : renv) a p q l t :=
+  Definition do_act (P : renv) A :=
+    let: (mk_act a p q l t) := A in
     match P.[? p]  with
     | Some Lp =>
       match Lp with
@@ -600,9 +601,6 @@ Section Semantics.
         | Some (t', Lp) =>
           if (a == a') && (q == q') && (t == t')
           then Some P.[p <- Lp]
-               (*if Lp is rl_end
-               then Some P.[~ p]
-               else Some P.[p <- Lp]*)
           else None
         | None => None
         end
@@ -614,7 +612,7 @@ Section Semantics.
   Lemma doact_send (E : renv) p q lb t KsL Lp :
     (E.[? p]%fmap = Some (rl_msg l_send q KsL)) ->
     (KsL lb = Some (t, Lp)) ->
-    exists E', (do_act E l_send p q lb t = Some E').
+    exists E', (do_act E (mk_act l_send p q lb t) = Some E').
   Proof.
     move=>H1 H2; rewrite /do_act H1 H2 !eq_refl/=.
     by exists E.[ p <- Lp]%fmap.
@@ -660,13 +658,61 @@ Section Semantics.
   Inductive lstep : act -> renv * qenv -> renv * qenv -> Prop :=
   | ls_send t p q lb (P P' : renv) (Q Q' : qenv) :
       Q' == enq Q (p, q) (lb, t) ->
-      do_act P l_send p q lb t = Some P' ->
-      lstep (a_send p q lb t) (P, Q) (P', Q')
+      do_act P (mk_act l_send p q lb t) = Some P' ->
+      lstep (mk_act l_send p q lb t) (P, Q) (P', Q')
   | ls_recv t p q lb (P P' : renv) (Q Q' : qenv) :
       deq Q (p, q) == Some ((lb, t), Q') ->
-      do_act P l_recv q p lb t = Some P' ->
-      lstep (a_recv p q lb t) (P, Q) (P', Q')
+      do_act P (mk_act l_recv q p lb t) = Some P' ->
+      lstep (mk_act l_recv q p lb t) (P, Q) (P', Q')
   .
+
+Definition runnable (A : act) (P : renv * qenv) : bool :=
+  match do_act P.1 A with
+  | Some _ =>
+    let: mk_act a p q l t := A in
+    match a with
+    | l_send => true
+    | l_recv =>
+      match deq P.2 (q, p) with 
+      | Some ((l', t'), Q) => (l == l') && (t == t')
+      | None => false
+      end
+    end
+  | None => false 
+  end.
+
+(* Attempts to run a step, does nothing if it cannot run *)
+Definition run_step (A : act) (P : renv * qenv) : renv * qenv :=
+  match do_act P.1 A with 
+  | None => P
+  | Some E' => 
+    let: mk_act a p q l t := A in
+    match a with 
+    | l_send => (E', enq P.2 (p, q) (l, t))
+    | l_recv =>
+      match deq P.2 (q, p) with
+      | None => P
+      | Some ((l', t'), Q') =>
+        if (l == l') && (t == t')
+        then (E', Q')
+        else P
+      end
+    end
+  end.
+
+  (* Lemma run_step 'makes sense' *)
+  Lemma run_step_sound A P : runnable A P -> lstep A P (run_step A P).
+  Proof.
+    case: P => E Q.
+    rewrite /runnable /=; case E_doact: (do_act _ _)=>[E'|//].
+    case: A E_doact=> [[|] p q l t E_doact]/=.
+    - by move=> _; rewrite /run_step E_doact; constructor=>//.
+    - case E_deq: (deq _ _) =>[[[l' t'] Q']|//]. 
+      case: (boolP ((l == l') && _)) =>[/andP-[/eqP-ll' /eqP-tt']|//] _.
+      move: ll' tt' E_deq =><-<- E_deq.
+      rewrite /run_step E_doact/= E_deq !eq_refl /=.
+      by constructor =>//; first by apply/eqP.
+  Qed.
 
   Definition rel_trc := trace -> renv*qenv -> Prop.
   Inductive l_lts_ (r : rel_trc) : rel_trc :=
