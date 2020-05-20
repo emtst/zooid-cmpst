@@ -43,14 +43,7 @@ CoInductive trace :=
 | tr_end : trace
 | tr_next : act -> trace -> trace.
 
-Definition subject a :=
-  match a with
-  | mk_act a p q _ _ =>
-    match a with
-    | l_send => p
-    | l_recv => q 
-    end
-  end.
+Definition subject A := let: mk_act a p q _ _ := A in a.
 
 Fixpoint lookup (E : eqType) A (p : E) (K : seq (E * A)) : option A :=
   match K with
@@ -176,16 +169,16 @@ Definition extend A (L : lbl) (X : A) f :=
 Definition same_dom T T' (C : lbl /-> mty * T) (C' : lbl /-> mty * T') :=
   forall L Ty, (exists G, C L = Some (Ty, G)) <-> (exists G', C' L = Some (Ty, G')).
 
-Lemma same_dom_extend T1 T2 l Ty G1 G2 
+Lemma same_dom_extend T1 T2 l Ty G1 G2
   (C1 : lbl /-> mty * T1) (C2 : lbl /-> mty * T2):
   same_dom C1 C2 ->
   same_dom (extend l (Ty, G1) C1) (extend l (Ty, G2) C2).
 Proof.
 rewrite /extend /same_dom; move=> hp l0 Ty0; case: ifP =>//=; move=> eq.
-by split; elim; move=> GG [eqTy eqG]; rewrite eqTy; [exists G2 | exists G1]. 
+by split; elim; move=> GG [eqTy eqG]; rewrite eqTy; [exists G2 | exists G1].
 Qed.
 
-Lemma same_dom_extend_some_l T1 T2 l Ty G1 G2 
+Lemma same_dom_extend_some_l T1 T2 l Ty G1 G2
   (C1 : lbl /-> mty * T1) (C2 : lbl /-> mty * T2):
   same_dom C1 C2 -> C1 l = Some (Ty, G1) ->
   same_dom C1 (extend l (Ty, G2) C2).
@@ -196,7 +189,7 @@ split; [| by elim; move=> GG [eq1 eq2]; rewrite -eq1; exists G1].
 by elim=> GG; rewrite eq; move=> [eq1 eq2]; exists G2; rewrite eq1.
 Qed.
 
-Definition same_dom_const T1 T2 (C: lbl /-> mty * T1) (t2 : T2) L := 
+Definition same_dom_const T1 T2 (C: lbl /-> mty * T1) (t2 : T2) L :=
 match C L with
   | None => None
   | Some (Ty,t1) => Some (Ty,t2)
