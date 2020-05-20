@@ -769,10 +769,76 @@ Proof.
   by exists (rl_msg l_send q KsL); apply: iprj_send1.
   Qed.
 
+
+(*  Lemma gstep_doact_send a G G' p q lbl tyy E: 
+    step a G G' -> a = (a_send p q lbl tyy) -> eProject G E ->
+    ig_wfcont G -> well_Formed G ->
+    exists E', do_act E l_send p q lbl tyy = Some E'.
+  Proof.
+  move=> stephp; elim/step_ind: stephp E =>//=.
+  + admit.
+  + move=> a0 F T C0 C1 nF nT sd ra IH aeq E epro wfc wf.
+  Admitted.*)
+
+
+(*playing with continuations*)
+  Inductive cont_of: (lbl /-> mty * rg_ty) -> rg_ty -> Prop :=
+    | cof_0 C F T: cont_of C (rg_msg F T C)
+    | cof_rec C F T CC L G Ty: CC L = Some (Ty, G) 
+      -> cont_of C G -> cont_of C (rg_msg F T CC).
+
+  Inductive iCont_of: (lbl /-> mty * ig_ty) -> ig_ty -> Prop :=
+    | icof_end C cG: cont_of C cG -> iCont_of 
+      (fun lbl =>  match C lbl with
+                    | None => None
+                    | Some (t, G) => Some (t, ig_end G)
+                    end) (ig_end cG)
+    | icof_0 C o F T: iCont_of C (ig_msg o F T C)
+    | icof_rec C o F T CC L G Ty: CC L = Some (Ty, G)
+      -> iCont_of C G -> iCont_of C (ig_msg o F T CC).
+
+  Definition findom_cont G (LAB : {fset lbl}) : Prop :=
+  (forall C, iCont_of C G -> 
+    (forall L ty GG, C L = Some (ty, GG) -> L \in LAB) ).
+
+  Lemma all_fset_option_map
+    (K : choiceType) (FS: {fset K}) (U : Type) (R: K -> (option U) -> Prop):
+    (forall x, exists u : (option U), x \in FS -> R x u)
+      -> exists (f: K -> option U), forall x, x \in FS -> R x (f x).
+  Proof.
+  elim /finSet_rect: FS => X; case: (@eqP _ X fset0).
+  + move=>-> ih build; exists (fun x=> None).
+    by move=> x.
+  + rewrite (rwP eqP) (rwP negP) -(rwP (fset0Pn X)).
+    elim=> x xin IH build; move: (IH _ (fproperD1 xin)) => IH0.
+    have forIH0: forall x0 : K, exists u : option U, x0 \in X `\ x -> R x0 u.
+      move=> x0; move: (build x0); elim=> u0 impl.
+      exists u0; move=> hp; apply: impl; rewrite in_fsetD in hp.
+      by move: hp; rewrite -(rwP andP); elim.
+    move: (IH0 forIH0); elim=> f' hpf'.
+    move: (build x); elim=> u hpu'; move: (hpu' xin); move=> hpu.
+    exists (fun y => if y == x then u else f' y).
+    move=> x0; case: ifP.
+    * by rewrite -(rwP eqP); move=>->.
+    * move=> neq; rewrite -(fsetD1K xin).
+      rewrite -(rwP (fsetUP x0 [fset x] (X`\ x))).
+      by elim; [rewrite -(rwP (fset1P x0 x)) (rwP eqP) neq | apply: hpf'].
+  Qed.
+
+
+
+ Lemma forallforallforall (T: Type) (P Q: T -> Prop):
+  (forall (x: T), P x) /\ (forall (x: T), Q x) 
+  -> (forall x, P x /\ Q x).
+  Proof. 
+  by elim=> PP QQ x; split; [apply PP|apply QQ].
+  Qed.
+
+
 (*g_wfcont added as a hypothesis, we'll probably need
 also wellformedness from WellFormed.v*)
-  Lemma Project_step G (Q : {fmap role * role -> seq (lbl * mty) }) E a G':
-    step a G G' ->
+  Lemma Project_step (LAB : {fset lbl}) G (Q : {fmap role * role -> seq (lbl * mty) }) E a G':
+    step a G G' -> findom_cont G LAB ->
     (*(forall q q' : role, Q.[? (q, q')] != Some [::]) ->*)
     ig_wfcont G -> well_Formed G ->
     (*(forall p, iPart_of p G -> p \in PAR)->*)
@@ -784,7 +850,7 @@ also wellformedness from WellFormed.v*)
   Proof.
   move=> stephp.
   elim/step_ind: stephp E Q.
-  + move=> L F T C Ty G0 contL E Q wfc wf (*inPAR*) qpro epro.
+  + move=> L F T C Ty G0 contL E Q fincont wfc wf (*inPAR*) qpro epro.
     (*have Fin: F \in PAR.
       by apply: pin; apply: pof_from.*)
     move: (@eProject_send_none F T C E (*Fin*) epro).
@@ -832,7 +898,7 @@ also wellformedness from WellFormed.v*)
         by rewrite -eq1 -eq2; apply rfree_send.
       - rewrite /do_act envF lcontL; case: ifP =>//=.
         by rewrite! eq_refl //=.
-  + move=> L F T C Ty0 G0 contL E Q wfc wf (*pin*) qpro epro.
+  + move=> L F T C Ty0 G0 contL E Q fincont wfc wf (*pin*) qpro epro.
     (*have Tin: T \in PAR.
       by apply: pin; apply: pof_to.*)
     move: (@eProject_recv _ F T C E (*Tin*) epro); elim=> neq.
@@ -881,7 +947,7 @@ also wellformedness from WellFormed.v*)
           by rewrite -(rwP negP) eq_refl.
     * apply: ls_recv =>//=; rewrite /do_act envT lcontL eqTy => //=.
       by case: ifP; rewrite! eq_refl =>//=.
-  + move=> aa F T C0 C1 nF nT sd01 ra01 IH E Q wfc wf (*pin*) qpro epro.
+  + move=> aa F T C0 C1 nF nT sd01 ra01 IH E Q fincont wfc wf (*pin*) qpro epro.
     (*have subjin: subject aa \in PAR.
       apply: pin.
       apply: (@step_subject_part_of _ _ (rg_msg None F T C1)); [|by []].
@@ -915,8 +981,19 @@ New update (19/05/2020: change of plans! :)
         by elim=> lT ipro; exists (Some lT), lT; split.
       move: pinPAR; case: (@eqP _ p F).
       + move=>-> FinPAR; apply: iproj_send1_exists.
+        - admit.
+        - admit.
 
-      admit.
+(*rewrite /same_dom /R_all.
+          suffices: (exists KsL : lbl /-> mty * rl_ty,  
+            same_dom C1 KsL /\ R_all (IProj F) C1 KsL)
+
+
+        
+
+
+(*all_fset_option_map*)
+
     (*STEP 1. Selecting a label L_s.*)
     move: (ig_wfcont_msg_inv wfc); elim=> neq.
     elim; elim=> L_s; elim=> Ty_s; elim=> G0_s.
@@ -939,7 +1016,7 @@ New update (19/05/2020: change of plans! :)
     (*STEP 5. Getting queue-projection for G0_s.*)
 
     (*STEP 6. Getting E'_s from the induction hypothesis.*)
-    *)
+    *) *)
   Admitted.
 
 
