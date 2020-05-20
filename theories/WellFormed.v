@@ -153,20 +153,20 @@ continuations are never empty*)
 
   Definition RCV_Free G := (forall p q, rcv_Free p q G).
 
-  Inductive well_Formed : ig_ty -> Prop :=
-  | wform_end cG: well_Formed (ig_end cG)
+  Inductive well_formed : ig_ty -> Prop :=
+  | wform_end cG: well_formed (ig_end cG)
   | wform_send p q CONT:
-    ( forall l Ty G, CONT l = Some (Ty, G) -> well_Formed G ) ->
+    ( forall l Ty G, CONT l = Some (Ty, G) -> well_formed G ) ->
     ( forall l Ty G, CONT l = Some (Ty, G) -> rcv_Free p q G ) ->
-    well_Formed (ig_msg None p q CONT)
+    well_formed (ig_msg None p q CONT)
   | wform_recv p q l CONT:
-    ( forall l Ty G, CONT l = Some (Ty, G) -> well_Formed G ) ->
-    well_Formed (ig_msg (Some l) p q CONT)
+    ( forall l Ty G, CONT l = Some (Ty, G) -> well_formed G ) ->
+    well_formed (ig_msg (Some l) p q CONT)
  .
 
-  Derive Inversion wellFormed_inv with (forall G, well_Formed G) Sort Prop.
+  Derive Inversion wellFormed_inv with (forall G, well_formed G) Sort Prop.
 
-  Lemma wform_unr CG : well_Formed (rg_unr CG).
+  Lemma wform_unr CG : well_formed (rg_unr CG).
   Proof.
     case: CG=>[|F T C]/=; constructor =>//=; move=>l Ty G; 
       case: (C l) =>[[MTy G'']|]//[_<-]; by constructor.
@@ -233,7 +233,7 @@ continuations are never empty*)
   Qed.
 
   Lemma wform_step a G G':
-    well_Formed G -> step a G G' -> well_Formed G'.
+    well_formed G -> step a G G' -> well_formed G'.
   Proof.
     move=>WF_G STEP;
       elim: STEP
@@ -268,7 +268,7 @@ continuations are never empty*)
   Qed.
 
   Lemma wform_RCV_Free G: 
-    RCV_Free G -> well_Formed G.
+    RCV_Free G -> well_formed G.
   Proof.
     elim: G=>[CG _|ST FROM TO C Ih]; first by constructor.
     move=> RF; have {}RF: forall L Ty G, C L = Some (Ty, G) -> RCV_Free G.
@@ -295,7 +295,7 @@ I left them there as a reminder for now; to be removed later.*)
   Admitted.*)
 
   (*Lemma wform_GUnroll iG G:
-    GUnroll iG G -> well_Formed G.
+    GUnroll iG G -> well_formed G.
   Proof.
   by move=> hp; apply: wform_RCV_Free; apply: (RCVFree_GUnroll hp).
   Qed.*)

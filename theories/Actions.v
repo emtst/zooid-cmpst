@@ -43,9 +43,6 @@ CoInductive trace :=
 | tr_end : trace
 | tr_next : act -> trace -> trace.
 
-Definition act_ty a :=
-  let: mk_act a _ _ _ _ := a in a.
-
 Definition subject a :=
   match a with
   | mk_act a p q _ _ =>

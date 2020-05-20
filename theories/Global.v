@@ -528,7 +528,7 @@ Section Semantics.
   Inductive part_of: role -> rg_ty -> Prop :=
     | pof_from F T C: part_of F (rg_msg F T C)
     | pof_to F T C: part_of T (rg_msg F T C)
-    | pof_cont p F T C L G Ty: C L = Some (Ty, G) 
+    | pof_cont p F T C L G Ty: C L = Some (Ty, G)
       -> part_of p G -> part_of p (rg_msg F T C).
 
 
@@ -537,10 +537,10 @@ Section Semantics.
     | ipof_end p cG: part_of p cG -> iPart_of p (ig_end cG)
     | ipof_from o F T C: iPart_of F (ig_msg o F T C)
     | ipof_to o F T C: iPart_of T (ig_msg o F T C)
-    | ipof_cont p o F T C L G Ty: C L = Some (Ty, G) 
+    | ipof_cont p o F T C L G Ty: C L = Some (Ty, G)
       -> iPart_of p G -> iPart_of p (ig_msg o F T C).
 
-  Lemma iPart_of_label_label_aux p o o' F T C GG: 
+  Lemma iPart_of_label_label_aux p o o' F T C GG:
     iPart_of p GG -> GG = ig_msg o F T C ->
         iPart_of p (ig_msg o' F T C).
   Proof.
@@ -552,7 +552,7 @@ Section Semantics.
     by rewrite -eq4; apply: (ipof_cont o' F T contL ipartof).
   Qed.
 
-  Lemma iPart_of_label_label p o o' F T C: 
+  Lemma iPart_of_label_label p o o' F T C:
     iPart_of p (ig_msg o F T C) ->
         iPart_of p (ig_msg o' F T C).
   Proof.
@@ -566,7 +566,7 @@ Section Semantics.
   Definition P_option A (P : A -> Prop) (C : option A) : Prop :=
     match C with
     | Some X => P X
-    | None => True 
+    | None => True
     end.
 
   Definition P_prod A B (P : B -> Prop) (C : A * B) : Prop :=
@@ -577,14 +577,14 @@ Section Semantics.
   Lemma ig_ty_ind'
     (P : ig_ty -> Prop)
     (P_end : forall CONT, P (ig_end CONT))
-    (P_msg : (forall ST FROM TO CONT, 
+    (P_msg : (forall ST FROM TO CONT,
       (forall L, P_option (P_prod P) (CONT L)) ->
       P (ig_msg ST FROM TO CONT)))
   : forall G, P G.
-  Proof. 
+  Proof.
     fix Ih 1; case.
     - by apply: P_end.
-    - move=> ST F T C; apply: P_msg => L. 
+    - move=> ST F T C; apply: P_msg => L.
       case: (C L)=>[[Ty G]|].
       + by rewrite /P_option/P_prod; apply/Ih.
       + by rewrite /P_option.
@@ -593,11 +593,11 @@ Section Semantics.
   Lemma ig_ty_ind
     (P : ig_ty -> Prop)
     (P_end : forall CONT, P (ig_end CONT))
-    (P_msg : (forall ST FROM TO CONT, 
+    (P_msg : (forall ST FROM TO CONT,
       (forall L Ty G, CONT L = Some (Ty, G) -> P G) ->
       P (ig_msg ST FROM TO CONT)))
   : forall G, P G.
-  Proof. 
+  Proof.
     elim/ig_ty_ind'=>// ST FROM TO CONT Ih.
     apply/P_msg => L Ty G; move: (Ih L); case: (CONT L) =>[[Ty' G']|]//=.
     by move=> P_G' [_ <-].
@@ -707,8 +707,8 @@ Section Semantics.
   Definition rg_unr (G : rg_ty) : ig_ty :=
     match G with
     | rg_msg F T C
-        => ig_msg None F T 
-                  (fun lbl => 
+        => ig_msg None F T
+                  (fun lbl =>
                     match C lbl with
                     | None => None
                     | Some (t, G) => Some (t, ig_end G)
@@ -724,7 +724,7 @@ Section Semantics.
       step (mk_act l_send F T L Ty) (ig_msg None F T C) (ig_msg (Some L) F T C)
   | st_recv L F T C Ty G :
       C L = Some (Ty, G) ->
-      step (mk_act l_recv F T L Ty) (ig_msg (Some L) F T C) G
+      step (mk_act l_recv T F L Ty) (ig_msg (Some L) F T C) G
   (* Struct *)
   | st_amsg1 a F T C0 C1 :
       subject a != F ->
@@ -738,7 +738,7 @@ Section Semantics.
       R_only (step a) L C0 C1 ->
       step a (ig_msg (Some L) F T C0) (ig_msg (Some L) F T C1)
   | st_unr a CG G :
-      step a (rg_unr CG) G -> 
+      step a (rg_unr CG) G ->
       step a (ig_end CG) G
   .
   Set Elimination Schemes.
@@ -753,12 +753,12 @@ Section Semantics.
       P (mk_act l_send F T L Ty) (ig_msg None F T C) (ig_msg (Some L) F T C)
         (st_send F T e) )
     ->
-    (forall L F T C Ty G (e: C L = Some (Ty, G)), 
-      P (mk_act l_recv F T L Ty) (ig_msg (Some L) F T C) G (st_recv F T e))
+    (forall L F T C Ty G (e: C L = Some (Ty, G)),
+      P (mk_act l_recv T F L Ty) (ig_msg (Some L) F T C) G (st_recv F T e))
     ->
-    (forall a F T C0 C1 (i : subject a != F) (i0 : subject a != T) 
+    (forall a F T C0 C1 (i : subject a != F) (i0 : subject a != T)
           (s : same_dom C0 C1) (r : R_all (step a) C0 C1),
-        (forall (L : lbl) (Ty : mty) (G G' : ig_ty) 
+        (forall (L : lbl) (Ty : mty) (G G' : ig_ty)
            (e : C0 L = Some (Ty, G)) (e0 : C1 L = Some (Ty, G')),
          P a G G' (r L Ty G G' e e0)) ->
         P a (ig_msg None F T C0) (ig_msg None F T C1) (st_amsg1 i i0 s r))
@@ -770,12 +770,12 @@ Section Semantics.
       ((forall (L' : lbl) (K : mty * ig_ty),
       L != L' -> C0 L' = Some K <-> C1 L' = Some K) /\
       (exists (Ty : mty) (G0 G1 : ig_ty),
-      C0 L = Some (Ty, G0) /\ C1 L = Some (Ty, G1) 
+      C0 L = Some (Ty, G0) /\ C1 L = Some (Ty, G1)
       /\ (exists (r: step a G0 G1), P a G0 G1 r)))
       ->
       (*... with dependent types*)
-      P a (ig_msg (Some L) F T C0) (ig_msg (Some L) F T C1) 
-          (st_amsg2 F i s r)) 
+      P a (ig_msg (Some L) F T C0) (ig_msg (Some L) F T C1)
+          (st_amsg2 F i s r))
       ->
      (forall (a : act) (CG : rg_ty) (G : ig_ty) (s : step a (rg_unr CG) G),
         P a (rg_unr CG) G s -> P a (ig_end CG) G (st_unr s))
@@ -810,5 +810,5 @@ Section Semantics.
   Hint Resolve g_lts_monotone.
 
   Close Scope mpst_scope.
-  
+
 End Semantics.

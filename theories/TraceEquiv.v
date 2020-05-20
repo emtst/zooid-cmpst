@@ -19,7 +19,7 @@ Require Import MPST.QProjection.
 
 Section TraceEquiv.
 
-(*Finite set to be thought of as the set of all 
+(*Finite set to be thought of as the set of all
 participants involved in the protocol.
 
 MAYBE USELESS
@@ -39,7 +39,7 @@ Open Scope fmap.
 
 
 (*
-Axiom IProj_end : 
+Axiom IProj_end :
 forall p G, ~ iPart_of p G -> (forall L, IProj p G L -> L = rl_end).
 *)
 
@@ -57,7 +57,7 @@ maybe the (p \in PAR) condition can be removed
 (*again lemmas to be moved elsewhere later*)
 
 
-  Lemma step_send_inv_aux F T C L Ty aa GG: 
+  Lemma step_send_inv_aux F T C L Ty aa GG:
     step aa GG (ig_msg (Some L) F T C) ->
     aa = mk_act l_send F T L Ty -> GG = ig_msg None F T C ->
     exists G, C L = Some (Ty, G).
@@ -71,7 +71,7 @@ maybe the (p \in PAR) condition can be removed
     by rewrite -(rwP negP) //=.
   Qed.
 
-  Lemma step_send_inv F T C L Ty: 
+  Lemma step_send_inv F T C L Ty:
     step (mk_act l_send F T L Ty) (ig_msg None F T C) (ig_msg (Some L) F T C) ->
     exists G, C L = Some (Ty, G).
   Proof.
@@ -112,7 +112,7 @@ at the moment it is only morally!
 
   Lemma cProj_send_inv_aux F T C GG lT:
     Project F GG lT -> GG = (rg_msg F T C) ->
-    F != T /\ (exists lC, lT = rl_msg l_send T lC /\ 
+    F != T /\ (exists lC, lT = rl_msg l_send T lC /\
     same_dom C lC /\ R_all (upaco2 (Proj_ F) bot2) C lC).
   Proof.
   move=> hp; punfold hp; [move: hp => [] //=| by apply Proj_monotone].
@@ -124,9 +124,9 @@ at the moment it is only morally!
     by move: neq2; rewrite eq1 -(rwP negP).
   Qed.
 
-  Lemma cProj_send_inv F T C lT: 
+  Lemma cProj_send_inv F T C lT:
     Project F (rg_msg F T C) lT ->
-    F != T /\ (exists lC, lT = rl_msg l_send T lC /\ 
+    F != T /\ (exists lC, lT = rl_msg l_send T lC /\
     same_dom C lC /\ R_all (upaco2 (Proj_ F) bot2) C lC).
   Proof.
   by move=> hp; apply: (cProj_send_inv_aux hp).
@@ -135,7 +135,7 @@ at the moment it is only morally!
 
   Lemma cProj_recv_inv_aux F T C GG lT:
     Project T GG lT -> GG = (rg_msg F T C) ->
-    F != T /\ (exists lC, lT = rl_msg l_recv F lC /\ 
+    F != T /\ (exists lC, lT = rl_msg l_recv F lC /\
     same_dom C lC /\ R_all (upaco2 (Proj_ T) bot2) C lC).
   Proof.
   move=> hp; punfold hp; [move: hp => [] //=| by apply Proj_monotone].
@@ -147,9 +147,9 @@ at the moment it is only morally!
     by move: neq3; rewrite eq2 -(rwP negP).
   Qed.
 
-  Lemma cProj_recv_inv F T C lT: 
+  Lemma cProj_recv_inv F T C lT:
     Project T (rg_msg F T C) lT ->
-    F != T /\ (exists lC, lT = rl_msg l_recv F lC /\ 
+    F != T /\ (exists lC, lT = rl_msg l_recv F lC /\
     same_dom C lC /\ R_all (upaco2 (Proj_ T) bot2) C lC).
   Proof.
   by move=> hp; apply: (cProj_recv_inv_aux hp).
@@ -157,8 +157,8 @@ at the moment it is only morally!
 
 
   Lemma cProj_mrg_inv_aux p F T C GG lT:
-    Project p GG lT -> 
-    p != F -> p != T -> GG = rg_msg F T C -> 
+    Project p GG lT ->
+    p != F -> p != T -> GG = rg_msg F T C ->
     F != T /\ (exists lC, same_dom C lC /\
       R_all (upaco2 (Proj_ p) bot2) C lC /\
       Merge lC lT).
@@ -199,7 +199,7 @@ at the moment it is only morally!
 
   Lemma IProj_send1_inv_aux F T C GG CL:
     IProj F GG CL -> GG = (ig_msg None F T C) ->
-    F != T /\ (exists lC, CL = rl_msg l_send T lC /\ 
+    F != T /\ (exists lC, CL = rl_msg l_send T lC /\
     same_dom C lC /\ R_all (IProj F) C lC).
   Proof.
   case=>//.
@@ -211,9 +211,9 @@ at the moment it is only morally!
     by move: neq2; rewrite eq2 -(rwP negP).
   Qed.
 
-  Lemma IProj_send1_inv F T C CL: 
+  Lemma IProj_send1_inv F T C CL:
     IProj F (ig_msg None F T C) CL ->
-    F != T /\ (exists lC, CL = rl_msg l_send T lC /\ 
+    F != T /\ (exists lC, CL = rl_msg l_send T lC /\
     same_dom C lC /\ R_all (IProj F) C lC).
   Proof.
   by move=> hp; apply: (IProj_send1_inv_aux hp).
@@ -222,7 +222,7 @@ at the moment it is only morally!
 
   Lemma IProj_send2_inv_aux L F T C GG CL:
     IProj F GG CL -> GG = (ig_msg (Some L) F T C) ->
-    F != T /\ (exists lC Ty, lC L = Some (Ty, CL) /\ 
+    F != T /\ (exists lC Ty, lC L = Some (Ty, CL) /\
     same_dom C lC /\ R_all (IProj F) C lC).
   Proof.
   case=>//.
@@ -234,9 +234,9 @@ at the moment it is only morally!
     by move: neq2; rewrite eq2 -(rwP negP).
   Qed.
 
-  Lemma IProj_send2_inv L F T C CL: 
+  Lemma IProj_send2_inv L F T C CL:
     IProj F (ig_msg (Some L) F T C) CL ->
-    F != T /\ (exists lC Ty, lC L = Some (Ty, CL) /\ 
+    F != T /\ (exists lC Ty, lC L = Some (Ty, CL) /\
     same_dom C lC /\ R_all (IProj F) C lC).
   Proof.
   by move=> hp; apply: (IProj_send2_inv_aux hp).
@@ -244,7 +244,7 @@ at the moment it is only morally!
 
  Lemma IProj_recv_inv_aux olb F T C GG CL:
     IProj T GG CL -> GG = (ig_msg olb F T C) ->
-    F != T /\ (exists lC, CL = rl_msg l_recv F lC /\ 
+    F != T /\ (exists lC, CL = rl_msg l_recv F lC /\
     same_dom C lC /\ R_all (IProj T) C lC).
   Proof.
   case =>//.
@@ -258,17 +258,17 @@ at the moment it is only morally!
     by move: neq3; rewrite eq3 -(rwP negP).
   Qed.
 
-  Lemma IProj_recv_inv olb F T C CL: 
+  Lemma IProj_recv_inv olb F T C CL:
     IProj T (ig_msg olb F T C) CL ->
-    F != T /\ (exists lC, CL = rl_msg l_recv F lC /\ 
+    F != T /\ (exists lC, CL = rl_msg l_recv F lC /\
     same_dom C lC /\ R_all (IProj T) C lC).
   Proof.
   by move=> hp; apply: (IProj_recv_inv_aux hp).
   Qed.
 
   Lemma IProj_mrg_inv_aux p olb F T C GG CL:
-    IProj p GG CL -> 
-    p != F -> p != T -> GG = ig_msg olb F T C -> 
+    IProj p GG CL ->
+    p != F -> p != T -> GG = ig_msg olb F T C ->
     F != T /\ (exists lC, same_dom C lC /\
       R_all (IProj p) C lC /\
       Merge lC CL).
@@ -301,7 +301,7 @@ at the moment it is only morally!
 
   Lemma eProject_send_none F T C E:
     eProject (ig_msg None F T C) E ->
-    F != T /\ (exists lC, E.[? F]%fmap = Some (rl_msg l_send T lC) /\ 
+    F != T /\ (exists lC, E.[? F]%fmap = Some (rl_msg l_send T lC) /\
     same_dom C lC /\ R_all (IProj F) C lC).
   Proof.
   elim=> parPAR hp.
@@ -331,10 +331,10 @@ at the moment it is only morally!
   Qed.
 
 
- 
+
   Lemma eProject_recv o F T C E:
     (*T \in PAR ->*) eProject (ig_msg o F T C) E ->
-    F != T /\ (exists lC, E.[? T]%fmap = Some (rl_msg l_recv F lC) /\ 
+    F != T /\ (exists lC, E.[? T]%fmap = Some (rl_msg l_recv F lC) /\
     same_dom C lC /\ R_all (IProj T) C lC).
   Proof.
   elim=> parPAR hp.
@@ -351,21 +351,21 @@ at the moment it is only morally!
 (*to be moved in Local.v*)
 
 
-  Lemma EqL_r_end_inv_aux lT lT': 
+  Lemma EqL_r_end_inv_aux lT lT':
     EqL lT lT' -> lT' = rl_end -> lT = rl_end.
   Proof.
   by move=> hp; punfold hp; move: hp => [] //=.
   Qed.
 
-  Lemma EqL_r_end_inv lT: 
+  Lemma EqL_r_end_inv lT:
     EqL lT rl_end -> lT = rl_end.
   Proof.
   by move=> hp; apply (EqL_r_end_inv_aux hp).
   Qed.
 
-  Lemma EqL_r_msg_inv_aux lT lT' a p C': 
+  Lemma EqL_r_msg_inv_aux lT lT' a p C':
     EqL lT lT' -> lT' = rl_msg a p C' ->
-    exists C, same_dom C C' /\ 
+    exists C, same_dom C C' /\
        R_all EqL C C' /\ lT = rl_msg a p C.
   Proof.
   move=> hp; punfold hp; move: hp => [] //=.
@@ -375,19 +375,19 @@ at the moment it is only morally!
   rewrite /R_all in rall; move: (rall L Ty lT1 lT2 ceq1 ceq2).
   by rewrite /upaco2; elim; rewrite //=.
   Qed.
-  
-  Lemma EqL_r_msg_inv a p C' lT: 
+
+  Lemma EqL_r_msg_inv a p C' lT:
     EqL lT (rl_msg a p C') ->
-    exists C, same_dom C C' /\ 
+    exists C, same_dom C C' /\
        R_all EqL C C' /\ lT = rl_msg a p C.
   Proof.
   by move=> hp; apply: (EqL_r_msg_inv_aux hp).
   Qed.
 
 
-  Lemma EqL_l_msg_inv_aux lT lT' a p C: 
+  Lemma EqL_l_msg_inv_aux lT lT' a p C:
     EqL lT lT' -> lT = rl_msg a p C ->
-    exists C', same_dom C C' /\ 
+    exists C', same_dom C C' /\
        R_all EqL C C' /\ lT' = rl_msg a p C'.
   Proof.
   move=> hp; punfold hp; move: hp => [] //=.
@@ -397,10 +397,10 @@ at the moment it is only morally!
   rewrite /R_all in rall; move: (rall L Ty lT1 lT2 ceq1 ceq2).
   by rewrite /upaco2; elim; rewrite //=.
   Qed.
-  
-  Lemma EqL_l_msg_inv a p C lT': 
+
+  Lemma EqL_l_msg_inv a p C lT':
     EqL (rl_msg a p C) lT' ->
-    exists C', same_dom C C' /\ 
+    exists C', same_dom C C' /\
        R_all EqL C C' /\ lT' = rl_msg a p C'.
   Proof.
   by move=> hp; apply: (EqL_l_msg_inv_aux hp).
@@ -439,7 +439,7 @@ at the moment it is only morally!
 (*next two admitted lemmas should have similar proofs
 actually they should be doubled*)
 
-  Lemma EqL_Project p G lT lT': 
+  Lemma EqL_Project p G lT lT':
     EqL lT lT' -> Project p G lT -> Project p G lT'.
   Proof.
   move=> eql prj; move: (conj eql prj) => {eql prj}.
@@ -490,7 +490,7 @@ actually they should be doubled*)
         move: (cProj_mrg_inv hpro neq neqpT); elim=> neqFT.
         elim=> lC0; elim=> samed0; elim=> ral mer.
         apply /paco2_fold.
-        apply: (@prj_mrg _ _ _ _ _ 
+        apply: (@prj_mrg _ _ _ _ _
           (same_dom_const CONT (rl_msg a q C)) _ neqFT neq neqpT).
         + by apply same_dom_const_same_dom.
         + rewrite /R_all; move=> LL Tyy GG lTT contLL lcontLL.
@@ -517,7 +517,7 @@ actually they should be doubled*)
 
 
 
-  Lemma EqL_IProj p G lT lT': 
+  Lemma EqL_IProj p G lT lT':
     IProj p G lT -> EqL lT lT' -> IProj p G lT'.
   Proof.
   move=> hp; move: hp lT'; elim.
@@ -553,7 +553,7 @@ actually they should be doubled*)
       apply: (Ih _ _ _ _ CL lCL).
       by apply: (rall' _ _ _ _ lCL lCL').
   + move=> o q s C lC lT0 neqqs neqpq neqps samed rall Ih mer lT' eqL.
-    apply: (@iprj_mrg _ _ _ _ _ 
+    apply: (@iprj_mrg _ _ _ _ _
           (same_dom_const C lT') _ neqqs neqpq neqps).
     * by apply: same_dom_const_same_dom.
     * move=> L Ty G0 lTT' CL sdLa.
@@ -608,7 +608,7 @@ actually they should be doubled*)
   + move=> L F T C Ty G0 CL wf; rewrite /subject.
     by apply ipof_from.
   + move=> L F T C Ty G0 CL wf; rewrite /subject.
-    by apply ipof_to.
+    by apply ipof_from.
   + move=> a0 F T C0 C1 nF nT sd ra ih wf.
     move: (ig_wfcont_msg_inv wf); elim=> neqFT.
     elim; elim=> L; elim=> Ty; elim=> G0.
@@ -689,7 +689,7 @@ actually they should be doubled*)
 
 
 
-  Lemma inPAR_msg_cont o F T C L Ty G: 
+  Lemma inPAR_msg_cont o F T C L Ty G:
     (forall p, iPart_of p (ig_msg o F T C) -> p \in PAR)
     -> C L = Some (Ty, G)
     -> (forall p, iPart_of p G -> p \in PAR).
@@ -697,11 +697,11 @@ actually they should be doubled*)
   move=> msginPAR CL p part.
   apply: (msginPAR _ (ipof_cont o F T CL part)).
   Qed.
- 
 
-  Lemma eProject_cont_build o F T C E L Ty G: 
+
+  Lemma eProject_cont_build o F T C E L Ty G:
     eProject (ig_msg o F T C) E -> C L = Some (Ty, G)
-    -> forall p, p \in PAR -> 
+    -> forall p, p \in PAR ->
     (exists L0 : rl_ty, IProj p G L0).
   Proof.
   elim=> allinPAR epro CL p inPAR.
@@ -731,7 +731,7 @@ actually they should be doubled*)
   Qed.
 
 
-Lemma eProject_cont o F T C E L Ty G (lC : lbl /-> mty * rl_ty): 
+Lemma eProject_cont o F T C E L Ty G (lC : lbl /-> mty * rl_ty):
   eProject (ig_msg o F T C) E -> C L = Some (Ty, G)
   -> exists E0, eProject G E0.
 (*{E0 : role -> (option rl_ty)|
@@ -743,9 +743,9 @@ Proof.
   elim=> allinPAR {}epro build''.
   have build': forall p : role, exists L0 : rl_ty, p \in PAR -> IProj p G L0.
     move=> p; move: (build'' p); move=> {}build''.
-    apply: (@exists_rel_finset_inhabited 
+    apply: (@exists_rel_finset_inhabited
         _ _ _ _ rl_end (fun p L => IProj p G L) build'').
-  have build: forall p : role, exists oL0 : (option rl_ty), p \in PAR 
+  have build: forall p : role, exists oL0 : (option rl_ty), p \in PAR
     -> exists L0, (IProj p G L0 /\ oL0 = Some L0).
     move=> p; move: ( build' p); elim=> L0 hp.
     apply: (@exists_rel_finset_inhabited _ PAR p _ None
@@ -769,9 +769,9 @@ Proof.
   Qed.
 
 
-(*  Lemma gstep_doact_send a G G' p q lbl tyy E: 
+(*  Lemma gstep_doact_send a G G' p q lbl tyy E:
     step a G G' -> a = (a_send p q lbl tyy) -> eProject G E ->
-    ig_wfcont G -> well_Formed G ->
+    ig_wfcont G -> well_formed G ->
     exists E', do_act E l_send p q lbl tyy = Some E'.
   Proof.
   move=> stephp; elim/step_ind: stephp E =>//=.
@@ -783,11 +783,11 @@ Proof.
 (*playing with continuations*)
   Inductive cont_of: (lbl /-> mty * rg_ty) -> rg_ty -> Prop :=
     | cof_0 C F T: cont_of C (rg_msg F T C)
-    | cof_rec C F T CC L G Ty: CC L = Some (Ty, G) 
+    | cof_rec C F T CC L G Ty: CC L = Some (Ty, G)
       -> cont_of C G -> cont_of C (rg_msg F T CC).
 
   Inductive iCont_of: (lbl /-> mty * ig_ty) -> ig_ty -> Prop :=
-    | icof_end C cG: cont_of C cG -> iCont_of 
+    | icof_end C cG: cont_of C cG -> iCont_of
       (fun lbl =>  match C lbl with
                     | None => None
                     | Some (t, G) => Some (t, ig_end G)
@@ -797,7 +797,7 @@ Proof.
       -> iCont_of C G -> iCont_of C (ig_msg o F T CC).
 
   Definition findom_cont G (LAB : {fset lbl}) : Prop :=
-  (forall C, iCont_of C G -> 
+  (forall C, iCont_of C G ->
     (forall L ty GG, C L = Some (ty, GG) -> L \in LAB) ).
 
   Lemma all_fset_option_map
@@ -826,24 +826,109 @@ Proof.
 
 
 
- Lemma forallforallforall (T: Type) (P Q: T -> Prop):
-  (forall (x: T), P x) /\ (forall (x: T), Q x) 
+  Lemma forallforallforall (T: Type) (P Q: T -> Prop):
+  (forall (x: T), P x) /\ (forall (x: T), Q x)
   -> (forall x, P x /\ Q x).
-  Proof. 
+  Proof.
   by elim=> PP QQ x; split; [apply PP|apply QQ].
   Qed.
 
+  Definition Projection G P := eProject G P.1 /\ qProject G P.2.
 
-(*g_wfcont added as a hypothesis, we'll probably need
-also wellformedness from WellFormed.v*)
-  Lemma Project_step (LAB : {fset lbl}) G (Q : {fmap role * role -> seq (lbl * mty) }) E a G':
-    step a G G' -> findom_cont G LAB ->
-    (*(forall q q' : role, Q.[? (q, q')] != Some [::]) ->*)
-    ig_wfcont G -> well_Formed G ->
-    (*(forall p, iPart_of p G -> p \in PAR)->*)
-    (*L to D and F, 19/05/2020: the above hp is not needed,
-    since it is contained in eProject G E below*)
-    qProject G Q -> eProject G E
+  Lemma eProj_igend_from F T C E :
+    eProject (ig_end (rg_msg F T C)) E ->
+    exists L : rl_ty, IProj F (ig_end (rg_msg F T C)) L /\ E.[? F] = Some L.
+  Proof. by move=>[/(_ F (ipof_end (pof_from _ _ _)))-H /(_ F H)]. Qed.
+
+  Lemma eProj_igend_to F T C E :
+    eProject (ig_end (rg_msg F T C)) E ->
+    exists L : rl_ty, IProj T (ig_end (rg_msg F T C)) L /\ E.[? T] = Some L.
+  Proof. by move=>[/(_ T (ipof_end (pof_to _ _ _)))-H /(_ T H)]. Qed.
+
+  Lemma eProj_igmsg_from o F T C E :
+    eProject (ig_msg o F T C) E ->
+    exists L : rl_ty, IProj F (ig_msg o F T C) L /\ E.[? F] = Some L.
+  Proof. by move=>[/(_ F (ipof_from _ _ _ _))-H /(_ F H)]. Qed.
+
+  Lemma eProj_igmsg_to o F T C E :
+    eProject (ig_msg o F T C) E ->
+    exists L : rl_ty, IProj T (ig_msg o F T C) L /\ E.[? T] = Some L.
+  Proof. by move=>[/(_ T (ipof_to _ _ _ _))-H /(_ T H)]. Qed.
+
+  Lemma eProj_part p G E :
+      eProject G E -> iPart_of p G -> exists L, IProj p G L /\ E.[? p] = Some L.
+  Proof.
+    move=>Prj IPart.
+    elim: IPart E Prj =>
+    [ {}p {}G POF
+    | {p} o F T C
+    | {p} o F T C
+    | {}p o F T C L G' Ty C_L p_G' Ih
+    ] E.
+    - elim: POF =>
+      [ {p} F T C
+      | {p} F T C
+      | {}p F T C L G' Ty C_L p_G' Ih
+      ] in E *.
+      + by apply: eProj_igend_from.
+      + by apply: eProj_igend_to.
+      + case: (boolP (p == F))=>[/eqP->|pF]; first by apply: eProj_igend_from.
+        case: (boolP (p == T))=>[/eqP->|pT]; first by apply: eProj_igend_to.
+        by move=>[/(_ p (ipof_end (pof_cont _ _ C_L p_G')))-PP /(_ p PP)].
+    - by apply: eProj_igmsg_from.
+    - by apply: eProj_igmsg_to.
+    - case: (boolP (p == F))=>[/eqP->|pF]; first by apply: eProj_igmsg_from.
+      case: (boolP (p == T))=>[/eqP->|pT]; first by apply: eProj_igmsg_to.
+      by move=>[/(_ p (ipof_cont _ _ _ C_L p_G'))]-PP /(_ p PP).
+  Qed.
+
+  Lemma local_runnable G P A G' :
+    step A G G' -> Projection G P -> runnable A P.
+  Proof.
+  case: P => [E Q] ST [/=E_Prj Q_Prj]; move: ST E_Prj Q_Prj.
+  elim=>
+    [ L F T C Ty G'' C_L EPrj QPrj
+    | L F T C Ty G'' C_L EPrj QPrj
+    | {}A F T C0 C1 AF AT DOM_C STEP_C Ih EPrj QPrj
+    |
+    |
+    ].
+  - rewrite /runnable/=.
+    move: (eProj_part EPrj (ipof_from None F T C)) => [L_F [IProj_F E_F]].
+    move: (IProj_send1_inv IProj_F)=>[_ [lC [LF_msg [/(_ L Ty)-[DOM _] PRJ_C]]]].
+    move: (DOM (ex_intro _ _ C_L)) => [L' lC_L].
+    by rewrite E_F LF_msg lC_L !eq_refl.
+  - rewrite /runnable/=.
+    move: (eProj_part EPrj (ipof_to (Some L) F T C)) => [L_F [IProj_F E_F]].
+    move: (IProj_recv_inv IProj_F)=>[_ [lC [LF_msg [/(_ L Ty)-[DOM _] PRJ_C]]]].
+    move: (DOM (ex_intro _ _ C_L)) => [L' lC_L].
+    move: (qProject_Some_inv QPrj) => [_ [Ty' [{}G [Q' [C_L' [/eqP-Q_FT _]]]]]].
+    rewrite E_F LF_msg lC_L !eq_refl/= Q_FT.
+    by move: C_L C_L'=>-> [->]; rewrite !eq_refl.
+  - rewrite /runnable.
+    admit.
+  - admit.
+  - admit.
+  Admitted.
+
+  Lemma runstep_proj G P : forall A G',
+    step A G G' -> Projection G P -> Projection G' (run_step A P).
+  Proof.
+    move=> A G' ST Prj; move: (local_runnable ST Prj) => Run.
+  Admitted.
+
+  Lemma Project_step G P : forall A G',
+    step A G G' ->
+    (* TODO: I deleted the well-formedness conditions. Add as required *)
+    Projection G P ->
+    exists P', Projection G' P' /\ lstep A P P'.
+  Proof.
+  move=> A G' ST Prj; exists (run_step A P); split.
+  - apply/(runstep_proj ST Prj).
+  - apply/run_step_sound/(local_runnable ST Prj).
+  Qed.
+
+    (* qProject G Q -> eProject G E
     -> exists E' Q', qProject G' Q' /\ eProject G' E'
        /\ lstep a (E, Q) (E', Q').
   Proof.
@@ -954,15 +1039,15 @@ also wellformedness from WellFormed.v*)
 
     (*
     L to D and F: from now on I'll keep track of the different steps
-    for this case. Right now (06/05/2020) it appears to me that 
+    for this case. Right now (06/05/2020) it appears to me that
     it is going to be a long one. I want to build E'.
     I have a plan (updated 18/05/2020).
     I will use the theorem I have proved for building
     finite functions, so that I can build E' extensionally,
     for each participant. I will extensively use the induction
     hypothesis.
-    
-New update (19/05/2020: change of plans! :) 
+
+New update (19/05/2020: change of plans! :)
 )
 *)
     have: exists E':{fmap role -> rl_ty}, (forall p : role, p \in PAR ->
@@ -984,11 +1069,11 @@ New update (19/05/2020: change of plans! :)
         - admit.
 
 (*rewrite /same_dom /R_all.
-          suffices: (exists KsL : lbl /-> mty * rl_ty,  
+          suffices: (exists KsL : lbl /-> mty * rl_ty,
             same_dom C1 KsL /\ R_all (IProj F) C1 KsL)
 
 
-        
+
 
 
 (*all_fset_option_map*)
@@ -1018,7 +1103,7 @@ New update (19/05/2020: change of plans! :)
     *) *)
   Admitted.
 
-
+ *)
 
 
   Definition step_equiv G P :=
