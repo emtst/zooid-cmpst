@@ -38,45 +38,18 @@ Definition PAR2 := (PAR `*` PAR)%fset.
 Open Scope fmap.
 
 
-  Inductive part_of: role -> rg_ty -> Prop :=
-    | pof_from F T C: part_of F (rg_msg F T C)
-    | pof_to F T C: part_of T (rg_msg F T C)
-    | pof_cont p F T C L G Ty: C L = Some (Ty, G) 
-      -> part_of p G -> part_of p (rg_msg F T C).
-
-   Inductive iPart_of: role -> ig_ty -> Prop :=
-    | ipof_end p cG: part_of p cG -> iPart_of p (ig_end cG)
-    | ipof_from o F T C: iPart_of F (ig_msg o F T C)
-    | ipof_to o F T C: iPart_of T (ig_msg o F T C)
-    | ipof_cont p o F T C L G Ty: C L = Some (Ty, G) 
-      -> iPart_of p G -> iPart_of p (ig_msg o F T C).
-
-  Lemma iPart_of_label_label_aux p o o' F T C GG: 
-    iPart_of p GG -> GG = ig_msg o F T C ->
-        iPart_of p (ig_msg o' F T C).
-  Proof.
-  elim.
-  + by [].
-  + by move=> o0 F0 T0 C0 [hp1 hp2 hp3 hp4]; rewrite hp2; apply ipof_from.
-  + by move=> o0 F0 T0 C0 [hp1 hp2 hp3 hp4]; rewrite hp3; apply ipof_to.
-  + move=> p0 o0 F0 T0 C0 L G Ty contL ipartof ih [eq1 eq2 eq3 eq4].
-    by rewrite -eq4; apply: (ipof_cont o' F T contL ipartof).
-  Qed.
-
-  Lemma iPart_of_label_label p o o' F T C: 
-    iPart_of p (ig_msg o F T C) ->
-        iPart_of p (ig_msg o' F T C).
-  Proof.
-  by move=> hp; apply: (@iPart_of_label_label_aux p o o' F T C _ hp).
-  Qed.
-
+(*
+Axiom IProj_end : 
+forall p G, ~ iPart_of p G -> (forall L, IProj p G L -> L = rl_end).
+*)
 
 (*
 maybe the (p \in PAR) condition can be removed
 *)
   Definition eProject (G: ig_ty) (E : {fmap role -> rl_ty}) : Prop :=
-  (forall p, p \in PAR -> iPart_of p G -> 
-      (exists L, IProj p G L /\ E.[? p] = Some L)).
+  (forall p, iPart_of p G -> p \in PAR) /\
+  (forall p, p \in PAR ->
+      (exists L,  IProj p G L /\ E.[? p] = Some L)).
 
 
 
@@ -327,30 +300,31 @@ at the moment it is only morally!
 
 
   Lemma eProject_send_none F T C E:
-    F \in PAR -> eProject (ig_msg None F T C) E ->
+    eProject (ig_msg None F T C) E ->
     F != T /\ (exists lC, E.[? F]%fmap = Some (rl_msg l_send T lC) /\ 
     same_dom C lC /\ R_all (IProj F) C lC).
   Proof.
-  rewrite /eProject; move=> Fin hp; move: (hp _ Fin).
-  move=> hp_part; move: (hp_part (ipof_from None F T C)).
-  elim; move=> lT; elim; move=> pro eq; move: (IProj_send1_inv pro).
-  elim; move=> neq; elim; move=> lC; elim; move=> lTeq; elim; move=> samedom rall.
-  split; [by []|exists lC]; split; [by rewrite eq; apply f_equal| split; [ by []|]].
+  elim=> parPAR hp.
+  move: (hp _ (parPAR _ (ipof_from None F T C))); elim=> lT.
+  elim=> pro eq; move: (IProj_send1_inv pro).
+  elim=> neq; elim=> lC; elim=> lTeq; elim=> samedom rall.
+  split; [by []|exists lC].
+  split; [by rewrite eq; apply f_equal| split; [ by []|]].
   move: rall; rewrite /R_all; move=> rall L Ty G lTT someg somel.
   by apply: (rall _ _ _ _ someg somel).
   Qed.
 
 
   Lemma eProject_send_some L F T C E:
-    F \in PAR -> eProject (ig_msg (Some L) F T C) E ->
+    eProject (ig_msg (Some L) F T C) E ->
     F != T /\ (exists lC Ty lT, lC L = Some (Ty, lT) /\
     E.[? F]%fmap = Some lT /\ same_dom C lC /\ R_all (IProj F) C lC).
   Proof.
-  rewrite /eProject; move=> Fin hp; move: (hp _ Fin).
-  move=> hp_part; move: (hp_part (ipof_from (Some L) F T C)).
-  elim; move=> lT; elim; move=> pro eq; move: (IProj_send2_inv pro).
-  elim; move=> neq; elim; move=> lC; elim; move=> Ty; elim; move=> lCLeq.
-  elim; move=> samedom rall; split; [by []|exists lC, Ty, lT].
+  elim=> parPAR hp.
+  move: (hp _ (parPAR _ (ipof_from (Some L) F T C))); elim=> lT.
+  elim=> pro eq; move: (IProj_send2_inv pro).
+  elim=> neq; elim=> lC; elim=> Ty; elim=> lCLeq.
+  elim=> samedom rall; split; [by []|exists lC, Ty, lT].
   split; [by []| split; [ by []|split; [by []|]]].
   move: rall; rewrite /R_all; move=> rall L0 Ty0 G lTT someg somel.
   by apply: (rall _ _ _ _ someg somel).
@@ -359,15 +333,15 @@ at the moment it is only morally!
 
  
   Lemma eProject_recv o F T C E:
-    T \in PAR -> eProject (ig_msg o F T C) E ->
+    (*T \in PAR ->*) eProject (ig_msg o F T C) E ->
     F != T /\ (exists lC, E.[? T]%fmap = Some (rl_msg l_recv F lC) /\ 
     same_dom C lC /\ R_all (IProj T) C lC).
   Proof.
-  rewrite /eProject; move=> Fin hp; move: (hp _ Fin).
-  move=> hp_part; move: (hp_part (ipof_to o F T C)).
-  elim; move=> lT; elim; move=> pro eq; move: (IProj_recv_inv pro).
-  elim; move=> neq; elim; move=> lC; elim; move=> lTeq.
-  elim; move=> samedom rall; split; [by []|exists lC].
+  elim=> parPAR hp.
+  move: (hp _ (parPAR _ (ipof_to o F T C))); elim=> lT.
+  elim=> pro eq; move: (IProj_recv_inv pro).
+  elim=> neq; elim=> lC; elim=> lTeq.
+  elim=> samedom rall; split; [by []|exists lC].
   split; [by rewrite -lTeq | split; [ by []|]].
   move: rall; rewrite /R_all; move=> rall L0 Ty0 G lTT someg somel.
   by apply: (rall _ _ _ _ someg somel).
@@ -590,55 +564,6 @@ actually they should be doubled*)
     * move=> Ln Tn lTn sdc; move: (same_dom_const_some sdc) =>-> //=.
   Qed.
 
-(*next 5 lemmas, to be moved in WellFormed*)
-  Lemma ig_wfcont_end_inv_aux GG CG: 
-    ig_wfcont GG -> GG = (ig_end CG)-> g_wfcont CG.
-  Proof.
-  case =>//=.
-  by move=> cG wf [eq]; rewrite eq in wf.
-  Qed.
-
-  Lemma ig_wfcont_end_inv CG: 
-    ig_wfcont (ig_end CG)-> g_wfcont CG.
-  Proof.
-  by move=> hp; apply (@ig_wfcont_end_inv_aux _ _ hp).
-  Qed.
-
-  Lemma ig_wfcont_msg_inv_aux GG o F T C: 
-    ig_wfcont GG ->  GG = (ig_msg o F T C)-> F != T /\
-    (exists L Ty G, C L = Some (Ty, G) /\ ig_wfcont G) /\
-    (forall LL TTy GG, C LL = Some (TTy, GG) -> ig_wfcont GG).
-  Proof.
-  case =>//=.
-  move=> o0 F0 T0 C0 L Ty G neq C0L wfG wfall [eq1 eq2 eq3 eq4].
-  split; [by rewrite eq2 eq3 in neq|split].
-  + by rewrite eq4 in C0L; exists L, Ty, G.
-  + by rewrite eq4 in wfall.
-  Qed.
-
-  Lemma ig_wfcont_msg_inv o F T C: 
-    ig_wfcont (ig_msg o F T C)-> F != T /\
-    (exists L Ty G, C L = Some (Ty, G) /\ ig_wfcont G) /\
-    (forall LL TTy GG, C LL = Some (TTy, GG) -> ig_wfcont GG).
-  Proof.
-  by move=> hp; apply (@ig_wfcont_msg_inv_aux _ o F T _ hp).
-  Qed.
-
-
-  Lemma ig_wfcont_rg_unr CG: 
-    ig_wfcont (ig_end CG)
-    -> ig_wfcont (rg_unr CG).
-  Proof.
-  case CG =>//=; move=> F T C iwf.
-  move: (g_wfcont_msg_inv (ig_wfcont_end_inv iwf)).
-  elim=>neq; elim; elim=>L; elim=>Ty; elim=>cG; elim=>CL wfG hp.
-  apply: (@ig_wfcont_msg _ _ _ _ L Ty (ig_end cG) neq).
-  + by rewrite CL.
-  + by apply ig_wfcont_end.
-  + move=> LL TTy GG; case E: (C LL)=> [P0|] //=.
-    move: E; case P0; move=> Ty0 cG0 CLL [eqTy eqGG].
-    by rewrite -eqGG; apply: ig_wfcont_end (hp _ _ _ CLL).
-  Qed.
 
 
   Lemma iPart_of_end_unr p CG:
@@ -665,7 +590,7 @@ actually they should be doubled*)
       move: cG_G part_G=><-; case E: _ / =>[{}p cG' part_CG|||]//.
       move: E part_CG=>[<-] part_CG {cG'}.
       by apply/(pof_cont F T C_L)/part_CG.
-Qed.
+  Qed.
 (* I need some inversion lemmas
 *
 * Update 28/04/2020, DC comment: Fixed. True, you can try and see how to add
@@ -708,24 +633,226 @@ Qed.
     by case E: _ / =>[{}p cG part_CG|||]//; move: E=>[->].
   Qed.
 
+
+
+  Open Scope mpst_scope.
+  Open Scope fset.
+
+  Lemma all_fmap
+    (K : choiceType) (FS: {fset K}) (U : Type) (R: K -> (option U) -> Prop):
+    (forall x, exists u : (option U), x \in FS -> R x u)
+      -> exists f: {fmap K -> U}, forall x, x \in FS -> R x (f.[? x]).
+  Proof.
+  elim /finSet_rect: FS=> X; case: (@eqP _ X fset0 ).
+  + by move=>-> IH hp; exists [fmap].
+  + rewrite (rwP eqP) (rwP negP) -(rwP (fset0Pn X)).
+    elim=> x xin IH build; move: (IH _ (fproperD1 xin)) => IH0.
+    have forIH0: forall x0 : K, exists u : option U, x0 \in X `\ x -> R x0 u.
+      move=> x0; move: (build x0); elim=> u0 impl.
+      exists u0; move=> hp; apply: impl; rewrite in_fsetD in hp.
+      by move: hp; rewrite -(rwP andP); elim.
+    move: (IH0 forIH0); elim=> f' hpf'.
+    move: (build x); elim=> u hpu'; move: (hpu' xin); move=> hpu.
+    case E: u => [uu |].
+    - exists (f'.[x <- uu]); move=> y; rewrite fnd_set.
+      case: ifP; [by rewrite -(rwP eqP) -E; move =>->|].
+      move=> neq yin; apply hpf'; rewrite in_fsetD.
+      rewrite -(rwP andP); split=>//.
+      rewrite -(rwP negP) -(rwP (fset1P y x)) //.
+      by rewrite (rwP eqP) (rwP negP); move: (negbT neq).
+    - exists (f'.[~x]); move=> y; rewrite fnd_rem1.
+      case: ifP.
+      * move=> neq yinX; apply hpf'; rewrite in_fsetD.
+        rewrite -(rwP andP); split =>//.
+        rewrite -(rwP negP) -(rwP (fset1P y x)).
+        by rewrite (rwP eqP) (rwP negP).
+      * move=> neq; move: (negbT neq).
+        move=> {}neq; move: (negbNE neq).
+        rewrite -(rwP eqP); move =>-> _.
+        by rewrite E in hpu.
+  Qed.
+
+
+  Lemma exists_rel_finset_inhabited
+    (K : choiceType) (FS: {fset K}) (x : K)
+    (U : Type) (uu : U)
+    (R: K -> U -> Prop):
+    (x \in FS -> exists u, R x u)
+    ->
+    (exists u, x \in FS -> R x u).
+  Proof.
+  case xin: (x \in FS) =>//=.
+  + by elim =>//= u Rxu; exists u.
+  + by move=> _; exists uu.
+  Qed.
+
+
+
+
+  Lemma inPAR_msg_cont o F T C L Ty G: 
+    (forall p, iPart_of p (ig_msg o F T C) -> p \in PAR)
+    -> C L = Some (Ty, G)
+    -> (forall p, iPart_of p G -> p \in PAR).
+  Proof.
+  move=> msginPAR CL p part.
+  apply: (msginPAR _ (ipof_cont o F T CL part)).
+  Qed.
+ 
+
+  Lemma eProject_cont_build o F T C E L Ty G: 
+    eProject (ig_msg o F T C) E -> C L = Some (Ty, G)
+    -> forall p, p \in PAR -> 
+    (exists L0 : rl_ty, IProj p G L0).
+  Proof.
+  elim=> allinPAR epro CL p inPAR.
+  move: (epro  _ inPAR).
+  elim=> lT;  case: (@eqP _ p F).
+  + move =>->; case eq: o=> [L0|].
+    * elim=> {}ipro _; move: (IProj_send2_inv ipro); elim=> neq.
+      elim=> lC; elim=> Ty0; elim=> _; elim=> samedom rall.
+      move: (samedom L Ty); elim; elim; [|by exists G].
+      move=> lT0 lCL _; exists lT0; by apply: (rall L Ty).
+    * elim=> {}ipro _; move: (IProj_send1_inv ipro); elim=> neq.
+      elim=> lC; elim=> _; elim=> samedom rall.
+      move: (samedom L Ty); elim; elim; [|by exists G].
+      move=> lT0 lCL _; exists lT0; by apply: (rall L Ty).
+  + rewrite (rwP eqP) (rwP negP); move=> neqpF.
+    case: (@eqP _ p T).
+    * move=> eqpT; rewrite eqpT.
+      elim=> {}ipro _; move: (IProj_recv_inv ipro).
+      elim=> neq; elim=> lC; elim=> _; elim=> samedom rall.
+      move: (samedom L Ty); elim; elim; [|by exists G].
+      move=> lT0 lCL _; exists lT0; by apply: (rall L Ty).
+    * rewrite (rwP eqP) (rwP negP); move=> neqpT.
+      elim=> {}ipro _; move: (IProj_mrg_inv ipro neqpF neqpT).
+      elim=> neq; elim=> lC; elim=> samedom; elim=> rall mrg.
+      move: (samedom L Ty); elim; elim; [|by exists G].
+      move=> lT0 lCL _; exists lT0; by apply: (rall L Ty).
+  Qed.
+
+
+Lemma eProject_cont o F T C E L Ty G (lC : lbl /-> mty * rl_ty): 
+  eProject (ig_msg o F T C) E -> C L = Some (Ty, G)
+  -> exists E0, eProject G E0.
+(*{E0 : role -> (option rl_ty)|
+    forall p : role,
+    iPart_of p G -> exists L : rl_ty, IProj p G L /\ E0 p = Some L}.*)
+Proof.
+  move=> epro CL.
+  move: epro (eProject_cont_build epro CL).
+  elim=> allinPAR {}epro build''.
+  have build': forall p : role, exists L0 : rl_ty, p \in PAR -> IProj p G L0.
+    move=> p; move: (build'' p); move=> {}build''.
+    apply: (@exists_rel_finset_inhabited 
+        _ _ _ _ rl_end (fun p L => IProj p G L) build'').
+  have build: forall p : role, exists oL0 : (option rl_ty), p \in PAR 
+    -> exists L0, (IProj p G L0 /\ oL0 = Some L0).
+    move=> p; move: ( build' p); elim=> L0 hp.
+    apply: (@exists_rel_finset_inhabited _ PAR p _ None
+      (fun p oL => exists L1 : rl_ty, IProj p G L1 /\ oL = Some L1)
+      ).
+    move=> pinPAR; exists (Some L0), L0; split =>//=.
+    by apply hp.
+  move: (all_fmap build).
+  elim=> E0 hp; exists E0; split=>//=.
+  by apply: (inPAR_msg_cont allinPAR CL).
+  Qed.
+
+
+  Lemma iproj_send1_exists p q KsG:
+      p != q ->
+      (exists KsL, same_dom KsG KsL /\ R_all (IProj p) KsG KsL) ->
+      exists lT, IProj p (ig_msg None p q KsG) lT. (*rl_msg l_send q KsL*)
+  Proof.
+  move=> neq; elim=> KsL; elim=> sd rall.
+  by exists (rl_msg l_send q KsL); apply: iprj_send1.
+  Qed.
+
+
+(*  Lemma gstep_doact_send a G G' p q lbl tyy E: 
+    step a G G' -> a = (a_send p q lbl tyy) -> eProject G E ->
+    ig_wfcont G -> well_Formed G ->
+    exists E', do_act E l_send p q lbl tyy = Some E'.
+  Proof.
+  move=> stephp; elim/step_ind: stephp E =>//=.
+  + admit.
+  + move=> a0 F T C0 C1 nF nT sd ra IH aeq E epro wfc wf.
+  Admitted.*)
+
+
+(*playing with continuations*)
+  Inductive cont_of: (lbl /-> mty * rg_ty) -> rg_ty -> Prop :=
+    | cof_0 C F T: cont_of C (rg_msg F T C)
+    | cof_rec C F T CC L G Ty: CC L = Some (Ty, G) 
+      -> cont_of C G -> cont_of C (rg_msg F T CC).
+
+  Inductive iCont_of: (lbl /-> mty * ig_ty) -> ig_ty -> Prop :=
+    | icof_end C cG: cont_of C cG -> iCont_of 
+      (fun lbl =>  match C lbl with
+                    | None => None
+                    | Some (t, G) => Some (t, ig_end G)
+                    end) (ig_end cG)
+    | icof_0 C o F T: iCont_of C (ig_msg o F T C)
+    | icof_rec C o F T CC L G Ty: CC L = Some (Ty, G)
+      -> iCont_of C G -> iCont_of C (ig_msg o F T CC).
+
+  Definition findom_cont G (LAB : {fset lbl}) : Prop :=
+  (forall C, iCont_of C G -> 
+    (forall L ty GG, C L = Some (ty, GG) -> L \in LAB) ).
+
+  Lemma all_fset_option_map
+    (K : choiceType) (FS: {fset K}) (U : Type) (R: K -> (option U) -> Prop):
+    (forall x, exists u : (option U), x \in FS -> R x u)
+      -> exists (f: K -> option U), forall x, x \in FS -> R x (f x).
+  Proof.
+  elim /finSet_rect: FS => X; case: (@eqP _ X fset0).
+  + move=>-> ih build; exists (fun x=> None).
+    by move=> x.
+  + rewrite (rwP eqP) (rwP negP) -(rwP (fset0Pn X)).
+    elim=> x xin IH build; move: (IH _ (fproperD1 xin)) => IH0.
+    have forIH0: forall x0 : K, exists u : option U, x0 \in X `\ x -> R x0 u.
+      move=> x0; move: (build x0); elim=> u0 impl.
+      exists u0; move=> hp; apply: impl; rewrite in_fsetD in hp.
+      by move: hp; rewrite -(rwP andP); elim.
+    move: (IH0 forIH0); elim=> f' hpf'.
+    move: (build x); elim=> u hpu'; move: (hpu' xin); move=> hpu.
+    exists (fun y => if y == x then u else f' y).
+    move=> x0; case: ifP.
+    * by rewrite -(rwP eqP); move=>->.
+    * move=> neq; rewrite -(fsetD1K xin).
+      rewrite -(rwP (fsetUP x0 [fset x] (X`\ x))).
+      by elim; [rewrite -(rwP (fset1P x0 x)) (rwP eqP) neq | apply: hpf'].
+  Qed.
+
+
+
+ Lemma forallforallforall (T: Type) (P Q: T -> Prop):
+  (forall (x: T), P x) /\ (forall (x: T), Q x) 
+  -> (forall x, P x /\ Q x).
+  Proof. 
+  by elim=> PP QQ x; split; [apply PP|apply QQ].
+  Qed.
+
+
 (*g_wfcont added as a hypothesis, we'll probably need
 also wellformedness from WellFormed.v*)
-  Lemma Project_step G (Q : {fmap role * role -> seq (lbl * mty) }) E a G':
-    step a G G' -> 
-    (forall q q' : role, Q.[? (q, q')] != Some [::]) ->
-    ig_wfcont G ->
-    (forall p, iPart_of p G -> p \in PAR)-> 
+  Lemma Project_step (LAB : {fset lbl}) G (Q : {fmap role * role -> seq (lbl * mty) }) E a G':
+    step a G G' -> findom_cont G LAB ->
+    (*(forall q q' : role, Q.[? (q, q')] != Some [::]) ->*)
+    ig_wfcont G -> well_Formed G ->
+    (*(forall p, iPart_of p G -> p \in PAR)->*)
+    (*L to D and F, 19/05/2020: the above hp is not needed,
+    since it is contained in eProject G E below*)
     qProject G Q -> eProject G E
     -> exists E' Q', qProject G' Q' /\ eProject G' E'
        /\ lstep a (E, Q) (E', Q').
   Proof.
-  elim=>//=.
-(*  Proof.
-  elim/step_ind_str.
-  + move=> L F T C Ty G0 contL wfq wf pin qpro epro.
-    have Fin: F \in PAR.
-      by apply: pin; apply: pof_from.
-    move: (@eProject_send_none F T C E Fin epro).
+  move=> stephp.
+  elim/step_ind: stephp E Q.
+  + move=> L F T C Ty G0 contL E Q fincont wfc wf (*inPAR*) qpro epro.
+    (*have Fin: F \in PAR.
+      by apply: pin; apply: pof_from.*)
+    move: (@eProject_send_none F T C E (*Fin*) epro).
     elim=> neq; elim=> lC; elim=> envF; elim=> samedom rall.
     move: (qProject_None_inv L Ty G0 qpro).
     elim; elim; move=> qpro0; move: (qpro0 contL)=> {}qpro0.
@@ -733,97 +860,162 @@ also wellformedness from WellFormed.v*)
       move: samedom; rewrite /same_dom; move=> sd; rewrite -sd.
       by exists G0.
     move: lT_aux; elim=> lT lcontL.
-    exists (E.[F <- lT]), (deq_rinv F T L Ty Q).
+    exists (E.[F <- lT]), (Q.[(F,T)<-[::(L,Ty)]]).
     split.
-    * apply /paco2_fold.
-      apply: (@qprj_some _ _ _ _ _ Ty G0 Q _ neq contL).
-      - by rewrite -(rwP eqP); apply deq_rinv_deq.
-      - by rewrite /upaco2; left.
+    * apply: (qprj_some neq contL _ qpro0); rewrite -(rwP eqP).
+      apply: deq_singleton; rewrite -(rwP eqP).
+      apply: (qProject_rcv_Free_None qpro wfc).
+      move: wf; elim /wellFormed_inv =>//=.
+      move=> wf p q CONT wfcont rfreecont [eq1 eq2 eq3].
+      by rewrite -eq1 -eq2; apply rfree_send.
     split.
-    * move: epro; rewrite /eProject; move=> it p.
-      case: (@eqP _ p F).
-      - move =>->; elim; exists lT; split.
-        + rewrite /Project; apply /paco2_fold.
-          apply: (@prj_send2 F (upaco2 (Proj_ F) bot2) L Ty T C lC lT) => //=.
-          move: rall; rewrite /Project /R_all /upaco2.
-          by move=> hp L0 Ty0 G1 T1 hp1 hp2; left; apply (hp _ _ _ _ hp1 hp2).
+    * move: epro; elim=> allinPAR it.
+      split; [by move=> p ip; apply allinPAR, (iPart_of_label_label _ ip)|].
+      move=> p; case: (@eqP _ p F).
+      - move=>-> pinPAR; exists lT; split.
+        + by apply: (iprj_send2 neq samedom rall lcontL).
         + by rewrite fnd_set; case: ifP; rewrite eq_refl //=.
       - rewrite (rwP eqP); rewrite fnd_set; case: ifP =>//=.
-        move=> hp1 hp2 hp3 hp4;  move: (it _ hp3 (part_of_label_label _ hp4)).
-        elim; move=> L0; elim=> pro_p E_p; exists L0; split; [| by []].
+        move=> hp1 _ pinPAR; move: (it _ pinPAR).
+        elim=> lT0; elim=> pro_p E_P.
+        exists lT0; split; [| by []].
         case: (@eqP _ p T).
         + move=> pT; move: pro_p; rewrite pT;  move=> pro_T.
-          rewrite /Project; apply /paco2_fold.
-          move: (@cProj_recv_inv _ _ _ _ _ pro_T); elim; rewrite eq_sym.
-          move=>neq2; elim=> lC0; elim=> L0eq; elim=> samed ral.
-          by rewrite L0eq; apply: (prj_recv (Some L) neq2 samed ral).
-        + rewrite (rwP eqP)=> neqpT; rewrite /Project; apply /paco2_fold.
-          move: hp1; rewrite (rwP negPf)=> neqpF.
-          move: neqpT; rewrite (rwP negP)=> neqpT.
-          move: (cProj_mrg_inv pro_p neqpF neqpT); elim; elim; elim=> lC0.
-          elim=> samed; elim=> ral mer.
-          by apply: (prj_mrg _ neq neqpF neqpT samed ral mer).
-    * apply: ls_send =>//=; admit.*)
-(*; rewrite /do_act envF lcontL=> //=.
-      by case: ifP; rewrite! eq_refl =>//=.
-  + move=> L F T C Ty G0 contL wf pin qpro epro.
-    have Tin: T \in PAR.
-      by apply: pin; apply: pof_to.
-    move: (@eProject_recv _ F T C E Tin epro); elim=> neq.
+          move: (IProj_recv_inv pro_T); elim=>_.
+          elim=> lC0; elim=> L0eq; elim=> samedom0 rall0.
+          rewrite L0eq; apply: (iprj_recv)=> //=.
+          by rewrite eq_sym.
+        + rewrite (rwP eqP); rewrite (rwP negP).
+          move: (negbT hp1)=> neqpF neqpT.
+          move: (IProj_mrg_inv pro_p neqpF neqpT); elim=> _.
+          elim=> lC0; elim=> samedom0; elim=> rall0 mer.
+          by apply: (iprj_mrg _ _ _ _ samedom0) =>//=.
+    * apply: ls_send =>//=.
+      - rewrite /enq (qProject_rcv_Free_None qpro) =>//=.
+        move: wf; elim /wellFormed_inv =>//=.
+        move=> wf p q CONT wfcont rfreecont [eq1 eq2 eq3].
+        by rewrite -eq1 -eq2; apply rfree_send.
+      - rewrite /do_act envF lcontL; case: ifP =>//=.
+        by rewrite! eq_refl //=.
+  + move=> L F T C Ty0 G0 contL E Q fincont wfc wf (*pin*) qpro epro.
+    (*have Tin: T \in PAR.
+      by apply: pin; apply: pof_to.*)
+    move: (@eProject_recv _ F T C E (*Tin*) epro); elim=> neq.
     elim=> lC; elim=> envT; elim=> samedom rall.
     move: (qProject_Some_inv qpro); elim; elim.
-    elim=> Ty0; elim=> GG; elim=> Q'.
+    elim=> TTy; elim=> GG; elim=> Q'.
     elim; rewrite contL; move=> [eqTy eqG0]; rewrite eqTy eqG0.
     elim=> deqeq qpro'.
-    have lT_aux: exists lT, lC L = Some (Ty, lT).
+    have lT_aux: exists lT, lC L = Some (Ty0, lT).
       move: samedom; rewrite /same_dom; move=> sd; rewrite -sd.
       by exists G0.
     move: lT_aux; elim=> lT lcontL.
     exists (E.[T <- lT]), Q'.
-    split; [by apply qpro' | split].
-    * move: epro; rewrite /eProject; move=> it p.
-      case: (@eqP _ p T).
-      - move =>->; elim; exists lT; split.
+    split; [by [] | split].
+    * move: epro; elim=> allinPAR it.
+      split; [by move=> p ip; apply allinPAR; rewrite -eqG0 in ip;
+        apply: (ipof_cont (Some L) F T  contL ip)|].
+      move=> p; case: (@eqP _ p T).
+      - move =>-> pinPAR;  exists lT; split.
         + move: rall contL; rewrite /R_all eqG0; move=> rallu contL.
           by apply: (rallu _ _ _ _ contL lcontL).
         + by rewrite fnd_set; case: ifP; rewrite eq_refl //=.
-      - rewrite (rwP eqP); rewrite fnd_set; case: ifP =>//=.
-        move=> hp1 hp2 hp3 hp4; move: contL; rewrite eqG0; move=> contL.
-        move: (it p hp3 (pof_cont (Some L) F T contL hp4)).
-        elim=> L0; elim=> pro_p E_p; exists L0; split; [| by []].
-        case: (@eqP _ p F).
-        + move=> pF; move: pro_p; rewrite pF; move=> pro_F.
-          rewrite /Project; apply /paco2_fold.
-          move: (@cProj_send_some_inv _ _ _ _ _ pro_F); elim; elim.
-          elim=> lC0; elim=> Ty1; elim=> lcontL0; elim=> samed ral.
-          have eqTy1: Ty1 = Ty.
-            rewrite /same_dom in samed.
-            move: (samed L Ty); elim=> sd1 sd2; move: sd1. 
-            by elim; [ rewrite lcontL0; move=> L0' [d0 d1]|exists GG].
-          rewrite eqTy1 in lcontL0; rewrite /R_all in ral.
-          apply paco2_unfold; [by apply Proj_monotone| ].
-          by move: (ral _ _ _ _ contL lcontL0); rewrite /upaco2; elim.
-        + rewrite (rwP eqP)=> neqpF.
-          move: hp1; rewrite (rwP negPf)=> neqpT.
-          move: neqpF; rewrite (rwP negP)=> neqpF.
-          move: (cProj_mrg_inv pro_p neqpF neqpT); elim; elim; elim=> lC0.
-          elim=> samed; rewrite /R_all /Merge /EqL; elim=> ral mer.
-          have lT'aux: exists lT', lC0 L = Some (Ty, lT').
-            by rewrite /same_dom in samed; rewrite -samed; exists GG.
-          move: lT'aux; elim=> lT' lcont0L.
-          apply: (@EqL_Project _ _ lT'); [by apply (mer _ _ _ lcont0L)|].
-          by move: (ral _ _ _ _ contL lcont0L); rewrite /upaco2; elim.
+      - rewrite (rwP eqP) (rwP negP); move=> neqpT pinPAR.
+        rewrite eqG0 eqTy in contL.
+        move: (it _ pinPAR); elim=> lT0; elim=> ipro eva.
+        exists lT0; split.
+        + case: (@eqP _ p F).
+          * move=> eqpF; rewrite eqpF in ipro.
+            move: (IProj_send2_inv ipro); elim=> _.
+            elim=> lC0; elim=> Tyc; elim=> lC0L; elim=> samedom0.
+            move: (samedom0 L Ty0); elim.
+            elim; [|by rewrite eqTy; exists GG].
+            move=> lT_aux; rewrite lC0L; move=> [eq1 eq2] _.
+            rewrite eq1 eqTy in lC0L; move=> rall0.
+            by rewrite eqpF; apply: (rall0 _ _ _ _ contL lC0L).
+          * rewrite (rwP eqP); rewrite (rwP negP); move=> neqpF.
+            move: (IProj_mrg_inv ipro neqpF neqpT); elim=> _.
+            elim=> lC0; elim=> samedom0; elim=> rall0 mer.
+            move: (samedom0 L Ty0); elim.
+            elim; [|by rewrite eqTy; exists GG].
+            move=> lTT lC0L _; apply: (@EqL_IProj _ _ lTT _).
+            - by rewrite eqTy in lC0L; apply: (rall0 _ _ _ _ contL lC0L).
+            - by apply: (mer _ _ _ lC0L).
+        + rewrite fnd_set; case: ifP =>//=.
+          rewrite -(rwP eqP); move=> eqpT; move: neqpT; rewrite eqpT.
+          by rewrite -(rwP negP) eq_refl.
     * apply: ls_recv =>//=; rewrite /do_act envT lcontL eqTy => //=.
       by case: ifP; rewrite! eq_refl =>//=.
-  + move=> aa F T C0 C1 nF nT sd01 r01 IH wf pin qpro epro.
-    have subjin: subject aa \in PAR.
+  + move=> aa F T C0 C1 nF nT sd01 ra01 IH E Q fincont wfc wf (*pin*) qpro epro.
+    (*have subjin: subject aa \in PAR.
       apply: pin.
       apply: (@step_subject_part_of _ _ (rg_msg None F T C1)); [|by []].
-      by apply: st_amsg1.
-    move: (g_wform_msg_inv wf); elim; elim=> L; elim=> Ty; elim=> G0.
-    elim=> C0L wf0 wfcont0.
-    (*E' = any of the E' in the IH, modified like E*)
-*)    
+      by apply: st_amsg1.*)
+
+    (*
+    L to D and F: from now on I'll keep track of the different steps
+    for this case. Right now (06/05/2020) it appears to me that 
+    it is going to be a long one. I want to build E'.
+    I have a plan (updated 18/05/2020).
+    I will use the theorem I have proved for building
+    finite functions, so that I can build E' extensionally,
+    for each participant. I will extensively use the induction
+    hypothesis.
+    
+New update (19/05/2020: change of plans! :) 
+)
+*)
+    have: exists E':{fmap role -> rl_ty}, (forall p : role, p \in PAR ->
+      exists lT : rl_ty, IProj p (ig_msg None F T C1) lT /\
+      E'.[? p] = Some lT).
+      apply: (@all_fmap _ _ _
+        (fun p oL => exists lT : rl_ty, IProj p (ig_msg None F T C1) lT /\
+        oL = Some lT) ).
+      move=> p.
+      apply: (@exists_rel_finset_inhabited role PAR p (option rl_ty) None
+        (fun p oL => exists lT : rl_ty, IProj p (ig_msg None F T C1) lT /\
+        oL = Some lT) ).
+      move=> pinPAR.
+      suffices: exists (lT : rl_ty), IProj p (ig_msg None F T C1) lT.
+        by elim=> lT ipro; exists (Some lT), lT; split.
+      move: pinPAR; case: (@eqP _ p F).
+      + move=>-> FinPAR; apply: iproj_send1_exists.
+        - admit.
+        - admit.
+
+(*rewrite /same_dom /R_all.
+          suffices: (exists KsL : lbl /-> mty * rl_ty,  
+            same_dom C1 KsL /\ R_all (IProj F) C1 KsL)
+
+
+        
+
+
+(*all_fset_option_map*)
+
+    (*STEP 1. Selecting a label L_s.*)
+    move: (ig_wfcont_msg_inv wfc); elim=> neq.
+    elim; elim=> L_s; elim=> Ty_s; elim=> G0_s.
+    elim=> C0L_s wfc_s wfcC0.
+
+    (*STEP 2. The label L_s works also for C1.*)
+    move: (sd01 L_s Ty_s); elim; elim; [|by exists G0_s].
+    move=> G1_s C1L_s _.
+
+    (*STEP 3. Getting well-formedness and projections for G0_s.*)
+    move: wf; elim /wellFormed_inv =>//=; move=> wf.
+  (*  move=> p q CONT wfC0 rfreeFTC0 [eq1 eq2 eq3].
+    rewrite eq3 in wfC0; rewrite eq1 eq2 eq3 in rfreeFTC0.
+    move: (wfC0 _ _ _ C0L_s) (rfreeFTC0 _ _ _ C0L_s).
+    move=> wfG0_s rfreeFTG0_s; clear p q CONT eq1 eq2 eq3.
+
+    (*STEP 4. Getting projection for G0_s.*)
+    move: epro; rewrite /eProject.
+
+    (*STEP 5. Getting queue-projection for G0_s.*)
+
+    (*STEP 6. Getting E'_s from the induction hypothesis.*)
+    *) *)
   Admitted.
 
 

@@ -80,6 +80,58 @@ continuations are never empty*)
   Qed.
 
 
+
+
+  Lemma ig_wfcont_end_inv_aux GG CG: 
+    ig_wfcont GG -> GG = (ig_end CG)-> g_wfcont CG.
+  Proof.
+  case =>//=.
+  by move=> cG wf [eq]; rewrite eq in wf.
+  Qed.
+
+  Lemma ig_wfcont_end_inv CG: 
+    ig_wfcont (ig_end CG)-> g_wfcont CG.
+  Proof.
+  by move=> hp; apply (@ig_wfcont_end_inv_aux _ _ hp).
+  Qed.
+
+  Lemma ig_wfcont_msg_inv_aux GG o F T C: 
+    ig_wfcont GG ->  GG = (ig_msg o F T C)-> F != T /\
+    (exists L Ty G, C L = Some (Ty, G) /\ ig_wfcont G) /\
+    (forall LL TTy GG, C LL = Some (TTy, GG) -> ig_wfcont GG).
+  Proof.
+  case =>//=.
+  move=> o0 F0 T0 C0 L Ty G neq C0L wfG wfall [eq1 eq2 eq3 eq4].
+  split; [by rewrite eq2 eq3 in neq|split].
+  + by rewrite eq4 in C0L; exists L, Ty, G.
+  + by rewrite eq4 in wfall.
+  Qed.
+
+  Lemma ig_wfcont_msg_inv o F T C: 
+    ig_wfcont (ig_msg o F T C)-> F != T /\
+    (exists L Ty G, C L = Some (Ty, G) /\ ig_wfcont G) /\
+    (forall LL TTy GG, C LL = Some (TTy, GG) -> ig_wfcont GG).
+  Proof.
+  by move=> hp; apply (@ig_wfcont_msg_inv_aux _ o F T _ hp).
+  Qed.
+
+
+  Lemma ig_wfcont_rg_unr CG: 
+    ig_wfcont (ig_end CG)
+    -> ig_wfcont (rg_unr CG).
+  Proof.
+  case CG =>//=; move=> F T C iwf.
+  move: (g_wfcont_msg_inv (ig_wfcont_end_inv iwf)).
+  elim=>neq; elim; elim=>L; elim=>Ty; elim=>cG; elim=>CL wfG hp.
+  apply: (@ig_wfcont_msg _ _ _ _ L Ty (ig_end cG) neq).
+  + by rewrite CL.
+  + by apply ig_wfcont_end.
+  + move=> LL TTy GG; case E: (C LL)=> [P0|] //=.
+    move: E; case P0; move=> Ty0 cG0 CLL [eqTy eqGG].
+    by rewrite -eqGG; apply: ig_wfcont_end (hp _ _ _ CLL).
+  Qed.
+
+
 (*second condition more beefy of wellformedness*)
 
   Definition rfree_rel := role -> role -> ig_ty -> Prop.
@@ -111,6 +163,8 @@ continuations are never empty*)
     ( forall l Ty G, CONT l = Some (Ty, G) -> well_Formed G ) ->
     well_Formed (ig_msg (Some l) p q CONT)
  .
+
+  Derive Inversion wellFormed_inv with (forall G, well_Formed G) Sort Prop.
 
   Lemma wform_unr CG : well_Formed (rg_unr CG).
   Proof.
