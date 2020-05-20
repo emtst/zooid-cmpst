@@ -608,7 +608,7 @@ actually they should be doubled*)
   + move=> L F T C Ty G0 CL wf; rewrite /subject.
     by apply ipof_from.
   + move=> L F T C Ty G0 CL wf; rewrite /subject.
-    by apply ipof_from.
+    by apply ipof_to.
   + move=> a0 l F T C0 C1 nF nT ne sd ra ih wf.
     move: (ig_wfcont_msg_inv wf); elim=> neqFT.
     elim; elim=> L; elim=> Ty; elim=> G0.
@@ -882,30 +882,98 @@ Proof.
       by move=>[/(_ p (ipof_cont _ _ _ C_L p_G'))]-PP /(_ p PP).
   Qed.
 
+  Lemma step_cont_ipart A G G' :
+    step A G G' ->
+    iPart_of (subject A) G.
+  Proof.
+    elim=> {A G G'}
+    [ l F T C Ty G H
+    | l F T C Ty G H
+    | A l F T C0 C1 a_F a_T [Ty [G E]] DOM ST Ih
+    | A l F T C0 C1 a_T DOM ST [_ [Ty [G [G' [E [E' [ST' Ih]]]]]]]
+    | A CG G ST Ih
+    ].
+    + by apply: ipof_from.
+    + by apply: ipof_to.
+    + apply: ipof_cont; first by apply: E.
+      move: (DOM l Ty)=>[/(_ (ex_intro _ _ E))-[G' C1_L] _].
+      by apply: (Ih l Ty G G' E C1_L).
+    + apply: ipof_cont; first by apply: E.
+      apply: Ih.
+    + by apply/iPart_of_end_unr.
+  Qed.
+
+  Lemma iPart_of_inv p o F T C :
+    iPart_of p (ig_msg o F T C) ->
+    (p = F) \/ (p = T) \/ (exists l Ty G, C l = Some (Ty, G) /\ iPart_of p G).
+  Proof.
+    case EQ: _ / =>
+    [ //
+    | o' F' T' C'
+    | o' F' T' C'
+    | {}p o' F' T' C' l G Ty C'_L p_G
+    ]; [left|right;left|right;right].
+    + by move: EQ=>[_ <- _].
+    + by move: EQ=>[_ _ <-].
+    + move: EQ C'_L=>[_ _ _ <-] C_L.
+      by exists l, Ty, G; split.
+  Qed.
+
+  (* Definition prefix prf p E := *)
+  (*   match E.[? p] with *)
+  (*   | None => E *)
+  (*   | Some L => E.[p <- rl_msg a ] *)
+
+  Lemma doact_other p E A L :
+    subject A != p -> match do_act E A with
+                      | Some E' => Some E'.[p <- L]
+                      | None => None
+                      end = do_act E.[p <- L] A.
+  Proof.
+    case: A=>[a F T l Ty]; rewrite /do_act fnd_set => /=SUBJ.
+    rewrite (negPf SUBJ).
+    case: (E.[? F])=>[[//|a0 q C] |//].
+    case: (C l)=>[[Ty' L']|//].
+    case: ifP=>// _.
+    by rewrite setfC eq_sym (negPf SUBJ).
+  Qed.
+
+  Lemma runnable_next A E Q L p :
+    subject A != p -> runnable A (E, Q) <-> runnable A (E.[p <- L], Q).
+  Proof.
+    move=> SUBJ; rewrite /runnable/= -doact_other//.
+    by case: (do_act E A)=>[_|//].
+  Qed.
+
   Lemma local_runnable G P A G' :
     step A G G' -> Projection G P -> runnable A P.
   Proof.
-  case: P => [E Q] ST [/=EPrj QPrj].
+  move=> ST; move: ST (step_cont_ipart ST).
+  case: P => [E Q] ST PART [/=EPrj QPrj].
   elim: ST=>
     [ L F T C Ty G'' C_L
     | L F T C Ty G'' C_L
     | {}A l F T C0 C1 AF AT NE DOM_C STEP_C Ih
     | {}A l F T C0 C1 AT DOM_C STEP_C Ih
     | a CG G0 ST_G0 IH
-    ] in  E Q EPrj QPrj *.
+    ] /= in  E Q PART EPrj QPrj *.
   - rewrite /runnable/=.
-    move: (eProj_part EPrj (ipof_from None F T C)) => [L_F [IProj_F E_F]].
+    move: (eProj_part EPrj PART) => [L_F [IProj_F E_F]].
     move: (IProj_send1_inv IProj_F)=>[_ [lC [LF_msg [/(_ L Ty)-[DOM _] PRJ_C]]]].
     move: (DOM (ex_intro _ _ C_L)) => [L' lC_L].
     by rewrite E_F LF_msg lC_L !eq_refl.
   - rewrite /runnable/=.
-    move: (eProj_part EPrj (ipof_to (Some L) F T C)) => [L_F [IProj_F E_F]].
+    move: (eProj_part EPrj PART) => [L_F [IProj_F E_F]].
     move: (IProj_recv_inv IProj_F)=>[_ [lC [LF_msg [/(_ L Ty)-[DOM _] PRJ_C]]]].
     move: (DOM (ex_intro _ _ C_L)) => [L' lC_L].
     move: (qProject_Some_inv QPrj) => [_ [Ty' [{}G [Q' [C_L' [/eqP-Q_FT _]]]]]].
     rewrite E_F LF_msg lC_L !eq_refl/= Q_FT.
     by move: C_L C_L'=>-> [->]; rewrite !eq_refl.
-  - move: EPrj; rewrite /eProject.
+  - move: EPrj; rewrite /eProject => [[/(_ (subject A) PART)-IN_PAR]].
+    (* move=>/(_ (subject A) IN_PAR)-[L [PRJ_A E_A]]. *)
+    (* move: PART AF AT =>/iPart_of_inv-[/eqP->//|[/eqP->//|[l' [Ty [G'' []]]]]]. *)
+    (* move: G'' => {}G C0_l'  PART _ _; move: l NE l' C0_l' => _ _ l Cl{IN_PAR}. *)
+
     admit.
   - admit.
   - admit.
