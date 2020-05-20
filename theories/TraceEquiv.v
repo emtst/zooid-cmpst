@@ -66,7 +66,7 @@ maybe the (p \in PAR) condition can be removed
   + move=> L0 F0 T0 C0 Ty0 G eqC => [] [].
     move=> H0 H1 H2 H3 =>[] []. elim; elim; move=> H4.
     by exists G; rewrite -H2 -H3 -H4.
-  + move=> a F0 T0 C0 C1 sub1 sub2 samed rall hp eqa => [] [].
+  + move=> a l F0 T0 C0 C1 sub1 sub2 ne samed rall hp eqa => [] [].
     move=> eq1 eq2 eq3; move: sub1; rewrite eqa eq1 //=.
     by rewrite -(rwP negP) //=.
   Qed.
@@ -609,7 +609,7 @@ actually they should be doubled*)
     by apply ipof_from.
   + move=> L F T C Ty G0 CL wf; rewrite /subject.
     by apply ipof_from.
-  + move=> a0 F T C0 C1 nF nT sd ra ih wf.
+  + move=> a0 l F T C0 C1 nF nT ne sd ra ih wf.
     move: (ig_wfcont_msg_inv wf); elim=> neqFT.
     elim; elim=> L; elim=> Ty; elim=> G0.
     elim=> C0L wf0 wfall0; apply: (ipof_cont _ _ _ C0L).
@@ -885,14 +885,14 @@ Proof.
   Lemma local_runnable G P A G' :
     step A G G' -> Projection G P -> runnable A P.
   Proof.
-  case: P => [E Q] ST [/=E_Prj Q_Prj]; move: ST E_Prj Q_Prj.
-  elim=>
-    [ L F T C Ty G'' C_L EPrj QPrj
-    | L F T C Ty G'' C_L EPrj QPrj
-    | {}A F T C0 C1 AF AT DOM_C STEP_C Ih EPrj QPrj
-    |
-    |
-    ].
+  case: P => [E Q] ST [/=EPrj QPrj].
+  elim: ST=>
+    [ L F T C Ty G'' C_L
+    | L F T C Ty G'' C_L
+    | {}A l F T C0 C1 AF AT NE DOM_C STEP_C Ih
+    | {}A l F T C0 C1 AT DOM_C STEP_C Ih
+    | a CG G0 ST_G0 IH
+    ] in  E Q EPrj QPrj *.
   - rewrite /runnable/=.
     move: (eProj_part EPrj (ipof_from None F T C)) => [L_F [IProj_F E_F]].
     move: (IProj_send1_inv IProj_F)=>[_ [lC [LF_msg [/(_ L Ty)-[DOM _] PRJ_C]]]].
@@ -905,7 +905,7 @@ Proof.
     move: (qProject_Some_inv QPrj) => [_ [Ty' [{}G [Q' [C_L' [/eqP-Q_FT _]]]]]].
     rewrite E_F LF_msg lC_L !eq_refl/= Q_FT.
     by move: C_L C_L'=>-> [->]; rewrite !eq_refl.
-  - rewrite /runnable.
+  - move: EPrj; rewrite /eProject.
     admit.
   - admit.
   - admit.
