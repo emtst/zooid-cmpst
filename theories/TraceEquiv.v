@@ -1090,6 +1090,7 @@ actually they should be doubled*)
     move: PRJ=>/(_ _ _ _ C0l)-PRJ.
     apply: (Ih _ _ _ _ C0l C1l _ _ _ PRJ);
       first by move: STEP_C=>/(_ _ _ _ _ C0l C1l)/step_cont_ipart.
+
     by move: QPrj=>/qProject_None_inv=>/(_ l Ty G0)-[_ /(_ C0l)].
   - move: EPrj=>/eProj_Some_next-PRJ.
     move: QPrj=>/qProject_Some_inv-[Ty [G0 [Q' [C0l [DEQ QPrj]]]]].
@@ -1107,9 +1108,11 @@ actually they should be doubled*)
     + by apply/QProj_unr.
   Qed.
 
+
   Lemma runstep_qProj G P : forall A G',
     step A G G' -> Projection G P -> qProject G' (run_step A P).2.
   Proof.
+
     move=> A G' ST PRJ; move: (local_runnable ST PRJ).
     case: P PRJ=>[E Q] [EPRJ QPRJ]; elim: ST=>
     [ l F T C Ty G0 C_L
@@ -1139,7 +1142,26 @@ actually they should be doubled*)
        *)
     - admit.
     - admit.
-  Qed.
+  Admitted.
+(*
+    | {}A CG G0 STEP Ih //
+    ] in Prj Run *.
+    - move: Run; rewrite /runnable /run_step.
+      case: (do_act P.lbl (mk_act l_send F T l Ty))=>//=.
+      move=> _ _ ; move: Prj; elim=> _ qpro.
+(*
+      move: (qProject_None_inv l Ty G0 qpro); elim=> neq impl.
+      move: (qprj_some neq C_L _ (impl C_L)).
+      move: qProject_rcv_Free_None. *)admit.
+
+
+      
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+Admitted.
+>>>>>>> changed the definition of qProjection*)
 
   Lemma runstep_eProj G P : forall A G',
     step A G G' -> Projection G P -> eProject G' (run_step A P).1.
