@@ -1023,7 +1023,8 @@ Proof.
     rewrite (runnable_next (A':=mk_act l_recv T F l Ty)) //.
     rewrite (runnable_next (A':=mk_act l_send F T l Ty)) //.
     move: (DOM_C l Ty)=>[/(_ (ex_intro _ _ C0l))-[G1 C1l] _].
-    apply: (Ih _ _ _ _ C0l C1l _ _ _ (PRJ _ _ _ C0l));
+    move: PRJ=>/(_ _ _ _ C0l)-PRJ.
+    apply: (Ih _ _ _ _ C0l C1l _ _ _ PRJ);
       first by move: STEP_C=>/(_ _ _ _ _ C0l C1l)/step_cont_ipart.
     by move: QPrj=>/qProject_None_inv=>/(_ l Ty G0)-[_ /(_ C0l)].
   - admit.
@@ -1033,7 +1034,19 @@ Proof.
   Lemma runstep_proj G P : forall A G',
     step A G G' -> Projection G P -> Projection G' (run_step A P).
   Proof.
-    move=> A G' ST Prj; move: (local_runnable ST Prj) => Run.
+    move=> A G' ST Prj; split. move: (local_runnable ST Prj) => Run.
+    elim: ST =>
+    [ l F T C Ty G0 C_L
+    | l F T C Ty G0 C_L
+    | {}A l F T C0 C1 aF aT NE DOM STEP Ih
+    | {}A l F T C0 C1 aT DOM STEP Ih
+    | {}A CG G0 STEP Ih //
+    ] in Prj Run *.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
   Admitted.
 
   Lemma Project_step G P : forall A G',
