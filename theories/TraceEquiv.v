@@ -1125,7 +1125,11 @@ actually they should be doubled*)
       apply: (qprj_some C_L _ QPRJ).
       rewrite /deq/enq/= QFT fnd_set !eq_refl remf1_set eq_refl remf1_id//.
       by rewrite -fndSome QFT.
-    - admit.
+    - rewrite /runnable/run_step/=.
+      case: (E.[? T])=>[LT|//]; case: LT=>[//|{}A p C0].
+      case: (C0 l)=>[[Ty' L]|//]; case: ifP=>//=_ _.
+      move: QPRJ=>/qProject_Some_inv-[Ty'' [G1 [Q' [C_l [/eqP-DEQ PRJ]]]]].
+      by move: C_l; rewrite C_L DEQ=>[[<- ->]]; rewrite !eq_refl/=.
     - admit.
     - admit.
     - admit.
