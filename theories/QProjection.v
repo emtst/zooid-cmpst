@@ -30,12 +30,13 @@ Open Scope fmap.
   Inductive qProject : qproj_rel :=
   | qprj_end G : qProject (ig_end G) [fmap]%fmap(*[fmap qq:PAR2 => [::]]*)
   | qprj_none p p' CONT Q :
-      p != p' -> 
       (forall l Ty G, CONT l = Some (Ty, G) -> qProject G Q) ->
+      Q.[? (p,p')] = None ->
       qProject (ig_msg None p p' CONT) Q
   | qprj_some p p' CONT l Ty G Q Q':
-      p != p' -> CONT l = Some (Ty, G) ->
-      deq Q' (p, p') == Some ((l, Ty), Q) -> qProject G Q ->
+      CONT l = Some (Ty, G) ->
+      deq Q' (p, p') == Some ((l, Ty), Q) ->
+      qProject G Q ->
       qProject (ig_msg (Some l) p p' CONT) Q'
   .
   Hint Constructors qProject.
@@ -47,36 +48,36 @@ Open Scope fmap.
   - might be be turned into 2 or even 0
 *)
 
-  Lemma qProject_end_inv_aux Q iG G: 
-    qProject iG Q ->  iG = (ig_end G) -> 
+  Lemma qProject_end_inv_aux Q iG G:
+    qProject iG Q ->  iG = (ig_end G) ->
     Q = ([fmap]%fmap).
   Proof.
   case =>//=.
   Qed.
 
   Lemma qProject_end_inv Q G:
-  qProject (ig_end G) Q -> 
+  qProject (ig_end G) Q ->
     Q = ([fmap]%fmap).
   Proof.
   by move=> hp; apply: (@qProject_end_inv_aux Q _ G hp).
   Qed.
 
 
-  Lemma qProject_None_inv_aux F T C l Ty G Q GG: 
-    qProject GG Q -> 
+  Lemma qProject_None_inv_aux F T C l Ty G Q GG:
+    qProject GG Q ->
     GG = (ig_msg None F T C) ->
-    F != T /\
+    Q.[? (F,T)] = None /\
     (C l = Some (Ty, G) -> qProject G Q).
   Proof.
   case =>//=.
-  move=> p p' CONT Q0 neq IH [eq1 eq2 eq3].
+  move=> p p' CONT Q0 IH neq [eq1 eq2 eq3].
   split; [by rewrite -eq1 -eq2| rewrite -eq3].
   by apply IH.
   Qed.
 
   Lemma qProject_None_inv F T C l Ty G Q (*Q'*):
-    qProject (ig_msg None F T C) Q -> 
-    F != T /\
+    qProject (ig_msg None F T C) Q ->
+    Q.[? (F,T)] = None /\
     (C l = Some (Ty, G) -> qProject G Q).
   Proof.
   move=> hp; move: (@ qProject_None_inv_aux F T C l Ty G _ _ hp).
@@ -84,34 +85,32 @@ Open Scope fmap.
   Qed.
 
 
-  Lemma qProject_Some_inv_aux l F T C Q GG: 
-    qProject GG Q -> 
+  Lemma qProject_Some_inv_aux l F T C Q GG:
+    qProject GG Q ->
     GG = (ig_msg (Some l) F T C) ->
-    F != T /\
     (exists Ty G Q',
     C l = Some (Ty, G) /\
     deq Q (F, T) == Some ((l, Ty), Q') /\
     qProject G Q').
   Proof.
   case =>//.
-  move=> p p' CONT l0 Ty G Q0 Q' neq CONTL0 deqQ' qpro [eq1 eq2 eq3 eq4].
-  rewrite -eq1 -eq2 -eq3 -eq4; split; [by []| exists Ty, G, Q0].
+  move=> p p' CONT l0 Ty G Q0 Q' CONTL0 deqQ' qpro [eq1 eq2 eq3 eq4].
+  rewrite -eq1 -eq2 -eq3 -eq4;  exists Ty, G, Q0.
   by split; [| split; [|]].
   Qed.
 
   Lemma qProject_Some_inv l F T C Q:
-    qProject (ig_msg (Some l) F T C) Q -> 
-    F != T /\
-    (exists Ty G Q', C l = Some (Ty, G) /\
+    qProject (ig_msg (Some l) F T C) Q ->
+    exists Ty G Q', C l = Some (Ty, G) /\
     deq Q (F, T) == Some ((l, Ty), Q') /\
-    qProject G Q').
+    qProject G Q'.
   Proof.
   move=> hp; move: (@qProject_Some_inv_aux l F T C Q _ hp).
   by move=> triv; apply triv.
   Qed.
 
 (*next lemma to be renamed and moved*)
-  Lemma deq_elsewhere Q Q' k0 k L Ty: 
+  Lemma deq_elsewhere Q Q' k0 k L Ty:
     deq Q' k0 == Some (L, Ty, Q) -> k != k0 ->
   Q'.[?k]=Q.[?k].
   Proof.
@@ -122,38 +121,38 @@ Open Scope fmap.
   Qed.
 
 
-  Lemma qProject_rcv_Free_None p q G Q: 
-  qProject G Q -> ig_wfcont G -> rcv_Free p q G -> 
-  Q.[?(p,q)] = None.
-  Proof. 
-  elim.
-  + by move=> G0 wfc triv; apply fnd_fmap0.
-  + move=> F T C {}Q neq qpro_all ih wfc.
-    move: (ig_wfcont_msg_inv wfc).
-    elim=> _; elim; elim=> L; elim=> Ty; elim=> G0.
-    elim=> CL wfc0 wfcall.
-    elim/rcvFree_inv =>//=.
-    - move=> rfree p' q' C' rfree0 eqp eqq [eq1 eq2 eq3].
-      apply: (ih _ _ _ CL wfc0); rewrite eq3 in rfree0.
-      by apply: (rfree0 _ _ _ CL).
-    - move=> rfree p0 p' q0 q' o C' rfree0 or eqp eqq [eq1 eq2 eq3 eq4].
-      apply: (ih _ _ _ CL wfc0); rewrite eq4 in rfree0.
-      by apply: (rfree0 _ _ _ CL).
-  + move=> F T C L Ty G0 {}Q Q' neq CL deqQ' qpro ih wfc.
-    move: (ig_wfcont_msg_inv wfc).
-    elim=> _; elim=> _ wfcall.
-    elim/rcvFree_inv =>//=.
-    move=> rfree p0 p' q0 q' o C' rfree0 or eqp eqq [eq1 eq2 eq3 eq4].
-    rewrite (deq_elsewhere deqQ'); [|].
-    - by rewrite eq4 in rfree0; apply (ih (wfcall _ _ _ CL) (rfree0 _ _ _ CL)).
-    - by rewrite -eq2 -eq3 xpair_eqE negb_and.
-  Qed.
+  (* Lemma qProject_rcv_Free_None p q G Q: *)
+  (* qProject G Q -> ig_wfcont G -> rcv_Free p q G -> *)
+  (* Q.[?(p,q)] = None. *)
+  (* Proof. *)
+  (* elim. *)
+  (* + by move=> G0 wfc triv; apply fnd_fmap0. *)
+  (* + move=> F T C {}Q neq qpro_all ih wfc. *)
+  (*   move: (ig_wfcont_msg_inv wfc). *)
+  (*   elim=> _; elim; elim=> L; elim=> Ty; elim=> G0. *)
+  (*   elim=> CL wfc0 wfcall. *)
+  (*   elim/rcvFree_inv =>//=. *)
+  (*   - move=> rfree p' q' C' rfree0 eqp eqq [eq1 eq2 eq3]. *)
+  (*     apply: (ih _ _ _ CL wfc0); rewrite eq3 in rfree0. *)
+  (*     by apply: (rfree0 _ _ _ CL). *)
+  (*   - move=> rfree p0 p' q0 q' o C' rfree0 or eqp eqq [eq1 eq2 eq3 eq4]. *)
+  (*     apply: (ih _ _ _ CL wfc0); rewrite eq4 in rfree0. *)
+  (*     by apply: (rfree0 _ _ _ CL). *)
+  (* + move=> F T C L Ty G0 {}Q Q' neq CL deqQ' qpro ih wfc. *)
+  (*   move: (ig_wfcont_msg_inv wfc). *)
+  (*   elim=> _; elim=> _ wfcall. *)
+  (*   elim/rcvFree_inv =>//=. *)
+  (*   move=> rfree p0 p' q0 q' o C' rfree0 or eqp eqq [eq1 eq2 eq3 eq4]. *)
+  (*   rewrite (deq_elsewhere deqQ'); [|]. *)
+  (*   - by rewrite eq4 in rfree0; apply (ih (wfcall _ _ _ CL) (rfree0 _ _ _ CL)). *)
+  (*   - by rewrite -eq2 -eq3 xpair_eqE negb_and. *)
+  (* Qed. *)
 
 
 (*maybe to be moved*)
 
-  Lemma deq_singleton (Q:{fmap role * role -> seq (lbl * mty) }) p q v: 
-    Q.[?(p,q)] == None -> 
+  Lemma deq_singleton (Q:{fmap role * role -> seq (lbl * mty) }) p q v:
+    Q.[?(p,q)] == None ->
     deq Q.[(p, q) <- [:: v]] (p, q) = Some (v, Q).
   Proof.
   move=> Qnone; rewrite /deq fnd_set; case: ifP; rewrite eq_refl //=; elim.
@@ -167,7 +166,7 @@ Open Scope fmap.
 
 
 (*
-  Definition deq_rinv 
+  Definition deq_rinv
     p p' l Ty (Q: {fmap role * role -> seq (lbl * mty) }):=
   match Q.[? (p,p')] with
     | None => Q.[(p,p') <- ([::(l,Ty)])]
@@ -175,14 +174,14 @@ Open Scope fmap.
   end%fmap.
 
 
- Lemma deq_rinv_deq p p' l Ty 
+ Lemma deq_rinv_deq p p' l Ty
     (Q: {fmap role * role -> seq (lbl * mty) }):
     (*Q.[? (p,p')] != Some [::]*)
     (forall q q', Q.[?(q,q')] != Some [::])->
     deq (deq_rinv p p' l Ty Q) (p, p') = Some ((l, Ty), Q).
   Proof.
   move=> hp; rewrite /deq_rinv.
-  case E: Q.[? (p,p')] => [qs|]; rewrite /deq. 
+  case E: Q.[? (p,p')] => [qs|]; rewrite /deq.
   + rewrite fnd_set; case: ifP =>//=; [|by rewrite eq_refl].
     have noneq: qs != [::]. by move: (hp p p'); rewrite E.
     move=> _; case: ifP.
@@ -200,7 +199,7 @@ Open Scope fmap.
   Qed.
 
   Lemma rcv_Free_None_inv_aux GG FROM TO CONT p q l Ty G:
-    GG = (rg_msg None FROM TO CONT) -> rcv_Free (p,q) GG -> 
+    GG = (rg_msg None FROM TO CONT) -> rcv_Free (p,q) GG ->
     CONT l = Some (Ty, G) ->
     rcv_Free (p,q) G.
   Proof.
@@ -215,7 +214,7 @@ Open Scope fmap.
   Qed.
 
   Lemma rcv_Free_None_inv FROM TO CONT p q l Ty G:
-    rcv_Free (p,q) (rg_msg None FROM TO CONT) -> 
+    rcv_Free (p,q) (rg_msg None FROM TO CONT) ->
     CONT l = Some (Ty, G) ->
     rcv_Free (p,q) G.
   Proof.
@@ -223,7 +222,7 @@ Open Scope fmap.
   Qed.
 
   Lemma rcv_Free_Some_inv_aux GG FROM TO L CONT p q :
-    GG = (rg_msg (Some L) FROM TO CONT) -> rcv_Free (p,q) GG -> 
+    GG = (rg_msg (Some L) FROM TO CONT) -> rcv_Free (p,q) GG ->
     (p,q) != (FROM, TO) /\
     (forall l Ty G, CONT l = Some (Ty, G) -> rcv_Free (p,q) G).
   Proof.
@@ -236,7 +235,7 @@ Open Scope fmap.
   Qed.
 
   Lemma rcv_Free_Some_inv FROM TO CONT p q L:
-    rcv_Free (p,q) (rg_msg (Some L) FROM TO CONT) -> 
+    rcv_Free (p,q) (rg_msg (Some L) FROM TO CONT) ->
     (p,q) != (FROM, TO) /\
     (forall l Ty G, CONT l = Some (Ty, G) -> rcv_Free (p,q) G).
   Proof.
@@ -284,7 +283,7 @@ Open Scope fmap.
       apply: (@qprj_some _ _ _ _ _ _ _ (Qc.[~(p,q)]) _ neq CONTL ).
       - by apply (deq_eq_where_notempty Qeq neqpq deqeq).
       - right; apply CIH; exists Qc; split;
-          [by apply (contfree _ _ _ CONTL) 
+          [by apply (contfree _ _ _ CONTL)
           |split; [by []| split; [|by[]]]].
         move: (g_wfcont_msg_inv wfco); elim=> neqq.
         elim=> nn it; apply: (it _ _ _ CONTL).
@@ -326,7 +325,7 @@ Open Scope fmap.
 
   Inductive rcv_no (pq : role * role) : nat -> rg_ty -> Prop :=
   | rcv_no_0 G: rcv_Free pq G -> rcv_no pq 0 G
-  | rcv_no_send n F T C: 
+  | rcv_no_send n F T C:
     (forall L Ty G, C L = Some (Ty, G) -> rcv_no pq n G)
     -> rcv_no pq n (rg_msg None F T C)
   | rcv_no_rcv n L C Ty G:
