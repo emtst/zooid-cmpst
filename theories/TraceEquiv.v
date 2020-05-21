@@ -955,14 +955,20 @@ actually they should be doubled*)
   Proof.
     rewrite /eProject=>[[P H]] Ty G Cl.
     move: (H _ (P _ (ipof_to _ _ _ _)))=>[L [PRJ ET]].
-    move: PRJ=>/IProj_recv_inv=>[[FT [CL [L_msg [DOM STEP]]]]].
+    move: PRJ=>/IProj_recv_inv=>[[FT [CL [L_msg [DOM PRJ]]]]].
     move: (DOM l Ty)=>[/(_ (ex_intro _ _ Cl))-[L' CLl] _].
     split; first by move=>p pG; apply/P/(ipof_cont _ _ _ Cl).
     move=> p; case: (boolP (p == T))=>[/eqP->|pF] pP.
-    - exists L'; split; first by apply/(STEP _ _ _ _ Cl CLl).
+    - exists L'; split; first by apply/(PRJ _ _ _ _ Cl CLl).
       by rewrite /run_act/= ET L_msg CLl !eq_refl /andb fnd_set eq_refl.
-    - move: (H _ pP)=>[Lp [PRJ Ep]].
-  Admitted.
+    - move: (H _ pP)=>[Lp [PRJ' Ep]].
+      move: PRJ'=>/IProj_send2_inv/(_ pF)=>[[_ [lC [Ty0 [lCl [DOM' PRJ']]]]]].
+      move: (DOM' l Ty)=>[/(_ (ex_intro _ _ Cl))-[Lp' lCl'] _].
+      move: lCl'; rewrite lCl=>[[Eq_Ty0 Eq_Lp]].
+      move: Eq_Ty0 Eq_Lp lCl=>-> _ lCl {Lp' Ty0}.
+      exists Lp; split; first by apply: (PRJ' _ _ _ _ Cl lCl).
+      by rewrite /run_act/= ET L_msg CLl !eq_refl /andb fnd_set (negPf pF).
+  Qed.
 
   Lemma eProj_None_next F T C E :
     eProject (ig_msg None F T C) E ->
@@ -1044,9 +1050,8 @@ actually they should be doubled*)
   - admit.
   Admitted.
 
-
-  Lemma runstep_eProject G P : forall A G',
-    step A G G' -> Projection G P -> eProject G' (run_step A P).1.
+  Lemma runstep_proj G P : forall A G',
+    step A G G' -> Projection G P -> Projection G' (run_step A P).
   Proof.
     move=> A G' ST Prj; split. move: (local_runnable ST Prj) => Run.
     elim: ST =>
@@ -1056,40 +1061,11 @@ actually they should be doubled*)
     | {}A l F T C0 C1 aT DOM STEP Ih
     | {}A CG G0 STEP Ih //
     ] in Prj Run *.
-About run_step.
     - admit.
     - admit.
     - admit.
     - admit.
     - admit.
-  Admitted.
-
-
-  Lemma runstep_qProject G P : forall A G',
-    step A G G' -> Projection G P -> qProject G' (run_step A P).2.
-  Proof.
-
-  Admitted.
-
-
-  Lemma runstep_proj G P : forall A G',
-    step A G G' -> Projection G P -> Projection G' (run_step A P).
-  Proof.
-  
-(*    move=> A G' ST Prj; split. move: (local_runnable ST Prj) => Run.
-    elim: ST =>
-    [ l F T C Ty G0 C_L
-    | l F T C Ty G0 C_L
-    | {}A l F T C0 C1 aF aT NE DOM STEP Ih
-    | {}A l F T C0 C1 aT DOM STEP Ih
-    | {}A CG G0 STEP Ih //
-    ] in Prj Run *.
-About run_step.
-    - split [].
-    - admit.
-    - admit.
-    - admit.
-    - admit.*)
   Admitted.
 
   Lemma Project_step G P : forall A G',
