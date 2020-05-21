@@ -29,10 +29,22 @@ Open Scope fmap.
   Definition qproj_rel := ig_ty -> {fmap role * role -> seq (lbl * mty) } -> Prop.
   Inductive qProject : qproj_rel :=
   | qprj_end G : qProject (ig_end G) [fmap]%fmap(*[fmap qq:PAR2 => [::]]*)
+
   | qprj_none p p' CONT Q :
       (forall l Ty G, CONT l = Some (Ty, G) -> qProject G Q) ->
       Q.[? (p,p')] = None ->
+
+  (*| qprj_none p p' CONT Q :
+      p != p' -> 
+      (forall l Ty G, CONT l = Some (Ty, G) -> qProject G Q) ->
+      qProject (ig_msg None p p' CONT) Q*)
+  (*| qprj_none p p' CONT (Q:{fmap role * role -> seq (lbl * mty)}) :
+      p != p' -> 
+     Q.[?(p, p')] = None ->
+      (forall l Ty G, CONT l = Some (Ty, G) -> qProject G Q) ->*)
+
       qProject (ig_msg None p p' CONT) Q
+
   | qprj_some p p' CONT l Ty G Q Q':
       CONT l = Some (Ty, G) ->
       deq Q' (p, p') == Some ((l, Ty), Q) ->
@@ -76,8 +88,10 @@ Open Scope fmap.
   Qed.
 
   Lemma qProject_None_inv F T C l Ty G Q (*Q'*):
+
     qProject (ig_msg None F T C) Q ->
     Q.[? (F,T)] = None /\
+
     (C l = Some (Ty, G) -> qProject G Q).
   Proof.
   move=> hp; move: (@ qProject_None_inv_aux F T C l Ty G _ _ hp).
@@ -147,6 +161,7 @@ Open Scope fmap.
   (*   - by rewrite eq4 in rfree0; apply (ih (wfcall _ _ _ CL) (rfree0 _ _ _ CL)). *)
   (*   - by rewrite -eq2 -eq3 xpair_eqE negb_and. *)
   (* Qed. *)
+
 
 
 (*maybe to be moved*)
