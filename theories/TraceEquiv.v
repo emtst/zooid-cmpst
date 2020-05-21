@@ -945,6 +945,45 @@ Proof.
     by case: (do_act E A)=>[_|//].
   Qed.
 
+  Definition run_act A E :=
+    match do_act E A with
+    | Some E' => E'
+    | None => E
+    end.
+
+  Lemma eProject_next F T C E :
+    eProject (ig_msg None F T C) E ->
+    forall l Ty G,
+      C l = Some (Ty, G) ->
+      eProject G (run_act (mk_act l_send F T l Ty)
+                          (run_act (mk_act l_recv T F l Ty) E)).
+  Proof.
+    rewrite /eProject => [[P H]] l Ty G C_l.
+    split; first by move=> p /(ipof_cont None F T C_l)/P.
+    move: (H _ (P _ (ipof_from  _ _ _ _)))
+      => [L'' [/IProj_send1_inv-[FT [lC [-> [DOM PRJ]]]] EF]].
+    move: (DOM l Ty)=>[/(_ (ex_intro _ _ C_l))-[L lC_l] _].
+    move: (H _ (P _ (ipof_to _ _ _ _)))
+      => [L' [/IProj_recv_inv-[_ [lC' [-> [DOM' PRJ']]]] ET]].
+    move: (DOM' l Ty)=>[/(_ (ex_intro _ _ C_l))-[L''' lC_l'] _].
+    move=> p; case: (boolP (p == F)) =>[/eqP-> _|pF].
+    - exists L; split; first by move: PRJ => /(_ _ _ _ _ C_l lC_l).
+      rewrite /run_act/= ET lC_l' !eq_refl /andb fnd_set (negPf FT) EF lC_l.
+      by rewrite !eq_refl fnd_set eq_refl.
+    - case: (boolP (p == T)) =>[/eqP-> _|pT].
+      + exists L'''; split; first by move: PRJ' => /(_ _ _ _ _ C_l lC_l').
+        rewrite /run_act/= ET lC_l' !eq_refl /andb fnd_set (negPf FT) EF lC_l.
+        by rewrite !eq_refl fnd_set eq_sym (negPf FT) fnd_set eq_refl.
+      + move=>/H-[L4 [/IProj_mrg_inv/(_ pF)/(_ pT)
+                      -[_ [lC'' [DOM'' [PRJ'' MRG]]]] Ep]].
+
+        move: (DOM'' l Ty)=>[/(_ (ex_intro _ _ C_l))-[L5 lC_l''] _].
+        move: (MRG _ _ _ lC_l'')=>EQ_L4.
+        exists L4; split; first by apply/(EqL_IProj _ EQ_L4)/(PRJ'' _ _ _ _ C_l).
+        rewrite /run_act/= ET lC_l' !eq_refl /andb fnd_set (negPf FT) EF lC_l.
+        by rewrite !eq_refl !fnd_set (negPf pF) (negPf pT).
+  Qed.
+
   Lemma local_runnable G P A G' :
     step A G G' -> Projection G P -> runnable A P.
   Proof.
