@@ -1004,28 +1004,53 @@ actually they should be doubled*)
       by case: (Q.[? (p0, q0)])=>[[|[l2 Ty1 [|]]]|].
   Qed.
 
+  Lemma same_dom_sym A B (C1 : lbl /-> mty * A) (C2 : lbl /-> mty * B) :
+    same_dom C1 C2 <-> same_dom C2 C1.
+  Proof. by split=>H l Ty; move: (H l Ty)=>->. Qed.
+
+  Lemma same_dom_trans A B C
+        (C1 : lbl /-> mty * A) (C2 : lbl /-> mty * B) (C3 : lbl /-> mty * C) :
+    same_dom C1 C2 -> same_dom C2 C3 -> same_dom C1 C3.
+  Proof. by move=>H0 H1 l Ty; move: (H0 l Ty) (H1 l Ty)=>->. Qed.
+
   Lemma IProj_unr p CG L:
     IProj p (ig_end CG) L -> IProj p (rg_unr CG) L.
   Proof.
     move=>/IProj_end_inv; case: CG.
     + move=>PRJ; move: (cProj_end_inv PRJ)=>EQ.
       by move: EQ PRJ=>->PRJ; constructor.
-    + move=>F T C /=.
-      case: (boolP (p == F))=>[/eqP->|]; [|case: (boolP (p == T))=>[/eqP->|]].
+    + move=>F T C /=; set CC := fun l=>_.
+      have DOM_CC: same_dom C CC.
+      { move=> l Ty; split; move=>[G E1];
+          first (by exists (ig_end G); rewrite /CC E1).
+        by move: E1; rewrite /CC; case: (C l)=>[[Ty' iG]|//] [->_]; exists iG.
+      }
+      case: (boolP (p == F))=>[/eqP->|pF]; [|case: (boolP (p == T))=>[/eqP->|pT]].
       - move=>/cProj_send_inv-[FT [Cl [-> [DOM PRJ]]]].
-        constructor=>//.
-        admit.
-        move=> L0 Ty G L'.
-        case: (C L0)=>//[[Ty' G']] [_ <-] ClL0; constructor.
-        apply: paco2_fold.
-        move: PRJ.
-        rewrite /R_all.
-        rewrite /same_dom.
-
-  Admitted.
+        constructor=>//; first by move=> l Ty; rewrite -DOM_CC.
+        move=> L0 Ty G L' CC_L0 Cl_L0; move: CC_L0; rewrite /CC.
+        move: (DOM L0 Ty)=>[_ /(_ (ex_intro _ _ Cl_L0))-[CG C_L0]].
+        rewrite C_L0 =>[[<-]]; constructor.
+        by move: PRJ; move=>/(_ L0 Ty CG L' C_L0 Cl_L0)=>[[PRJ|//]].
+      - move=>/cProj_recv_inv-[FT [Cl [-> [DOM PRJ]]]].
+        move: FT; rewrite eq_sym=>FT.
+        constructor=>//; first by move=> l Ty; rewrite -DOM_CC.
+        move=> L0 Ty G L' CC_L0 Cl_L0; move: CC_L0; rewrite /CC.
+        move: (DOM L0 Ty)=>[_ /(_ (ex_intro _ _ Cl_L0))-[CG C_L0]].
+        rewrite C_L0 =>[[<-]]; constructor.
+        by move: PRJ; move=>/(_ L0 Ty CG L' C_L0 Cl_L0)=>[[PRJ|//]].
+      - move=>/cProj_mrg_inv/(_ pF pT)-[FT [lC [DOM [PRJ MRG]]]].
+        have /same_dom_trans/(_ DOM)-DOM_CC':
+          same_dom CC C by move: DOM_CC=>/same_dom_sym.
+        apply: iprj_mrg=>// l Ty G L' CC_l lC_l.
+        move: CC_l; rewrite /CC; case C_l: (C l)=>[[Ty' CG]|//] H.
+        move: H C_l=>[-><-] C_l {Ty'}; constructor.
+        by move: PRJ; move=>/(_ l Ty CG L' C_l lC_l)=>[[PRJ|//]].
+  Qed.
 
   Lemma QProj_unr CG Q :
     qProject (ig_end CG) Q -> qProject (rg_unr CG) Q.
+  Proof.
   Admitted.
 
   Lemma local_runnable G P A G' :
