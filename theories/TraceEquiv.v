@@ -1109,7 +1109,27 @@ actually they should be doubled*)
 
   Lemma runstep_qProj G P : forall A G',
     step A G G' -> Projection G P -> qProject G' (run_step A P).2.
-  Proof. Admitted.
+  Proof.
+    move=> A G' ST PRJ; move: (local_runnable ST PRJ).
+    case: P PRJ=>[E Q] [EPRJ QPRJ]; elim: ST=>
+    [ l F T C Ty G0 C_L
+    | l F T C Ty G0 C_L
+    | {}A l F T C0 C1 aF aT NE DOM STEP Ih
+    | {}A l F T C0 C1 aT DOM STEP Ih
+    | {}A CG G0 STEP Ih
+    ]/= in EPRJ QPRJ *.
+    - rewrite /runnable/run_step/=.
+      case: (E.[? F])=>[L|//]; case: L=>[//|{}A p C0].
+      case: (C0 l)=>[[Ty' L]|//]; case: ifP=>//=_ _.
+      move: QPRJ=>/qProject_None_inv=>/(_ l Ty G0)-[QFT /(_ C_L)-QPRJ].
+      apply: (qprj_some C_L _ QPRJ).
+      rewrite /deq/enq/= QFT fnd_set !eq_refl remf1_set eq_refl remf1_id//.
+      by rewrite -fndSome QFT.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+  Qed.
 
   Lemma runstep_eProj G P : forall A G',
     step A G G' -> Projection G P -> eProject G' (run_step A P).1.
