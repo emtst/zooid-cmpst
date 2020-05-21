@@ -1130,7 +1130,13 @@ actually they should be doubled*)
       case: (C0 l)=>[[Ty' L]|//]; case: ifP=>//=_ _.
       move: QPRJ=>/qProject_Some_inv-[Ty'' [G1 [Q' [C_l [/eqP-DEQ PRJ]]]]].
       by move: C_l; rewrite C_L DEQ=>[[<- ->]]; rewrite !eq_refl/=.
-    - admit.
+    - (* We need again a lemma that says that
+           qProject G (run_step A (run_step A' P)).2 <->
+           qProject G (run_step A P)).2
+         whenever subj A != subject A'
+
+         We'll likely need something similar for eProject
+       *)
     - admit.
     - admit.
   Qed.
