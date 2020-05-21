@@ -992,6 +992,22 @@ actually they should be doubled*)
     by apply: runnable_upd.
   Qed.
 
+  Lemma runnable_next_deq A l p q Ty E Q Q' :
+    subject A != q -> deq Q (p, q) == Some (l, Ty, Q') ->
+    runnable A (E, Q) <-> runnable A (E, Q').
+  Proof.
+    move=> Aq; rewrite /deq.
+    case: (Q.[? (p, q)])=>[[//|[l' Ty' [|a l0]]]|//]/=/eqP-[_ _ <-] {Q'}.
+    + rewrite /runnable/=.
+      case: (do_act E A)=>// _; case: A Aq=>//[[//|] q0 p0 l0 Ty0]/= qq0.
+      rewrite /deq fnd_rem1 xpair_eqE negb_and orbC qq0 /orb.
+      by case: (Q.[? (p0, q0)])=>[[|[l1 Ty1 [|]]]|].
+    + rewrite /runnable/=.
+      case: (do_act E A)=>// _; case: A Aq=>// [[//|] q0 p0 l1 Ty0]/= qq0.
+      rewrite /deq fnd_set xpair_eqE (negPf qq0) andbC /andb.
+      by case: (Q.[? (p0, q0)])=>[[|[l2 Ty1 [|]]]|].
+  Qed.
+
   Lemma local_runnable G P A G' :
     step A G G' -> Projection G P -> runnable A P.
   Proof.
@@ -1025,7 +1041,14 @@ actually they should be doubled*)
     apply: (Ih _ _ _ _ C0l C1l _ _ _ PRJ);
       first by move: STEP_C=>/(_ _ _ _ _ C0l C1l)/step_cont_ipart.
     by move: QPrj=>/qProject_None_inv=>/(_ l Ty G0)-[_ /(_ C0l)].
-  - admit.
+  - move: EPrj=>/eProj_Some_next-PRJ.
+    move: QPrj=>/qProject_Some_inv-[FT [Ty [G0 [Q' [C0l [DEQ QPrj]]]]]].
+    rewrite (runnable_next_deq _ AT DEQ).
+    rewrite (runnable_next (A':=mk_act l_recv T F l Ty)) //.
+    move: Ih=>[_ [Ty' [G1 [G2 [C0l' [C1l [STEP Ih]]]]]]].
+    move: C0l'; rewrite C0l =>[[ETy EG]].
+    move: ETy EG Ih STEP C0l C1l=> <- <- Ih STEP C0l C1l {Ty' G1}.
+    by apply: (Ih _ _ (step_cont_ipart STEP) (PRJ _ _ C0l)).
   - admit.
   Admitted.
 
