@@ -945,7 +945,7 @@ Section CProject.
   Qed.
 
 
-  Lemma project_open_end L G r : l_binds 0 L -> project G r = Some L 
+  Lemma project_open_end L G r : l_binds 0 L -> project G r = Some L
     -> project (unroll G) r = Some (l_open 0 l_end L).
   Proof.
   move=> lbi pro; apply project_open_end_strong; move: pro; rewrite //=.
@@ -1066,7 +1066,7 @@ Section CProject.
     case: (project iG p) =>//=; move=> lT.
     move=> hp; move: hp IHP; case: (prj_all gCONT0 p) =>//=.
     move=> lCONT0 [lCONTeq] IH; move: lCONTeq.
-    have IH_good: forall lC, 
+    have IH_good: forall lC,
       l_unroll_all (upaco2 l_unroll bot2) lCONT0 lC -> same_dom gC0 lC.
       by move=> lC0 hp; apply: (IH lCONT0) =>//=.
     move: IH; move=> _ . (*I have removed a bad hp*)
@@ -1176,7 +1176,7 @@ Section CProject.
   Qed.
 
   Inductive IProj (p : role) : ig_ty -> rl_ty -> Prop :=
-  | iprj_end CG CL : 
+  | iprj_end CG CL :
       Project p CG CL ->
       IProj p (ig_end CG) CL
   | iprj_send1 q KsG KsL :
@@ -1184,19 +1184,20 @@ Section CProject.
       same_dom KsG KsL ->
       R_all (IProj p) KsG KsL ->
       IProj p (ig_msg None p q KsG) (rl_msg l_send q KsL)
-  | iprj_send2 l t q KsG KsL L :
-      p != q ->
+  | iprj_send2 l t q r KsG KsL L :
+      p != r ->
+      q != r ->
       same_dom KsG KsL ->
       R_all (IProj p) KsG KsL ->
       KsL l = Some (t, L) ->
-      IProj p (ig_msg (Some l) p q KsG) L
+      IProj p (ig_msg (Some l) q r KsG) L
   | iprj_recv o q KsG KsL :
       p != q ->
       same_dom KsG KsL ->
       R_all (IProj p) KsG KsL ->
       IProj p (ig_msg o q p KsG) (rl_msg l_recv q KsL)
   (* | prj_end2 G : ~ In r G -> Proj_ r G rl_end *)
-  | iprj_mrg o q s KsG KsL L :
+  | iprj_mrg q s KsG KsL L :
       q != s ->
       p != q ->
       p != s ->
@@ -1204,6 +1205,6 @@ Section CProject.
       same_dom KsG KsL ->
       R_all (IProj p) KsG KsL ->
       Merge KsL L ->
-      IProj p (ig_msg o q s KsG) L
+      IProj p (ig_msg None q s KsG) L
   .
 End CProject.
