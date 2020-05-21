@@ -291,10 +291,6 @@ at the moment it is only morally!
   by move=> hp neq1 neq2; apply: (IProj_mrg_inv_aux hp neq1 neq2).
   Qed.
 
-
-
-
-
   Lemma eProject_send_none F T C E:
     eProject (ig_msg None F T C) E ->
     F != T /\ (exists lC, E.[? F]%fmap = Some (rl_msg l_send T lC) /\
@@ -1008,6 +1004,30 @@ actually they should be doubled*)
       by case: (Q.[? (p0, q0)])=>[[|[l2 Ty1 [|]]]|].
   Qed.
 
+  Lemma IProj_unr p CG L:
+    IProj p (ig_end CG) L -> IProj p (rg_unr CG) L.
+  Proof.
+    move=>/IProj_end_inv; case: CG.
+    + move=>PRJ; move: (cProj_end_inv PRJ)=>EQ.
+      by move: EQ PRJ=>->PRJ; constructor.
+    + move=>F T C /=.
+      case: (boolP (p == F))=>[/eqP->|]; [|case: (boolP (p == T))=>[/eqP->|]].
+      - move=>/cProj_send_inv-[FT [Cl [-> [DOM PRJ]]]].
+        constructor=>//.
+        admit.
+        move=> L0 Ty G L'.
+        case: (C L0)=>//[[Ty' G']] [_ <-] ClL0; constructor.
+        apply: paco2_fold.
+        move: PRJ.
+        rewrite /R_all.
+        rewrite /same_dom.
+
+  Admitted.
+
+  Lemma QProj_unr CG Q :
+    qProject (ig_end CG) Q -> qProject (rg_unr CG) Q.
+  Admitted.
+
   Lemma local_runnable G P A G' :
     step A G G' -> Projection G P -> runnable A P.
   Proof.
@@ -1018,7 +1038,7 @@ actually they should be doubled*)
     | L F T C Ty G'' C_L
     | {}A l F T C0 C1 AF AT NE DOM_C STEP_C Ih
     | {}A l F T C0 C1 AT DOM_C STEP_C Ih
-    | a CG G0 ST_G0 IH
+    | a CG G0 ST_G0 Ih
     ] /= in  E Q PART EPrj QPrj *.
   - rewrite /runnable/=.
     move: (eProj_part EPrj PART) => [L_F [IProj_F E_F]].
@@ -1049,8 +1069,13 @@ actually they should be doubled*)
     move: C0l'; rewrite C0l =>[[ETy EG]].
     move: ETy EG Ih STEP C0l C1l=> <- <- Ih STEP C0l C1l {Ty' G1}.
     by apply: (Ih _ _ (step_cont_ipart STEP) (PRJ _ _ C0l)).
-  - admit.
-  Admitted.
+  - apply: (Ih _ _ (step_cont_ipart ST_G0)).
+    + move: EPrj; rewrite /eProject=>[[P PRJ]].
+      split; first by move=> p; rewrite -iPart_of_end_unr =>/P.
+      move=>p /PRJ=>[[L [{}PRJ Ep]]]; exists L; split=>//.
+      by apply/IProj_unr.
+    + by apply/QProj_unr.
+  Qed.
 
   Lemma runstep_qProj G P : forall A G',
     step A G G' -> Projection G P -> qProject G' (run_step A P).2.
@@ -1063,7 +1088,7 @@ actually they should be doubled*)
   Lemma runstep_proj G P : forall A G',
     step A G G' -> Projection G P -> Projection G' (run_step A P).
   Proof.
-  move=> A G' step pro; split. 
+  move=> A G' step pro; split.
   + by apply: (runstep_eProj step pro).
   + by apply: (runstep_qProj step pro).
   Qed.
