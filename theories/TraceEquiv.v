@@ -1031,8 +1031,9 @@ Proof.
   - admit.
   Admitted.
 
-  Lemma runstep_proj G P : forall A G',
-    step A G G' -> Projection G P -> Projection G' (run_step A P).
+
+  Lemma runstep_eProject G P : forall A G',
+    step A G G' -> Projection G P -> eProject G' (run_step A P).1.
   Proof.
     move=> A G' ST Prj; split. move: (local_runnable ST Prj) => Run.
     elim: ST =>
@@ -1042,11 +1043,40 @@ Proof.
     | {}A l F T C0 C1 aT DOM STEP Ih
     | {}A CG G0 STEP Ih //
     ] in Prj Run *.
+About run_step.
     - admit.
     - admit.
     - admit.
     - admit.
     - admit.
+  Admitted.
+
+
+  Lemma runstep_qProject G P : forall A G',
+    step A G G' -> Projection G P -> qProject G' (run_step A P).2.
+  Proof.
+
+  Admitted.
+
+
+  Lemma runstep_proj G P : forall A G',
+    step A G G' -> Projection G P -> Projection G' (run_step A P).
+  Proof.
+  
+(*    move=> A G' ST Prj; split. move: (local_runnable ST Prj) => Run.
+    elim: ST =>
+    [ l F T C Ty G0 C_L
+    | l F T C Ty G0 C_L
+    | {}A l F T C0 C1 aF aT NE DOM STEP Ih
+    | {}A l F T C0 C1 aT DOM STEP Ih
+    | {}A CG G0 STEP Ih //
+    ] in Prj Run *.
+About run_step.
+    - split [].
+    - admit.
+    - admit.
+    - admit.
+    - admit.*)
   Admitted.
 
   Lemma Project_step G P : forall A G',
