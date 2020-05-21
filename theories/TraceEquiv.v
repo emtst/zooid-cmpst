@@ -854,28 +854,7 @@ actually they should be doubled*)
   Lemma eProj_part p G E :
       eProject G E -> iPart_of p G -> exists L, IProj p G L /\ E.[? p] = Some L.
   Proof.
-    move=>Prj IPart.
-    elim: IPart E Prj =>
-    [ {}p {}G POF
-    | {p} o F T C
-    | {p} o F T C
-    | {}p o F T C L G' Ty C_L p_G' Ih
-    ] E.
-    - elim: POF =>
-      [ {p} F T C
-      | {p} F T C
-      | {}p F T C L G' Ty C_L p_G' Ih
-      ] in E *.
-      + by apply: eProj_igend_from.
-      + by apply: eProj_igend_to.
-      + case: (boolP (p == F))=>[/eqP->|pF]; first by apply: eProj_igend_from.
-        case: (boolP (p == T))=>[/eqP->|pT]; first by apply: eProj_igend_to.
-        by move=>[/(_ p (ipof_end (pof_cont _ _ C_L p_G')))-PP /(_ p PP)].
-    - by apply: eProj_igmsg_from.
-    - by apply: eProj_igmsg_to.
-    - case: (boolP (p == F))=>[/eqP->|pF]; first by apply: eProj_igmsg_from.
-      case: (boolP (p == T))=>[/eqP->|pT]; first by apply: eProj_igmsg_to.
-      by move=>[/(_ p (ipof_cont _ _ _ C_L p_G'))]-PP /(_ p PP).
+  by elim=> inPAR epro part; apply: epro; apply: inPAR.
   Qed.
 
   Lemma step_cont_ipart A G G' :
@@ -1050,9 +1029,23 @@ actually they should be doubled*)
   - admit.
   Admitted.
 
+  Lemma runstep_qProj G P : forall A G',
+    step A G G' -> Projection G P -> qProject G' (run_step A P).2.
+  Proof. Admitted.
+
+  Lemma runstep_eProj G P : forall A G',
+    step A G G' -> Projection G P -> eProject G' (run_step A P).1.
+  Proof. Admitted.
+
   Lemma runstep_proj G P : forall A G',
     step A G G' -> Projection G P -> Projection G' (run_step A P).
   Proof.
+  move=> A G' step pro; split. 
+  + by apply: (runstep_eProj step pro).
+  + by apply: (runstep_qProj step pro).
+  Qed.
+
+(*
     move=> A G' ST Prj; split. move: (local_runnable ST Prj) => Run.
     elim: ST =>
     [ l F T C Ty G0 C_L
@@ -1065,8 +1058,8 @@ actually they should be doubled*)
     - admit.
     - admit.
     - admit.
-    - admit.
-  Admitted.
+    - admit.*)
+
 
   Lemma Project_step G P : forall A G',
     step A G G' ->
