@@ -938,7 +938,7 @@ Proof.
     by rewrite setfC eq_sym (negPf SUBJ).
   Qed.
 
-  Lemma runnable_next A E Q L p :
+  Lemma runnable_upd A E Q L p :
     subject A != p -> runnable A (E, Q) <-> runnable A (E.[p <- L], Q).
   Proof.
     move=> SUBJ; rewrite /runnable/= -doact_other//.
@@ -984,6 +984,16 @@ Proof.
         by rewrite !eq_refl !fnd_set (negPf pF) (negPf pT).
   Qed.
 
+  Lemma runnable_next A A' E Q :
+    subject A != subject A' -> runnable A (E, Q) <-> runnable A (run_act A' E, Q).
+  Proof.
+    rewrite /run_act/do_act; case: A'=>[a F T l Ty]/=.
+    case: (E.[? F])=>[[//|a' p C]|//].
+    case: (C l)=>[[Ty' L']|//].
+    case: ifP=>[_|//].
+    by apply: runnable_upd.
+  Qed.
+
   Lemma local_runnable G P A G' :
     step A G G' -> Projection G P -> runnable A P.
   Proof.
@@ -1008,12 +1018,14 @@ Proof.
     move: (qProject_Some_inv QPrj) => [_ [Ty' [{}G [Q' [C_L' [/eqP-Q_FT _]]]]]].
     rewrite E_F LF_msg lC_L !eq_refl/= Q_FT.
     by move: C_L C_L'=>-> [->]; rewrite !eq_refl.
-  - move: EPrj; rewrite /eProject => [[/(_ (subject A) PART)-IN_PAR]].
-    (* move=>/(_ (subject A) IN_PAR)-[L [PRJ_A E_A]]. *)
-    (* move: PART AF AT =>/iPart_of_inv-[/eqP->//|[/eqP->//|[l' [Ty [G'' []]]]]]. *)
-    (* move: G'' => {}G C0_l'  PART _ _; move: l NE l' C0_l' => _ _ l Cl{IN_PAR}. *)
-
-    admit.
+  - move: EPrj=>/eProject_next-PRJ.
+    move: NE=>[Ty [G0 C0l]].
+    rewrite (runnable_next (A':=mk_act l_recv T F l Ty)) //.
+    rewrite (runnable_next (A':=mk_act l_send F T l Ty)) //.
+    move: (DOM_C l Ty)=>[/(_ (ex_intro _ _ C0l))-[G1 C1l] _].
+    apply: (Ih _ _ _ _ C0l C1l _ _ _ (PRJ _ _ _ C0l));
+      first by move: STEP_C=>/(_ _ _ _ _ C0l C1l)/step_cont_ipart.
+    by move: QPrj=>/qProject_None_inv=>/(_ l Ty G0)-[_ /(_ C0l)].
   - admit.
   - admit.
   Admitted.
