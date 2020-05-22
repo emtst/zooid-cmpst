@@ -1090,6 +1090,7 @@ actually they should be doubled*)
     move: PRJ=>/(_ _ _ _ C0l)-PRJ.
     apply: (Ih _ _ _ _ C0l C1l _ _ _ PRJ);
       first by move: STEP_C=>/(_ _ _ _ _ C0l C1l)/step_cont_ipart.
+
     by move: QPrj=>/qProject_None_inv=>/(_ l Ty G0)-[_ /(_ C0l)].
   - move: EPrj=>/eProj_Some_next-PRJ.
     move: QPrj=>/qProject_Some_inv-[Ty [G0 [Q' [C0l [DEQ QPrj]]]]].
@@ -1106,6 +1107,7 @@ actually they should be doubled*)
       by apply/IProj_unr.
     + by apply/QProj_unr.
   Qed.
+
 
   Lemma runstep_qProj G P : forall A G',
     step A G G' -> Projection G P -> qProject G' (run_step A P).2.
@@ -1138,7 +1140,7 @@ actually they should be doubled*)
        *)
     - admit.
     - admit.
-    t- admit.
+    - admit.
   Admitted.
 
   Lemma runstep_eProj G P : forall A G',
@@ -1152,22 +1154,6 @@ actually they should be doubled*)
   + by apply: (runstep_eProj step pro).
   + by apply: (runstep_qProj step pro).
   Qed.
-
-(*
-    move=> A G' ST Prj; split. move: (local_runnable ST Prj) => Run.
-    elim: ST =>
-    [ l F T C Ty G0 C_L
-    | l F T C Ty G0 C_L
-    | {}A l F T C0 C1 aF aT NE DOM STEP Ih
-    | {}A l F T C0 C1 aT DOM STEP Ih
-    | {}A CG G0 STEP Ih //
-    ] in Prj Run *.
-    - admit.
-    - admit.
-    - admit.
-    - admit.
-    - admit.*)
-
 
   Lemma Project_step G P : forall A G',
     step A G G' ->
