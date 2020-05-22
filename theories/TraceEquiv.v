@@ -987,7 +987,6 @@ actually they should be doubled*)
         by rewrite !eq_refl fnd_set eq_sym (negPf FT) fnd_set eq_refl.
       + move=>/H-[L4 [/IProj_mrg_inv/(_ pF)/(_ pT)
                       -[_ [lC'' [DOM'' [PRJ'' MRG]]]] Ep]].
-
         move: (DOM'' l Ty)=>[/(_ (ex_intro _ _ C_l))-[L5 lC_l''] _].
         move: (MRG _ _ _ lC_l'')=>EQ_L4.
         exists L4; split; first by apply/(EqL_IProj _ EQ_L4)/(PRJ'' _ _ _ _ C_l).
@@ -1233,6 +1232,57 @@ actually they should be doubled*)
   + by rewrite eq.
   Qed.
 
+
+  (*Lemma eProj_None_next_up F T C E :
+    forall l Ty G,
+      C l = Some (Ty, G) ->
+      eProject G (run_act (mk_act l_send F T l Ty)
+                          (run_act (mk_act l_recv T F l Ty) E))
+    -> eProject (ig_msg None F T C) E.
+  Proof.
+  Admitted.*)
+
+  Lemma runstep_send_recv_diff_subj A F T l Ty E Q:
+      subject A != F -> subject A != T ->
+      run_step A
+      ((run_act (mk_act l_send F T l Ty) (run_act (mk_act l_recv T F l Ty) E)),Q)
+      =
+      run_step A (E,Q).
+  Admitted.
+
+  Lemma runstep_queue_diff_subj A F T P:
+    subject A != F -> subject A != T ->
+    ((run_step A P).2).[? (F, T)] = (P.2).[? (F, T)].
+  Proof.
+  move=> AF AT; rewrite /run_step. SearchAbout do_act.
+  case eq : (do_act P.lbl A)=> [E|]//=.
+  case eqA: A =>[la p q l t].
+  have diff: (F,T)!=(p,q).
+    move: AF; rewrite eqA; move: eqA.
+    by case: la =>//=;
+       move=> eqA; rewrite  xpair_eqE -(rwP negPf) eq_sym;
+       move=>->//=.
+  have diff2: (F,T)!=(q,p).
+    move: AT; rewrite eqA; move: eqA.
+    by case: la =>//=;
+       move=> eqA; rewrite  xpair_eqE -(rwP negPf) eq_sym;
+       move=>->; rewrite andbF.
+  + move: eqA; case: la; move=> la.
+    rewrite /enq; case (P.2.[? (p, q)])=>//=.
+    * move=> l0; rewrite fnd_set.
+      by case: ifP; [move: diff; rewrite -(rwP negP) | ].
+    * rewrite fnd_set.
+      by case: ifP; [move: diff; rewrite -(rwP negP) | ].
+  + case eqdeq: (deq P.2 (q, p))=>[[[l' t'] Q']|] //=.
+    case: ifP=>//=; move: eqdeq; rewrite /deq.
+    case eqP2: ((P.2).[? (q, p)])=>[list|]//=.
+    case eql: list=>[|s0 s]//=; case: ifP=>//=.
+    * move=> _ [_ <-] _; rewrite fnd_rem1; case: ifP=>//.
+      by move=> fa; rewrite fa in diff2.
+    * move=> _ [_ <-] _; rewrite fnd_set; case: ifP=>//.
+      by move=> fa; rewrite fa in diff2.
+  Qed.
+
   Lemma runstep_qProj G P : forall A G',
     step A G G' -> Projection G P -> qProject G' (run_step A P).2.
   Proof.
@@ -1260,14 +1310,18 @@ actually they should be doubled*)
       apply: qprj_none.
       + move=> ll Tyy GG1 C1ll.
         move: (DOM ll Tyy); elim=> _; elim; [|by exists GG1].
-        move=> GG0 C0ll; move: (Ih _ _ _ _ C0ll C1ll).
-
-
-move: (eProj_None_next PRJ.1 C0ll).
-
-      +
-
-
+        move=> GG0 C0ll; move: (eProj_None_next PRJ.1 C0ll); move=>ep0.
+        move: (Ih _ _ _ _ C0ll C1ll (
+          (run_act (mk_act l_send F T ll Tyy) (run_act (mk_act l_recv T F ll Tyy) P.1)),P.2
+        )).
+        rewrite /Projection; rewrite (runstep_send_recv_diff_subj ll Tyy _ _ aF aT) //=.
+        move=> hp; rewrite (surjective_pairing P); apply hp.
+        split; [by []|].
+        move: (qProject_None_inv ll Tyy GG0 PRJ.2).
+        elim=> _ it; apply (it C0ll).
+      + rewrite (runstep_queue_diff_subj P aF aT).
+        move: (qProject_None_inv l Ty G0 PRJ.2).
+        by elim.
 (* We need again a lemma that says that
 
            qProject G (run_step A (run_step A' P)).2 <->
@@ -1278,12 +1332,24 @@ move: (eProj_None_next PRJ.1 C0ll).
        *)
     - admit.
     - admit.
-    - admit.
   Admitted.
 
   Lemma runstep_eProj G P : forall A G',
     step A G G' -> Projection G P -> eProject G' (run_step A P).1.
-  Proof. Admitted.
+  Proof.
+  move=> A G' ST PRJ; elim: ST=>
+    [ l F T C Ty G0 Cl
+    | l F T C Ty G0 Cl
+    | {}A l F T C0 C1 aF aT NE DOM STEP Ih
+    | {}A l F T C0 C1 aT DOM STEP Ih
+    | {}A CG G0 STEP Ih
+    ]/= in P PRJ *.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+Admitted.
 
   Lemma runstep_proj G P : forall A G',
     step A G G' -> Projection G P -> Projection G' (run_step A P).
