@@ -970,7 +970,6 @@ actually they should be doubled*)
         by rewrite !eq_refl fnd_set eq_sym (negPf FT) fnd_set eq_refl.
       + move=>/H-[L4 [/IProj_mrg_inv/(_ pF)/(_ pT)
                       -[_ [lC'' [DOM'' [PRJ'' MRG]]]] Ep]].
-
         move: (DOM'' l Ty)=>[/(_ (ex_intro _ _ C_l))-[L5 lC_l''] _].
         move: (MRG _ _ _ lC_l'')=>EQ_L4.
         exists L4; split; first by apply/(EqL_IProj _ EQ_L4)/(PRJ'' _ _ _ _ C_l).
@@ -1090,7 +1089,6 @@ actually they should be doubled*)
     move: PRJ=>/(_ _ _ _ C0l)-PRJ.
     apply: (Ih _ _ _ _ C0l C1l _ _ _ PRJ);
       first by move: STEP_C=>/(_ _ _ _ _ C0l C1l)/step_cont_ipart.
-
     by move: QPrj=>/qProject_None_inv=>/(_ l Ty G0)-[_ /(_ C0l)].
   - move: EPrj=>/eProj_Some_next-PRJ.
     move: QPrj=>/qProject_Some_inv-[Ty [G0 [Q' [C0l [DEQ QPrj]]]]].
@@ -1125,7 +1123,7 @@ actually they should be doubled*)
           case eq0: (C0 l')=> [[Ty0 lT0]|] //=.
           - case: ifP =>//=.
             * move=> _; rewrite fnd_set.
-              case: ifP. 
+              case: ifP.
               + by rewrite eq_sym; move: neq; rewrite -(rwP negP)//=.
               + by move=>_; rewrite eq //=.
             * by move=> neqq; rewrite eq //=.
@@ -1187,6 +1185,29 @@ actually they should be doubled*)
   + by rewrite eq.
   Qed.
 
+
+  (*Lemma eProj_None_next_up F T C E :
+    forall l Ty G,
+      C l = Some (Ty, G) ->
+      eProject G (run_act (mk_act l_send F T l Ty)
+                          (run_act (mk_act l_recv T F l Ty) E))
+    -> eProject (ig_msg None F T C) E.
+  Proof.
+  Admitted.*)
+
+  Lemma runstep_send_recv_diff_subj A F T l Ty E Q:
+      subject A != F -> subject A != T ->
+      run_step A 
+      ((run_act (mk_act l_send F T l Ty) (run_act (mk_act l_recv T F l Ty) E)),Q)
+      =
+      run_step A (E,Q).
+  Admitted.
+
+  Lemma runstep_queue_diff_subj A F T P:
+    subject A != F -> subject A != T ->
+    ((run_step A P).2).[? (F, T)] = (P.2).[? (F, T)].
+  Admitted.
+
   Lemma runstep_qProj G P : forall A G',
     step A G G' -> Projection G P -> qProject G' (run_step A P).2.
   Proof.
@@ -1214,14 +1235,18 @@ actually they should be doubled*)
       apply: qprj_none.
       + move=> ll Tyy GG1 C1ll.
         move: (DOM ll Tyy); elim=> _; elim; [|by exists GG1].
-        move=> GG0 C0ll; move: (Ih _ _ _ _ C0ll C1ll).
-
-
-move: (eProj_None_next PRJ.1 C0ll).
-
-      +
-
-
+        move=> GG0 C0ll; move: (eProj_None_next PRJ.1 C0ll); move=>ep0.
+        move: (Ih _ _ _ _ C0ll C1ll (
+          (run_act (mk_act l_send F T ll Tyy) (run_act (mk_act l_recv T F ll Tyy) P.1)),P.2
+        )).
+        rewrite /Projection; rewrite (runstep_send_recv_diff_subj ll Tyy _ _ aF aT) //=.
+        move=> hp; rewrite (surjective_pairing P); apply hp.
+        split; [by []|].
+        move: (qProject_None_inv ll Tyy GG0 PRJ.2).
+        elim=> _ it; apply (it C0ll).
+      + rewrite (runstep_queue_diff_subj P aF aT).
+        move: (qProject_None_inv l Ty G0 PRJ.2).
+        by elim.
 (* We need again a lemma that says that
 
            qProject G (run_step A (run_step A' P)).2 <->
@@ -1232,12 +1257,24 @@ move: (eProj_None_next PRJ.1 C0ll).
        *)
     - admit.
     - admit.
-    t- admit.
   Admitted.
 
   Lemma runstep_eProj G P : forall A G',
     step A G G' -> Projection G P -> eProject G' (run_step A P).1.
-  Proof. Admitted.
+  Proof. 
+  move=> A G' ST PRJ; elim: ST=>
+    [ l F T C Ty G0 Cl
+    | l F T C Ty G0 Cl
+    | {}A l F T C0 C1 aF aT NE DOM STEP Ih
+    | {}A l F T C0 C1 aT DOM STEP Ih
+    | {}A CG G0 STEP Ih
+    ]/= in P PRJ *.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+Admitted.
 
   Lemma runstep_proj G P : forall A G',
     step A G G' -> Projection G P -> Projection G' (run_step A P).
