@@ -1206,7 +1206,35 @@ actually they should be doubled*)
   Lemma runstep_queue_diff_subj A F T P:
     subject A != F -> subject A != T ->
     ((run_step A P).2).[? (F, T)] = (P.2).[? (F, T)].
-  Admitted.
+  Proof.
+  move=> AF AT; rewrite /run_step. SearchAbout do_act.
+  case eq : (do_act P.lbl A)=> [E|]//=.
+  case eqA: A =>[la p q l t].
+  have diff: (F,T)!=(p,q).
+    move: AF; rewrite eqA; move: eqA.
+    by case: la =>//=;
+       move=> eqA; rewrite  xpair_eqE -(rwP negPf) eq_sym;
+       move=>->//=.
+  have diff2: (F,T)!=(q,p).
+    move: AT; rewrite eqA; move: eqA.
+    by case: la =>//=;
+       move=> eqA; rewrite  xpair_eqE -(rwP negPf) eq_sym;
+       move=>->; rewrite andbF.
+  + move: eqA; case: la; move=> la.
+    rewrite /enq; case (P.2.[? (p, q)])=>//=.
+    * move=> l0; rewrite fnd_set.
+      by case: ifP; [move: diff; rewrite -(rwP negP) | ].
+    * rewrite fnd_set.
+      by case: ifP; [move: diff; rewrite -(rwP negP) | ].
+  + case eqdeq: (deq P.2 (q, p))=>[[[l' t'] Q']|] //=.
+    case: ifP=>//=; move: eqdeq; rewrite /deq.
+    case eqP2: ((P.2).[? (q, p)])=>[list|]//=.
+    case eql: list=>[|s0 s]//=; case: ifP=>//=.
+    * move=> _ [_ <-] _; rewrite fnd_rem1; case: ifP=>//.
+      by move=> fa; rewrite fa in diff2.
+    * move=> _ [_ <-] _; rewrite fnd_set; case: ifP=>//.
+      by move=> fa; rewrite fa in diff2.
+  Qed.
 
   Lemma runstep_qProj G P : forall A G',
     step A G G' -> Projection G P -> qProject G' (run_step A P).2.
