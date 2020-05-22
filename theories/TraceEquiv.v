@@ -1108,7 +1108,7 @@ actually they should be doubled*)
     + by apply/QProj_unr.
   Qed.
 
-  Lemma run_act_commutes A A' E: 
+  Lemma run_act_commutes A A' E:
     subject A != subject A' ->
     run_act A (run_act A' E) = run_act A' (run_act A E).
   Proof.
@@ -1130,39 +1130,35 @@ actually they should be doubled*)
   Lemma runstep_qProj G P : forall A G',
     step A G G' -> Projection G P -> qProject G' (run_step A P).2.
   Proof.
-    move=> A G' ST PRJ; move: (local_runnable ST PRJ).
-    case: P PRJ=>[E Q] [EPRJ QPRJ].
-    (*move: E Q EPRJ QPRJ.*)
-    elim: ST =>
-    [ l F T C Ty G0 C_L
-    | l F T C Ty G0 C_L
+    move=> A G' ST PRJ; elim: ST=>
+    [ l F T C Ty G0 Cl
+    | l F T C Ty G0 Cl
     | {}A l F T C0 C1 aF aT NE DOM STEP Ih
     | {}A l F T C0 C1 aT DOM STEP Ih
     | {}A CG G0 STEP Ih
-    ]/= in E Q EPRJ QPRJ *.
-    - rewrite /runnable/run_step/=.
-      case: (E.[? F])=>[L|//]; case: L=>[//|{}A p C0].
-      case: (C0 l)=>[[Ty' L]|//]; case: ifP=>//=_ _.
-      move: QPRJ=>/qProject_None_inv=>/(_ l Ty G0)-[QFT /(_ C_L)-QPRJ].
-      apply: (qprj_some C_L _ QPRJ).
+    ]/= in P PRJ *.
+    - move: (local_runnable (st_send F T Cl) PRJ).
+      rewrite /runnable/run_step/=; case ((P.1) .[? F])=>// [[//|a p C0]].
+      case: (C0 l)=>[[Ty' L']|]//; case: ifP=>//=_ _.
+      move: PRJ.2 =>/qProject_None_inv=>/(_ l Ty G0)-[QFT /(_ Cl)-QPRJ].
+      apply: (qprj_some Cl _ QPRJ).
       rewrite /deq/enq/= QFT fnd_set !eq_refl remf1_set eq_refl remf1_id//.
       by rewrite -fndSome QFT.
-    - rewrite /runnable/run_step/=.
-      case: (E.[? T])=>[LT|//]; case: LT=>[//|{}A p C0].
-      case: (C0 l)=>[[Ty' L]|//]; case: ifP=>//=_ _.
-      move: QPRJ=>/qProject_Some_inv-[Ty'' [G1 [Q' [C_l [/eqP-DEQ PRJ]]]]].
-      by move: C_l; rewrite C_L DEQ=>[[<- ->]]; rewrite !eq_refl/=.
-    - move: NE; elim=> Ty; elim=> G0 C0l.
-      (*move: (DOM l Ty); elim; elim; [|by exists G0].*) 
-      move=> (*G1 C1l _*) runna.
+    - move: (local_runnable (st_recv F T Cl) PRJ).
+      rewrite /runnable/run_step/=; case ((P.1) .[? T])=>// [[//|a p C0]].
+      case: (C0 l)=>[[Ty' L']|]//; case: ifP=>//=_ _.
+      move: PRJ.2=>/qProject_Some_inv-[Ty'' [G1 [Q' [C_l [/eqP-DEQ QPRJ]]]]].
+      by move: C_l; rewrite Cl DEQ=>[[<- ->]]; rewrite !eq_refl/=.
+    - move: NE. elim=> Ty; elim=> G0 C0l.
+      (*move: (DOM l Ty); elim; elim; [|by exists G0].*)
       apply: qprj_none.
       + move=> ll Tyy GG1 C1ll.
         move: (DOM ll Tyy); elim=> _; elim; [|by exists GG1].
         move=> GG0 C0ll; move: (Ih _ _ _ _ C0ll C1ll).
 
 
-move: (eProj_None_next EPRJ C0ll).
-        
+move: (eProj_None_next PRJ.1 C0ll).
+
       +
 
 
