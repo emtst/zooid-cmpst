@@ -1120,11 +1120,34 @@ actually they should be doubled*)
     - move=> eq; case eq': (E.[?p']) => [lT'|]//=.
       * move:eq'; case: lT' =>  //=.
         + move=> eq'; move: eq; case (E.[?p])=>//=.
-          move=> llT []; case: llT=>//=.
+          by move=> llT []; case: llT=>//=.
         + move=> a0 p0 C0 Ep'.
           case eq0: (C0 l')=> [[Ty0 lT0]|] //=.
           - case: ifP =>//=.
-            * move=> _.
+            * move=> _; rewrite fnd_set.
+              case: ifP. 
+              + by rewrite eq_sym; move: neq; rewrite -(rwP negP)//=.
+              + by move=>_; rewrite eq //=.
+            * by move=> neqq; rewrite eq //=.
+          - by rewrite eq//=.
+       * by rewrite eq//=.
+    - move=> lT r C eq; case eq0: (C l)=> [[Ty0 lT0]|] //=.
+      * case: ifP.
+        + move=> eqs; rewrite fnd_set; case: ifP.
+          - by move: neq; rewrite -(rwP negP).
+          - move=> _; case eq': (E.[?p']) => [lT'|]//=.
+            case lT'=> [|aa' rr' CC']//=.
+            * by rewrite eq eq0//=; move: eqs; case: ifP=>//=.
+            * case eqq': (CC' l')=>[[Ty' G0']|].
+              + case: ifP.
+                -
+                -
+              +
+        +  
+      *
+About eq_sym.
+
+rewrite  setfC.
     Admitted.
 
   Lemma runstep_qProj G P : forall A G',
