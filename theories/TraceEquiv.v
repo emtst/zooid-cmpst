@@ -1140,15 +1140,52 @@ actually they should be doubled*)
             * by rewrite eq eq0//=; move: eqs; case: ifP=>//=.
             * case eqq': (CC' l')=>[[Ty' G0']|].
               + case: ifP.
-                -
-                -
-              +
-        +  
-      *
-About eq_sym.
-
-rewrite  setfC.
-    Admitted.
+                - move=> eqs2; rewrite fnd_set.
+                  move: neq; rewrite -(rwP negP) eq_sym.
+                  case: ifP=>//=; move => neq _.
+                  rewrite eq eq0 eqs//=.
+                  rewrite setfC; case: ifP=>//=.
+                  by rewrite eq_sym neq.
+                - by move=> neqs; rewrite eq eq0 eqs.
+              + by rewrite eq eq0 eqs.
+        + by rewrite eq eq0 eqs.
+      * move=> neqs; case eq': (E.[? p'])=> [lT'|]//=.
+        + case lT'=> [|aa' rr' CC']//=.
+          - by rewrite eq eq0 neqs.
+          - case eqq': (CC' l')=>[[Ty' G0']|].
+            * case: ifP.
+              + move=> eqs2; rewrite fnd_set.
+                move: neq; rewrite -(rwP negP) eq_sym.
+                case: ifP=>//=; move => neq _.
+                by rewrite eq eq0 neqs.
+              + by move=> neqs2; rewrite eq eq0 neqs.
+            * by rewrite eq eq0 neqs.
+        + by rewrite eq eq0 neqs.
+    - case eq': (E.[? p']) => [lT'|]//=.
+      * case lT'=> [|aa' rr' CC']//=.
+        + by rewrite eq eq0.
+          case eqq': (CC' l')=>[[Ty' G0']|].
+          - case: ifP.
+            * move=> eqs; rewrite fnd_set.
+              move: neq; rewrite -(rwP negP) eq_sym.
+              case: ifP=>//=; move => neq _.
+              by rewrite eq eq0.
+            * by move=> neqs; rewrite eq eq0.
+          - by rewrite eq eq0.
+        + by rewrite eq eq0.
+      * case eq': (E.[? p']) => [lT'|]//=.
+        + case lT'=> [|aa' rr' CC']//=.
+          - by rewrite eq.
+          - case eqq': (CC' l')=>[[Ty' G0']|].
+            case: ifP.
+            * move=> eqs; rewrite fnd_set.
+              move: neq; rewrite -(rwP negP) eq_sym.
+              case: ifP=>//=; move => neq _.
+              by rewrite eq.
+            * by move=> neqs; rewrite eq.
+        + by rewrite eq.
+  + by rewrite eq.
+  Qed.
 
   Lemma runstep_qProj G P : forall A G',
     step A G G' -> Projection G P -> qProject G' (run_step A P).2.
