@@ -1112,27 +1112,25 @@ actually they should be doubled*)
   Lemma runstep_qProj G P : forall A G',
     step A G G' -> Projection G P -> qProject G' (run_step A P).2.
   Proof.
-
-    move=> A G' ST PRJ; move: (local_runnable ST PRJ).
-    case: P PRJ=>[E Q] [EPRJ QPRJ]; elim: ST=>
-    [ l F T C Ty G0 C_L
-    | l F T C Ty G0 C_L
+    move=> A G' ST PRJ; elim: ST=>
+    [ l F T C Ty G0 Cl
+    | l F T C Ty G0 Cl
     | {}A l F T C0 C1 aF aT NE DOM STEP Ih
     | {}A l F T C0 C1 aT DOM STEP Ih
     | {}A CG G0 STEP Ih
-    ]/= in EPRJ QPRJ *.
-    - rewrite /runnable/run_step/=.
-      case: (E.[? F])=>[L|//]; case: L=>[//|{}A p C0].
-      case: (C0 l)=>[[Ty' L]|//]; case: ifP=>//=_ _.
-      move: QPRJ=>/qProject_None_inv=>/(_ l Ty G0)-[QFT /(_ C_L)-QPRJ].
-      apply: (qprj_some C_L _ QPRJ).
+    ]/= in P PRJ *.
+    - move: (local_runnable (st_send F T Cl) PRJ).
+      rewrite /runnable/run_step/=; case ((P.1) .[? F])=>// [[//|a p C0]].
+      case: (C0 l)=>[[Ty' L']|]//; case: ifP=>//=_ _.
+      move: PRJ.2 =>/qProject_None_inv=>/(_ l Ty G0)-[QFT /(_ Cl)-QPRJ].
+      apply: (qprj_some Cl _ QPRJ).
       rewrite /deq/enq/= QFT fnd_set !eq_refl remf1_set eq_refl remf1_id//.
       by rewrite -fndSome QFT.
-    - rewrite /runnable/run_step/=.
-      case: (E.[? T])=>[LT|//]; case: LT=>[//|{}A p C0].
-      case: (C0 l)=>[[Ty' L]|//]; case: ifP=>//=_ _.
-      move: QPRJ=>/qProject_Some_inv-[Ty'' [G1 [Q' [C_l [/eqP-DEQ PRJ]]]]].
-      by move: C_l; rewrite C_L DEQ=>[[<- ->]]; rewrite !eq_refl/=.
+    - move: (local_runnable (st_recv F T Cl) PRJ).
+      rewrite /runnable/run_step/=; case ((P.1) .[? T])=>// [[//|a p C0]].
+      case: (C0 l)=>[[Ty' L']|]//; case: ifP=>//=_ _.
+      move: PRJ.2=>/qProject_Some_inv-[Ty'' [G1 [Q' [C_l [/eqP-DEQ QPRJ]]]]].
+      by move: C_l; rewrite Cl DEQ=>[[<- ->]]; rewrite !eq_refl/=.
     - (* We need again a lemma that says that
            qProject G (run_step A (run_step A' P)).2 <->
            qProject G (run_step A P)).2
@@ -1142,26 +1140,8 @@ actually they should be doubled*)
        *)
     - admit.
     - admit.
+    t- admit.
   Admitted.
-(*
-    | {}A CG G0 STEP Ih //
-    ] in Prj Run *.
-    - move: Run; rewrite /runnable /run_step.
-      case: (do_act P.lbl (mk_act l_send F T l Ty))=>//=.
-      move=> _ _ ; move: Prj; elim=> _ qpro.
-(*
-      move: (qProject_None_inv l Ty G0 qpro); elim=> neq impl.
-      move: (qprj_some neq C_L _ (impl C_L)).
-      move: qProject_rcv_Free_None. *)admit.
-
-
-      
-    - admit.
-    - admit.
-    - admit.
-    - admit.
-Admitted.
->>>>>>> changed the definition of qProjection*)
 
   Lemma runstep_eProj G P : forall A G',
     step A G G' -> Projection G P -> eProject G' (run_step A P).1.
