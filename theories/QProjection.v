@@ -75,10 +75,10 @@ Open Scope fmap.
   Qed.
 
 
-  Lemma qProject_None_inv_aux F T C l Ty G Q GG:
+  Lemma qProject_None_inv_aux F T C Q GG:
     qProject GG Q ->
     GG = (ig_msg None F T C) ->
-    Q.[? (F,T)] = None /\
+    Q.[? (F,T)] = None /\ forall l Ty G,
     (C l = Some (Ty, G) -> qProject G Q).
   Proof.
   case =>//=.
@@ -87,15 +87,13 @@ Open Scope fmap.
   by apply IH.
   Qed.
 
-  Lemma qProject_None_inv F T C l Ty G Q (*Q'*):
+  Lemma qProject_None_inv F T C Q (*Q'*):
 
     qProject (ig_msg None F T C) Q ->
-    Q.[? (F,T)] = None /\
-
+    Q.[? (F,T)] = None /\ forall l Ty G,
     (C l = Some (Ty, G) -> qProject G Q).
   Proof.
-  move=> hp; move: (@ qProject_None_inv_aux F T C l Ty G _ _ hp).
-  by move=> triv; apply triv.
+  by move=> hp; move: (@ qProject_None_inv_aux F T C _ _ hp)=>H; apply/H.
   Qed.
 
 
