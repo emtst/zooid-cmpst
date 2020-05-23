@@ -761,39 +761,40 @@ actually they should be doubled*)
       Projection G (run_step (mk_act l_recv T F l Ty)
                              (run_step (mk_act l_send F T l Ty) P)).
   Proof.
-  Admitted.
-
-  (* Lemma eProj_None_next F T C E : *)
-  (*   eProject (ig_msg None F T C) E -> *)
-  (*   forall l Ty G, *)
-  (*     C l = Some (Ty, G) -> *)
-  (*     eProject G (run_act (mk_act l_send F T l Ty) *)
-  (*                         (run_act (mk_act l_recv T F l Ty) E)). *)
-  (* Proof. *)
-  (*   rewrite /eProject => [[P H]] l Ty G C_l. *)
-  (*   split; first by move=> p /(ipof_cont None F T C_l)/P. *)
-  (*   move: (H _ (P _ (ipof_from  _ _ _ _))) *)
-  (*     => [L'' [/IProj_send1_inv-[FT [lC [-> [DOM PRJ]]]] EF]]. *)
-  (*   move: (DOM l Ty)=>[/(_ (ex_intro _ _ C_l))-[L lC_l] _]. *)
-  (*   move: (H _ (P _ (ipof_to _ _ _ _))) *)
-  (*     => [L' [/IProj_recv_inv-[_ [lC' [-> [DOM' PRJ']]]] ET]]. *)
-  (*   move: (DOM' l Ty)=>[/(_ (ex_intro _ _ C_l))-[L''' lC_l'] _]. *)
-  (*   move=> p; case: (boolP (p == F)) =>[/eqP-> _|pF]. *)
-  (*   - exists L; split; first by move: PRJ => /(_ _ _ _ _ C_l lC_l). *)
-  (*     rewrite /run_act/= ET lC_l' !eq_refl /andb fnd_set (negPf FT) EF lC_l. *)
-  (*     by rewrite !eq_refl fnd_set eq_refl. *)
-  (*   - case: (boolP (p == T)) =>[/eqP-> _|pT]. *)
-  (*     + exists L'''; split; first by move: PRJ' => /(_ _ _ _ _ C_l lC_l'). *)
-  (*       rewrite /run_act/= ET lC_l' !eq_refl /andb fnd_set (negPf FT) EF lC_l. *)
-  (*       by rewrite !eq_refl fnd_set eq_sym (negPf FT) fnd_set eq_refl. *)
-  (*     + move=>/H-[L4 [/IProj_mrg_inv/(_ pF)/(_ pT) *)
-  (*                     -[_ [lC'' [DOM'' [PRJ'' MRG]]]] Ep]]. *)
-  (*       move: (DOM'' l Ty)=>[/(_ (ex_intro _ _ C_l))-[L5 lC_l''] _]. *)
-  (*       move: (MRG _ _ _ lC_l'')=>EQ_L4. *)
-  (*       exists L4; split; first by apply/(EqL_IProj _ EQ_L4)/(PRJ'' _ _ _ _ C_l). *)
-  (*       rewrite /run_act/= ET lC_l' !eq_refl /andb fnd_set (negPf FT) EF lC_l. *)
-  (*       by rewrite !eq_refl !fnd_set (negPf pF) (negPf pT). *)
-  (* Qed. *)
+    move=>[H qPRJ] l Ty G Cl.
+    move: (H _ (ipof_from  _ _ _ _))=>[LF [PRJF EF]].
+    move: PRJF=>/IProj_send1_inv-[FT] [CF] [LF_E] [DOMF] PRJF.
+    move: LF_E EF=>-> EF {LF}.
+    move: (DOMF l Ty) => [/(_ (ex_intro _ _ Cl))-[LF CFl] _].
+    move: (H _ (ipof_to  _ _ _ _))=>[LT [PRJT ET]].
+    move: PRJT=>/IProj_recv_inv-[_] [CT] [LT_E] [DOMT] PRJT.
+    move: LT_E ET=>-> ET {LT}.
+    move: (DOMT l Ty) => [/(_ (ex_intro _ _ Cl))-[LT CTl] _].
+    move: qPRJ=>/qProject_None_inv-[PFT] qPRJ; split.
+    - move=> p;
+      case: (boolP (p == F)) =>[/eqP-> _ {p}|pF];
+      [|case: (boolP (p == T)) =>[/eqP-> _ {pF p}|pT]].
+      + (* p = F *)
+        exists LF; split; first by apply/(PRJF _ _ _ _ Cl)/CFl.
+        rewrite /run_step/= EF CFl !eq_refl /= fnd_set eq_sym (negPf FT) ET.
+        by rewrite CTl !eq_refl /= fnd_set (negPf FT) fnd_set eq_refl.
+      + (* p = T *)
+        exists LT; split; first by apply/(PRJT _ _ _ _ Cl)/CTl.
+        rewrite /run_step/= EF CFl !eq_refl /= fnd_set eq_sym (negPf FT) ET.
+        by rewrite CTl !eq_refl /= fnd_set eq_refl.
+      + (* T != p != F *)
+        move=> PART; move: (H _ (ipof_cont  _ _ _ Cl PART))=>[Lp [PRJp Ep]].
+        move: PRJp=>/IProj_mrg_inv/(_ pF)/(_ pT)-[_] [Cp] [DOMp] [PRJp] MRG.
+        move: (DOMp l Ty) => [/(_ (ex_intro _ _ Cl))-[Lp' Cpl] _].
+        move: (MRG _ _ _ Cpl)=>Lp_E.
+        exists Lp; split; first by apply/(EqL_IProj _ Lp_E)/(PRJp _ _ _ _ Cl).
+        rewrite /run_step/= EF CFl !eq_refl/= fnd_set eq_sym (negPf FT).
+        by rewrite ET CTl !eq_refl/= fnd_set (negPf pT) fnd_set (negPf pF).
+    - rewrite /run_step/= EF CFl !eq_refl /= fnd_set eq_sym (negPf FT) ET CTl.
+      rewrite !eq_refl /= /enq PFT /deq fnd_set eq_refl /= remf1_set eq_refl.
+      rewrite remf1_id; first by apply/qPRJ/Cl.
+      by rewrite -fndSome PFT.
+  Qed.
 
   Lemma doact_diff A E E' :
     do_act E A = Some E' -> exists L, E' = E.[subject A <- L].
@@ -808,11 +809,6 @@ actually they should be doubled*)
     | None, None => true
     | _, _ => false
     end.
-
-  (* Lemma deq_enq k k' v Q : fst_eq (deq Q k) (deq (enq Q k' v) k). *)
-  (* Proof. *)
-  (*   rewrite /enq; case QH: Q.[? _] =>[[|]|//]. *)
-  (*   + rewrite /deq; rewrite fnd_set; case: ifP. *)
 
   Lemma runnable_next_queue A E (Q Q' : {fmap role * role -> seq (lbl * mty)}) :
     (forall p, fst_eq (deq Q (p, subject A)) (deq Q' (p, subject A)))  ->
@@ -1005,22 +1001,128 @@ actually they should be doubled*)
       by rewrite fnd_set eq_sym (negPf FF) E0F2.
   Qed.
 
+  Lemma enqC k k' (NEQ : k != k') Q v v' :
+    enq (enq Q k v) k' v' = enq (enq Q k' v') k v.
+  Proof.
+    by rewrite /enq; case Qk: Q.[? k] => [W|];
+       rewrite fnd_set eq_sym (negPf NEQ); case: Q.[? k'] =>[W'|];
+       rewrite fnd_set (negPf NEQ) Qk //= setfC eq_sym (negPf NEQ).
+  Qed.
+
+  Lemma runnable_recv_deq F T l Ty P :
+    runnable (mk_act l_recv F T l Ty) P ->
+    exists Q W, deq P.2 (T, F) = Some ((l, Ty), Q) /\
+              P.2.[? (T, F)] = Some ((l, Ty) :: W) /\
+              forall k, k != (T, F) -> Q.[? k] = P.2.[? k].
+  Proof.
+    rewrite /runnable/=.
+    case PF: P.1.[? F] =>[[|a r C]|]//; case Cl: (C l) => [[Ty' L']|]//.
+    case: ifP=>// COND; case DEQ: deq =>[[[l'] Ty'' Q]|]// /andP-[E1 E2].
+    move:E1 E2 DEQ=>/eqP<-/eqP<-.
+    rewrite /deq;case PTF: P.2.[? (T, F)] =>[[|[l0 Ty0] [|V' W]]|]//=[[<-<-]<-].
+    - exists P.2.[~ (T, F)], [::]; do ! split=>//.
+      by move=> k NEQ; rewrite fnd_rem1 NEQ.
+    - exists P.2.[(T, F) <- V' :: W], (V'::W); do ! split=>//.
+      by move=> k NEQ; rewrite fnd_set (negPf NEQ).
+  Qed.
+
+  Lemma deq_enq_neqC k k' (NEQ : k != k') v Q :
+    deq (enq Q k v) k' =
+    match deq Q k' with
+    | Some (v', Q') => Some (v', enq Q' k v)
+    | None => None
+    end.
+  Proof.
+    by rewrite /deq/enq; (have NEQ': (k' != k) by (move: NEQ; rewrite eq_sym));
+       case Qk': Q.[? k'] =>[[|v0 [|v1 w0] ]|]//=; case Qk: Q.[? k] =>[W|];
+       rewrite fnd_set eq_sym (negPf NEQ) Qk' //= ?fnd_rem1 ?fnd_set (negPf NEQ)
+               //= Qk ?remf1_set //= ?(negPf NEQ') //= setfC (negPf NEQ').
+  Qed.
+
+  Lemma deq_enq_sameC Q k' v' Q' :
+    deq Q k' = Some (v', Q') ->
+    forall k v, deq (enq Q k v) k' = Some (v', enq Q' k v).
+  Proof.
+    rewrite /deq; case Qk': Q.[? k'] => [[|V0 [|V0' W0]]|]//= [<-<-] {v' Q'} k v.
+    - rewrite /enq; case Qk: Q.[? k] => [W|]//=; rewrite fnd_set;
+      move: Qk' Qk; case: ifP=>[/eqP->|neq] Qk'; rewrite Qk'//=.
+      + move=> [<-]/=; rewrite fnd_rem1 eq_refl /=.
+        by rewrite setfC eq_refl setf_rem1.
+      + by move=> Qk; rewrite fnd_rem1 eq_sym neq /= Qk remf1_set neq.
+      + by move=> Qk; rewrite fnd_rem1 eq_sym neq /= Qk remf1_set neq.
+    - rewrite /enq; case Qk: Q.[? k] => [W|]//=; rewrite fnd_set;
+      move: Qk' Qk; case: ifP=>[/eqP->|neq] Qk'; rewrite Qk'//=.
+      + move=> [<-]/=; rewrite fnd_set eq_refl /=.
+        by rewrite setfC eq_refl setfC eq_refl.
+      + by move=> Qk; rewrite fnd_set eq_sym neq /= Qk setfC neq.
+      + by move=> Qk; rewrite fnd_set eq_sym neq /= Qk setfC neq.
+  Qed.
+
+  Lemma  deq_someC k0 k1 (NEQ : k0 != k1) Q v0 v1 Q0 Q1 :
+    deq Q k0 = Some (v0, Q0) ->
+    deq Q k1 = Some (v1, Q1) ->
+    exists Q2, deq Q0 k1 = Some (v1, Q2) /\ deq Q1 k0 = Some (v0, Q2).
+  Proof.
+    rewrite /deq.
+    case Qk0: Q.[? k0] => [[|V0 [|V0' W0]]|]//=;
+    case Qk1: Q.[? k1] => [[|V1 [|V1' W1]]|]//= [<-<-] [<-<-] {v0 v1}.
+    - exists Q.[~ k0].[~ k1].
+      rewrite fnd_rem1 eq_sym NEQ Qk1 /= fnd_rem1 NEQ Qk0 /=; split=>//.
+      by rewrite !remf_comp fsetUC.
+    - exists Q.[~ k0].[k1 <- V1' :: W1].
+      rewrite fnd_rem1 eq_sym NEQ Qk1 /=; split=>//.
+      by rewrite fnd_set (negPf NEQ) Qk0 /= remf1_set (negPf NEQ).
+    - exists (Q.[k0 <- V0' :: W0]).[~ k1].
+      rewrite fnd_set eq_sym (negPf NEQ) Qk1; split=>//.
+      by rewrite fnd_rem1 NEQ Qk0 /= remf1_set eq_sym (negPf NEQ).
+    - exists (Q.[k0 <- V0' :: W0]).[k1 <- V1' :: W1].
+      rewrite !fnd_set eq_sym (negPf NEQ) Qk0 Qk1 /=; split=>//.
+      by rewrite setfC (negPf NEQ).
+  Qed.
+
+  Lemma  deq_noneC k0 k1 (NEQ : k0 != k1) Q v0 Q0 :
+    deq Q k0 = Some (v0, Q0) ->
+    deq Q k1 = None ->
+    deq Q0 k1 = None.
+  Proof.
+    rewrite [in deq Q k0]/deq.
+    by case Qk0: Q.[? k0] =>[[|V [|V' W]]|]//= [_ <-];
+       rewrite /deq; case Qk1: Q.[? k1] =>[[|V1 [|V2 W1]]|]//=_;
+       rewrite ?fnd_rem1 ?fnd_set eq_sym (negPf NEQ)/= Qk1.
+  Qed.
+
+
+  Lemma deq_neqC k k' (NEQ : k != k') Q :
+    match deq match deq Q k' with | Some (_, Q') => Q' | None => Q end k with
+    | Some (_, Q') => Q'
+    | None => match deq Q k' with | Some (_, Q') => Q' | None => Q end
+    end =
+    match deq match deq Q k with | Some (_, Q') => Q' | None => Q end k' with
+    | Some (_, Q') => Q'
+    | None => match deq Q k with | Some (_, Q') => Q' | None => Q end
+    end.
+  Proof.
+    case Qk': (deq Q k')=>[[v' Q']|];
+      case Qk: (deq Q k)=>[[v Q'']|]; rewrite ?Qk' //.
+    - by move: (deq_someC NEQ Qk Qk')=>[Q2] [->->].
+    - by rewrite (deq_noneC _ Qk' Qk) // eq_sym.
+    - by rewrite (deq_noneC NEQ Qk Qk').
+  Qed.
+
   Lemma do_queueC A A' P :
     subject A != subject A' ->
     (subject A != object A') || (act_ty A' == l_recv) && runnable A' P ->
     do_queue (do_queue P.2 A') A = do_queue (do_queue P.2 A) A'.
   Proof.
     case: A=>[[] F T l Ty]; case: A'=>[[] F' T' l' Ty']//=.
-    - rewrite orbC/= /enq/==> FF FT.
-      by case EQ0: (P.2.[? _])=>[A|]//;
-         rewrite fnd_set xpair_eqE (negPf FF)/=;
-         case EQ1: (P.2.[? _])=>[A'|]//;
-         rewrite fnd_set xpair_eqE eq_sym (negPf FF) //= EQ0 //=;
-         rewrite setfC xpair_eqE (negPf FF) //=.
-    - case DEQ: deq=>[[[l0 Ty0] Q0]|].
-      (* + move: DEQ; rewrite /enq/deq. *)
-      (* case EQ0: (P.2.[? _])=>[A|]//. *)
-  Admitted.
+    - by rewrite orbC/==> FF FT; rewrite enqC // xpair_eqE eq_sym negb_and FF.
+    - move=> FF /orP-[FT|/runnable_recv_deq-[Q] [W] [DEQ] [LOOK] Q_EQ].
+      + by rewrite deq_enq_neqC ?xpair_eqE ?negb_and ?FT //; case: deq=>[[]|].
+      + by rewrite DEQ (deq_enq_sameC DEQ).
+    - move=> FF; rewrite orbC eq_sym=>/= FT.
+      by rewrite deq_enq_neqC ?xpair_eqE ?negb_and ?FT ?orbT//;case: deq=>[[]|].
+    - by move=> FF _; apply: deq_neqC; rewrite xpair_eqE negb_and orbC FF.
+  Qed.
 
   Lemma run_stepC A A' P :
     subject A != subject A' ->
