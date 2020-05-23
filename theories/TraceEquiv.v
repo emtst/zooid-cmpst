@@ -1010,6 +1010,16 @@ actually they should be doubled*)
     (subject A != object A') || (act_ty A' == l_recv) && runnable A' P ->
     do_queue (do_queue P.2 A') A = do_queue (do_queue P.2 A) A'.
   Proof.
+    case: A=>[[] F T l Ty]; case: A'=>[[] F' T' l' Ty']//=.
+    - rewrite orbC/= /enq/==> FF FT.
+      by case EQ0: (P.2.[? _])=>[A|]//;
+         rewrite fnd_set xpair_eqE (negPf FF)/=;
+         case EQ1: (P.2.[? _])=>[A'|]//;
+         rewrite fnd_set xpair_eqE eq_sym (negPf FF) //= EQ0 //=;
+         rewrite setfC xpair_eqE (negPf FF) //=.
+    - case DEQ: deq=>[[[l0 Ty0] Q0]|].
+      (* + move: DEQ; rewrite /enq/deq. *)
+      (* case EQ0: (P.2.[? _])=>[A|]//. *)
   Admitted.
 
   Lemma run_stepC A A' P :
@@ -1067,13 +1077,13 @@ actually they should be doubled*)
       move: (STEP l _ _ _ C0l C1l)=>STEP_G0_G1.
       move: (PRJ _ _ _ C0l) => PRJ_G0.
       move: (Ih _ _ _ _ C0l C1l _ PRJ_G0).
-      rewrite run_step_comm ?aF //= (run_step_comm (A:=A)) ?aT //=.
+      rewrite run_stepC ?aF //= (run_stepC (A:=A)) ?aT //=.
       by rewrite (Projection_recv C1l) (Projection_send C1l).
     - move: Ih=>[_] [Tyl] [G0] [G1] [C0l] [C1l] [STEP_G0_G1] Ih.
       move: (Projection_runnable C0l PRJ) => RUN.
       move: PRJ=>/Proj_Some_next-PRJ.
       move: (PRJ _ _ C0l)=> H0; move: (Ih _ H0).
-      by rewrite run_step_comm ?RUN ?orbT //= (Projection_recv C1l).
+      by rewrite run_stepC ?RUN ?orbT //= (Projection_recv C1l).
     - by apply/Ih/Projection_unr.
   Qed.
 
