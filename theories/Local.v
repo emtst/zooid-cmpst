@@ -673,44 +673,42 @@ Definition runnable (A : act) (P : renv * qenv) : bool :=
     match a with
     | l_send => true
     | l_recv =>
-      match deq P.2 (q, p) with 
+      match deq P.2 (q, p) with
       | Some ((l', t'), Q) => (l == l') && (t == t')
       | None => false
       end
     end
-  | None => false 
+  | None => false
+  end.
+
+Definition do_queue (Q : qenv) (A : act) : qenv :=
+  match A with
+  | mk_act l_send F T l Ty => enq Q (F, T) (l, Ty)
+  | mk_act l_recv F T l Ty =>
+    match deq Q (T, F) with
+    | Some (_, Q') => Q'
+    | None => Q
+    end
   end.
 
 (* Attempts to run a step, does nothing if it cannot run *)
 Definition run_step (A : act) (P : renv * qenv) : renv * qenv :=
-  match do_act P.1 A with 
-  | None => P
-  | Some E' => 
-    let: mk_act a p q l t := A in
-    match a with 
-    | l_send => (E', enq P.2 (p, q) (l, t))
-    | l_recv =>
-      match deq P.2 (q, p) with
-      | None => P
-      | Some ((l', t'), Q') =>
-        if (l == l') && (t == t')
-        then (E', Q')
-        else P
-      end
-    end
+  match do_act P.1 A with
+  | Some E' => (E', do_queue P.2 A)
+  | _ => P
   end.
 
-  (* Lemma run_step 'makes sense' *)
-  Lemma run_step_sound A P : runnable A P -> lstep A P (run_step A P).
-  Proof.
-    case: P => E Q.
-    rewrite /runnable /=; case E_doact: (do_act _ _)=>[E'|//].
-    case: A E_doact=> [[|] p q l t E_doact]/=.
-    - by move=> _; rewrite /run_step E_doact; constructor=>//.
-    - case E_deq: (deq _ _) =>[[[l' t'] Q']|//]. 
-      case: (boolP ((l == l') && _)) =>[/andP-[/eqP-ll' /eqP-tt']|//] _.
-      move: ll' tt' E_deq =><-<- E_deq.
-      rewrite /run_step E_doact/= E_deq !eq_refl /=.
+(* Lemma run_step 'makes sense' *)
+Lemma run_step_sound A P : runnable A P -> lstep A P (run_step A P).
+Proof.
+  case: P => E Q.
+  rewrite /runnable /=; case E_doact: (do_act _ _)=>[E'|//].
+  case: A E_doact=> [[|] p q l t E_doact]/=.
+  - by move=> _; rewrite /run_step E_doact; constructor=>//.
+  - case E_deq: (deq _ _) =>[[[l' t'] Q']|//].
+    case: (boolP ((l == l') && _)) =>[/andP-[/eqP-ll' /eqP-tt']|//] _.
+    move: ll' tt' E_deq =><-<- E_deq.
+    rewrite /run_step E_doact /= E_deq.
       by constructor =>//; first by apply/eqP.
   Qed.
 
