@@ -591,26 +591,28 @@ Section Semantics.
     | None => None
     end%fmap.
 
+  Definition look (E : {fmap role -> rl_ty}) p :=
+    match E.[? p] with
+    | Some L => L
+    | None => rl_end
+    end%fmap.
+
   Definition do_act (P : renv) A :=
     let: (mk_act a p q l t) := A in
-    match P.[? p]  with
-    | Some Lp =>
-      match Lp with
-      | rl_msg a' q' Ks =>
-        match Ks l with
-        | Some (t', Lp) =>
-          if (a == a') && (q == q') && (t == t')
-          then Some P.[p <- Lp]
-          else None
-        | None => None
-        end
-      | _ => None
+    match look P p with
+    | rl_msg a' q' Ks =>
+      match Ks l with
+      | Some (t', Lp) =>
+        if (a == a') && (q == q') && (t == t')
+        then Some P.[p <- Lp]
+        else None
+      | None => None
       end
-    | None => None
+    | _ => None
     end%fmap.
 
   Lemma doact_send (E : renv) p q lb t KsL Lp :
-    (E.[? p]%fmap = Some (rl_msg l_send q KsL)) ->
+    (look E p = rl_msg l_send q KsL) ->
     (KsL lb = Some (t, Lp)) ->
     exists E', (do_act E (mk_act l_send p q lb t) = Some E').
   Proof.

@@ -535,29 +535,29 @@ Section Semantics.
 
   Inductive iPart_of: role -> ig_ty -> Prop :=
     | ipof_end p cG: part_of p cG -> iPart_of p (ig_end cG)
-    | ipof_from o F T C: iPart_of F (ig_msg o F T C)
+    | ipof_from F T C: iPart_of F (ig_msg None F T C)
     | ipof_to o F T C: iPart_of T (ig_msg o F T C)
     | ipof_cont p o F T C L G Ty: C L = Some (Ty, G)
       -> iPart_of p G -> iPart_of p (ig_msg o F T C).
 
-  Lemma iPart_of_label_label_aux p o o' F T C GG:
-    iPart_of p GG -> GG = ig_msg o F T C ->
-        iPart_of p (ig_msg o' F T C).
-  Proof.
-  elim.
-  + by [].
-  + by move=> o0 F0 T0 C0 [hp1 hp2 hp3 hp4]; rewrite hp2; apply ipof_from.
-  + by move=> o0 F0 T0 C0 [hp1 hp2 hp3 hp4]; rewrite hp3; apply ipof_to.
-  + move=> p0 o0 F0 T0 C0 L G Ty contL ipartof ih [eq1 eq2 eq3 eq4].
-    by rewrite -eq4; apply: (ipof_cont o' F T contL ipartof).
-  Qed.
+  (* Lemma iPart_of_label_label_aux p o o' F T C GG: *)
+  (*   iPart_of p GG -> GG = ig_msg o F T C -> *)
+  (*       iPart_of p (ig_msg o' F T C). *)
+  (* Proof. *)
+  (* elim. *)
+  (* + by []. *)
+  (* + by move=> F0 T0 C0 [hp1 hp2 hp3 hp4]; rewrite hp2; apply ipof_from. *)
+  (* + by move=> o0 F0 T0 C0 [hp1 hp2 hp3 hp4]; rewrite hp3; apply ipof_to. *)
+  (* + move=> p0 o0 F0 T0 C0 L G Ty contL ipartof ih [eq1 eq2 eq3 eq4]. *)
+  (*   by rewrite -eq4; apply: (ipof_cont o' F T contL ipartof). *)
+  (* Qed. *)
 
-  Lemma iPart_of_label_label p o o' F T C:
-    iPart_of p (ig_msg o F T C) ->
-        iPart_of p (ig_msg o' F T C).
-  Proof.
-  by move=> hp; apply: (@iPart_of_label_label_aux p o o' F T C _ hp).
-  Qed.
+  (* Lemma iPart_of_label_label p o o' F T C: *)
+  (*   iPart_of p (ig_msg o F T C) -> *)
+  (*       iPart_of p (ig_msg o' F T C). *)
+  (* Proof. *)
+  (* by move=> hp; apply: (@iPart_of_label_label_aux p o o' F T C _ hp). *)
+  (* Qed. *)
 
 
 
