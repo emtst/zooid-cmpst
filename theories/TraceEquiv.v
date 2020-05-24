@@ -903,6 +903,11 @@ actually they should be doubled*)
     : forall l Ty G, C0 l = Some (Ty, G) -> exists G', C1 l = Some (Ty, G').
   Proof. by move=> l Ty; move: (DOM l Ty)=>[/(_ (ex_intro _ _ _))-H _]. Qed.
 
+  Lemma dom' T T' (C0 : lbl /-> mty * T) (C1 : lbl /-> mty * T')
+        (DOM : same_dom C0 C1)
+    : forall l Ty G, C1 l = Some (Ty, G) -> exists G', C0 l = Some (Ty, G').
+  Proof. by move=> l Ty; move: (DOM l Ty)=>[_ /(_ (ex_intro _ _ _))-H]. Qed.
+
   Lemma look_same E F L : look E.[F <- L] F = L.
   Proof. by rewrite /look fnd_set eq_refl. Qed.
 
@@ -1183,9 +1188,8 @@ actually they should be doubled*)
     ]/= in P PRJ *.
     - by apply: (Projection_send Cl).
     - by apply: (Projection_recv Cl).
-    - move: (dom DOM)=>DOMl.
-      move: DOM=>/same_dom_sym/dom-DOMr.
-      move: PRJ=>/Proj_None_next-PRJ.
+    - move: (IProj_send1_inv (PRJ.1 F))=>[FT] [lCF] [EF] [DOMF] ALLF.
+      move: (IProj_recv_inv (PRJ.1 T))=>[_] [lCT] [ET] [DOMT] ALLT.
       have {}Ih :
         forall (L : lbl) (Ty : mty) (G : ig_ty),
           C1 L = Some (Ty, G) ->
@@ -1193,12 +1197,12 @@ actually they should be doubled*)
                                  (run_step (mk_act l_recv T F L Ty)
                                            (run_step (mk_act l_send F T L Ty)
                                                      P))).
-      { move=>l0 Ty G1 C1l; move: (DOMr _ _ _ C1l)=>[G0 C0l].
-        move: (PRJ _ _ _ C0l)=>PRJ0.
+      { move=>l0 Ty G1 C1l; move: (dom' DOM C1l)=>[G0 C0l].
+        move: (Proj_None_next PRJ C0l)=>PRJ0.
         by apply: Ih; [apply: C0l | apply: C1l |].
       }
       move: NE=>[Tyl [G0 C0l]].
-      move: (DOMl _ _ _ C0l) => [G1 C1l].
+      move: (dom DOM C0l) => [G1 C1l].
       (* TODO: We need to use this refined IH for the "undo" lemmas *)
       apply: (Proj_send_undo (l:=l) (Ty:=Tyl)).
       apply/(Proj_recv_undo (l:=l) (Ty:=Tyl) C1l).
