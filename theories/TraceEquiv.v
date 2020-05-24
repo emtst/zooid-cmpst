@@ -1170,6 +1170,11 @@ actually they should be doubled*)
   Proof.
   Admitted.
 
+  Lemma dom T T' (C0 : lbl /-> mty * T) (C1 : lbl /-> mty * T')
+        (DOM : same_dom C0 C1)
+    : forall l Ty G, C0 l = Some (Ty, G) -> exists G', C1 l = Some (Ty, G').
+  Proof. by move=> l Ty; move: (DOM l Ty)=>[/(_ (ex_intro _ _ _))-H _]. Qed.
+
   Lemma runstep_proj G P : forall A G',
     step A G G' -> Projection G P -> Projection G' (run_step A P).
   Proof.
@@ -1182,19 +1187,32 @@ actually they should be doubled*)
     ]/= in P PRJ *.
     - by apply: (Projection_send Cl).
     - by apply: (Projection_recv Cl).
-    - move: PRJ=>/Proj_None_next-PRJ.
+    - move: (dom DOM)=>DOMl.
+      move: DOM=>/same_dom_sym/dom-DOMr.
+      move: PRJ=>/Proj_None_next-PRJ.
+      have {}Ih :
+        forall (L : lbl) (Ty : mty) (G : ig_ty),
+          C1 L = Some (Ty, G) ->
+          Projection G (run_step A
+                                 (run_step (mk_act l_recv T F L Ty)
+                                           (run_step (mk_act l_send F T L Ty)
+                                                     P))).
+      { move=>l0 Ty G1 C1l; move: (DOMr _ _ _ C1l)=>[G0 C0l].
+        move: (PRJ _ _ _ C0l)=>PRJ0.
+        by apply: Ih; [apply: C0l | apply: C1l |].
+      }
       move: NE=>[Tyl [G0 C0l]].
-      move: (DOM l Tyl) => [/(_ (ex_intro _ _ C0l))-[G1 C1l] _].
-      move: (STEP l _ _ _ C0l C1l)=>STEP_G0_G1.
-      move: (PRJ _ _ _ C0l) => PRJ_G0.
-      move: (Ih _ _ _ _ C0l C1l _ PRJ_G0)=>PRJ_G1.
+      move: (DOMl _ _ _ C0l) => [G1 C1l].
+      (* TODO: We need to use this refined IH for the "undo" lemmas *)
       apply: (Proj_send_undo (l:=l) (Ty:=Tyl)).
-      apply: (Proj_recv_undo (l:=l) (Ty:=Tyl) C1l).
-      by rewrite -(run_stepC (A:=A)) ?aT //= -(run_stepC (A:=A)) ?aF ?aT //= .
-    - move: Ih=>[_] [Tyl] [G0] [G1] [C0l] [C1l] [STEP_G0_G1] Ih.
+      apply/(Proj_recv_undo (l:=l) (Ty:=Tyl) C1l).
+      rewrite -(run_stepC (A:=A)) ?aT //= -(run_stepC (A:=A)) ?aF ?aT //= .
+      by apply: Ih.
+    - move: Ih=>[SAME_C] [Tyl] [G0] [G1] [C0l] [C1l] [STEP_G0_G1] Ih.
       move: (Projection_runnable C0l PRJ) => RUN.
       move: PRJ=>/Proj_Some_next-PRJ.
       move: (PRJ _ _ C0l)=> H0; move: (Ih _ H0)=>H1.
+      (* TODO: use SAME_C in the undo step lemma *)
       apply/(Proj_recv_undo C1l).
       by rewrite -run_stepC //= RUN orbT.
     - by apply/Ih/Projection_unr.
