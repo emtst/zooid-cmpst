@@ -22,7 +22,7 @@ Section TraceEquiv.
   Open Scope fmap.
 
   Definition eProject (G: ig_ty) (E : {fmap role -> rl_ty}) : Prop :=
-    forall p, (* iPart_of p G -> *) (exists L,  IProj p G L /\ look E p = L).
+    forall p, IProj p G (look E p).
 
 (*again lemmas to be moved elsewhere later*)
   Lemma step_send_inv_aux F T C L Ty aa GG:
@@ -687,21 +687,19 @@ actually they should be doubled*)
       C l = Some (Ty, G) ->
       Projection G (run_step (mk_act l_recv T F l Ty) P).
   Proof.
-    move=>[H qPRJ] Ty G Cl.
-    move: (H T)=>[L [PRJ ET]].
+    move=>[H qPRJ] Ty G Cl; move: (H T)=>PRJ.
     move: PRJ=>/IProj_recv_inv=>[[FT [CL [L_msg [DOM PRJ]]]]].
     move: (DOM l Ty)=>[/(_ (ex_intro _ _ Cl))-[L' CLl] _].
     move: qPRJ=>/qProject_Some_inv-[Ty' [G0 [Q [Cl' [DEQ qPRJ]]]]].
     move: Cl' DEQ qPRJ; rewrite Cl=> [[<-<-]] /eqP-DEQ QPRJ {Ty' G0}.
-    rewrite /run_step/= ET L_msg CLl !eq_refl /= DEQ; split=>//.
+    rewrite /run_step/= L_msg CLl !eq_refl /= DEQ; split=>//.
     move=>p; case: (boolP (p == T)) =>[/eqP->|pT].
-    - exists L'; split; first by apply (PRJ _ _ _ _ Cl CLl).
-      by rewrite /look fnd_set eq_refl.
-    - move: (H p)=>[L0] [/IProj_send2_inv/(_ pT)-[_] [lC] [Ty0] [lCl] [DOM'] PRJ'].
+    - by rewrite /look fnd_set eq_refl; apply/(PRJ _ _ _ _ Cl CLl).
+    - move: (H p)=>/IProj_send2_inv/(_ pT)-[_] [lC] [Ty0] [lCl] [DOM'] PRJ'.
       move: (DOM' l Ty)=>[/(_ (ex_intro _ _ Cl))-[L1 lCl'] _].
       move: lCl'; rewrite lCl=>[EQ]; move: EQ lCl=>[-> _] lCl {Ty0 L1}.
-      move=> Pp; exists L0; split; first by apply (PRJ' _ _ _ _ Cl lCl).
-      by rewrite /look fnd_set (negPf pT).
+      rewrite  /look fnd_set (negPf pT) -/(look _ _).
+      by apply: (PRJ' _ _ _ _ Cl lCl).
   Qed.
 
 
@@ -712,14 +710,10 @@ actually they should be doubled*)
       Projection G (run_step (mk_act l_recv T F l Ty)
                              (run_step (mk_act l_send F T l Ty) P)).
   Proof.
-    move=>[H qPRJ] l Ty G Cl.
-    move: (H F)=>[LF [PRJF EF]].
+    move=>[H qPRJ] l Ty G Cl; move: (H F)=>PRJF.
     move: PRJF=>/IProj_send1_inv-[FT] [CF] [LF_E] [DOMF] PRJF.
-    move: LF_E EF=>-> EF {LF}.
     move: (DOMF l Ty) => [/(_ (ex_intro _ _ Cl))-[LF CFl] _].
-    move: (H T)=>[LT [PRJT ET]].
-    move: PRJT=>/IProj_recv_inv-[_] [CT] [LT_E] [DOMT] PRJT.
-    move: LT_E ET=>-> ET {LT}.
+    move: (H T)=>/IProj_recv_inv-[_] [CT] [LT_E] [DOMT] PRJT.
     move: (DOMT l Ty) => [/(_ (ex_intro _ _ Cl))-[LT CTl] _].
     move: qPRJ=>/qProject_None_inv-[PFT] qPRJ; split.
     - move=> p;
