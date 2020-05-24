@@ -938,7 +938,27 @@ actually they should be doubled*)
     forall F T P,
       Projection (ig_msg (Some l) F T C) P ->
       Projection G (run_step (mk_act l_recv T F l Ty) P).
-  Admitted.
+  Proof.
+    move=>Cl F T P PRJ.
+    move: (qProject_Some_inv PRJ.2)=>[TyQ] [GQ] [Q'].
+    rewrite Cl=> [][] [<-<-] [/eqP-DEQ] QPRJ {TyQ GQ}.
+    move: (IProj_recv_inv (PRJ.1 T))=>[FT] [lCT] [ET] [DOMT] ALLT.
+    move: (IProj_send2_inv (PRJ.1 F) FT)=>[_] [lCF] [Ty'] [EF] [DOMF] ALLF.
+    move: (dom DOMF Cl) (dom DOMT Cl) => [LF lCFl] [LT lCTl].
+    move: lCFl; rewrite EF=>H; move: H EF=>[-> _] lCFl.
+    rewrite /run_step/= ET lCTl !eq_refl/= DEQ.
+    split=>//.
+    move=>p; case: (boolP (p == F))=>[/eqP->{p}|];
+             [|case: (boolP (p == T))=>[/eqP->{p} _|pT pF]].
+    - rewrite look_comm; last by rewrite eq_sym.
+      by apply: (ALLF _ _ _ _ Cl lCFl).
+    - by rewrite look_same; apply: (ALLT _ _ _ _ Cl lCTl).
+    - move: (IProj_send2_inv (PRJ.1 p) pT)=>[_] [lCp] [{}Ty'] [lCpl] [DOMp] ALLp.
+      move: (dom DOMp Cl)=>[L'].
+      rewrite lCpl=>[[ETy']] _ {L'}; move: ETy' lCpl=>-> lCpl.
+      rewrite look_comm //; last by rewrite eq_sym.
+      by apply/(ALLp _ _ _ _ Cl lCpl).
+  Qed.
 
   Lemma do_actC E0 E1 E2 A1 A2 :
     subject A1 != subject A2 ->
