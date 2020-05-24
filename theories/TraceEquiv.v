@@ -898,12 +898,40 @@ actually they should be doubled*)
     + by apply/QProj_unr.
   Qed.
 
+  Lemma dom T T' (C0 : lbl /-> mty * T) (C1 : lbl /-> mty * T')
+        (DOM : same_dom C0 C1)
+    : forall l Ty G, C0 l = Some (Ty, G) -> exists G', C1 l = Some (Ty, G').
+  Proof. by move=> l Ty; move: (DOM l Ty)=>[/(_ (ex_intro _ _ _))-H _]. Qed.
+
+  Lemma look_same E F L : look E.[F <- L] F = L.
+  Proof. by rewrite /look fnd_set eq_refl. Qed.
+
   Lemma Projection_send C l Ty G :
     C l = Some (Ty, G) ->
     forall F T P,
       Projection (ig_msg None F T C) P ->
       Projection (ig_msg (Some l) F T C) (run_step (mk_act l_send F T l Ty) P).
-  Admitted.
+  Proof.
+    move=>Cl F T P PRJ.
+    move: (IProj_send1_inv (PRJ.1 F))=>[FT] [lCF] [EF] [DOMF] ALLF.
+    move: (IProj_recv_inv (PRJ.1 T))=>[_] [lCT] [ET] [DOMT] ALLT.
+    move: (dom DOMF Cl) (dom DOMT Cl) => [LF lCFl] [LT lCTl].
+    rewrite /run_step/= EF lCFl !eq_refl/=.
+    split.
+    - move=>p; case: (boolP (p == F))=>[/eqP->{p}|];
+      [|case: (boolP (p == T))=>[/eqP->{p} _|pT pF]].
+      + by apply: (iprj_send2 FT FT DOMF ALLF); rewrite look_same; apply/lCFl.
+      + rewrite look_comm //= ET.
+        by apply: (iprj_recv _ _ DOMT ALLT); rewrite eq_sym.
+      + rewrite look_comm //=; last by rewrite eq_sym.
+        move: (IProj_mrg_inv (PRJ.1 p) pF pT)=>[_] [lCp] [DOMp] [ALLp] MRGp.
+        move: (dom DOMp Cl) => [Lp lCpl].
+        by apply/(EqL_IProj _ (MRGp _ _ _ lCpl))/(iprj_send2 pT FT DOMp ALLp lCpl).
+    - move: (qProject_None_inv PRJ.2)=>[PFT] /(_ _ _ _ Cl)-QPRJ.
+      apply: (qprj_some Cl _ QPRJ).
+      rewrite /deq/enq/= PFT fnd_set eq_refl/= remf1_set eq_refl remf1_id //.
+      by rewrite -fndSome PFT.
+  Qed.
 
   Lemma Projection_recv C l Ty G :
     C l = Some (Ty, G) ->
@@ -1114,60 +1142,14 @@ actually they should be doubled*)
   Lemma Proj_send_undo l F T C Ty P :
     Projection (ig_msg (Some l) F T C) (run_step (mk_act l_send F T l Ty) P) ->
     Projection (ig_msg None F T C) P.
-  Proof.
-    move=> PRJ.
-    split.
-    (* EProj first *)
-    move=>p.
-    (* move: (PRJ.1 p)=>[Lp] [PRJp] LOOKp. *)
-    (* case: (boolP (p == T))=>pT. *)
-    (* (* Casing *) *)
-    (* move: pT PRJp LOOKp=>/eqP-> /IProj_recv_inv-[FT] [lC] [lP] [DOM] PRJp LOOK. *)
-    (* exists Lp; split. *)
-    (* move: FT; rewrite eq_sym=>FT. *)
-    (* by move: (iprj_recv None FT DOM PRJp); rewrite lP. *)
-    (* move: LOOK; rewrite /look/run_step/=/look. *)
-    (* case: P.1.[? _] =>[[|a R C0]|]//. *)
-    (* case: (C0 l)=>// [[Ty0 L'']]. *)
-    (* by case: ifP=>//= COND; rewrite fnd_set eq_sym (negPf FT). *)
-    (* (* This seems to work *) *)
-    (* move: PRJp. *)
-    (* move=>/IProj_send2_inv/(_ pT)-[FT] [lC] [Ty0] [lCl] [DOM] ALL. *)
-
-    (* case: (boolP (p == F))=>pF. *)
-    (* (* Casing *) *)
-    (* admit. (* Require as an argument? *) *)
-    (* exists Lp. *)
-    (* split. *)
-    (* apply (iprj_mrg FT pF pT DOM ALL). *)
-    (* admit. (* I need to merge all participants that are not F and T *) *)
-    (* admit. (* easy *) *)
-    (* admit. (* easy *) *)
   Admitted.
 
-  (* Lemma Proj_None_mrg C F T : *)
-  (*   forall p, p != F -> p != T -> *)
-  (*             forall Lp lC, *)
-  (*               IProj p (ig_msg None F T C) Lp -> *)
-  (*               same_dom C lC -> *)
-  (*               R_all (IProj p) C lC -> *)
-  (*               Merge lC Lp. *)
-  (* Proof. *)
-  (*   move=> p pF pT Lp lC. *)
-  (*   move=>/IProj_mrg_inv/(_ pF pT)-[_] [lC0] [DOM0] [ALL0] MRG0 DOM1 ALL1. *)
-  (*   move=>l Ty L' lCl. *)
 
   Lemma Proj_recv_undo l F T C Ty P G :
     C l = Some (Ty, G) ->
     Projection G (run_step (mk_act l_recv T F l Ty) P) ->
     Projection (ig_msg (Some l) F T C) P.
-  Proof.
   Admitted.
-
-  Lemma dom T T' (C0 : lbl /-> mty * T) (C1 : lbl /-> mty * T')
-        (DOM : same_dom C0 C1)
-    : forall l Ty G, C0 l = Some (Ty, G) -> exists G', C1 l = Some (Ty, G').
-  Proof. by move=> l Ty; move: (DOM l Ty)=>[/(_ (ex_intro _ _ _))-H _]. Qed.
 
   Lemma runstep_proj G P : forall A G',
     step A G G' -> Projection G P -> Projection G' (run_step A P).
