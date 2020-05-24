@@ -702,6 +702,10 @@ actually they should be doubled*)
       by apply: (PRJ' _ _ _ _ Cl lCl).
   Qed.
 
+  Lemma look_comm E F L T (NEQ : F != T) :
+    look E.[F <- L] T = look E T.
+  Proof. by rewrite/look fnd_set eq_sym (negPf NEQ). Qed.
+
 
   Lemma Proj_None_next F T C P :
     Projection (ig_msg None F T C) P ->
@@ -720,27 +724,24 @@ actually they should be doubled*)
       case: (boolP (p == F)) =>[/eqP-> {p}|pF];
       [|case: (boolP (p == T)) =>[/eqP-> {pF p}|pT]].
       + (* p = F *)
-        exists LF; split; first by apply/(PRJF _ _ _ _ Cl)/CFl.
-        rewrite /run_step/= EF CFl !eq_refl /= /look fnd_set eq_sym (negPf FT).
-        move: ET; rewrite /look; case: (P.lbl).[? T] =>//LT' ->.
-        by rewrite CTl !eq_refl /= fnd_set (negPf FT) fnd_set eq_refl.
+        rewrite /look/run_step/= LF_E CFl !eq_refl/= look_comm // LT_E CTl.
+        rewrite !eq_refl/= fnd_set (negPf FT) fnd_set eq_refl.
+        by apply/(PRJF _ _ _ _ Cl).
       + (* p = T *)
-        exists LT; split; first by apply/(PRJT _ _ _ _ Cl)/CTl.
-        rewrite /run_step/= EF CFl !eq_refl /= /look fnd_set eq_sym (negPf FT).
-        move: ET; rewrite /look; case: (P.lbl).[? T] =>//= LT'->.
-        by rewrite CTl !eq_refl /= fnd_set eq_refl.
+        rewrite /look/run_step/= LF_E CFl !eq_refl /= look_comm // LT_E CTl.
+        rewrite !eq_refl/= fnd_set eq_refl.
+        by apply/(PRJT _ _ _ _ Cl).
       + (* T != p != F *)
-        move: (H p)=>[Lp [PRJp Ep]].
-        move: PRJp=>/IProj_mrg_inv/(_ pF)/(_ pT)-[_] [Cp] [DOMp] [PRJp] MRG.
+        move: (H p)=>/IProj_mrg_inv/(_ pF)/(_ pT)-[_] [Cp] [DOMp] [PRJp] MRG.
         move: (DOMp l Ty) => [/(_ (ex_intro _ _ Cl))-[Lp' Cpl] _].
         move: (MRG _ _ _ Cpl)=>Lp_E.
-        exists Lp; split; first by apply/(EqL_IProj _ Lp_E)/(PRJp _ _ _ _ Cl).
-        rewrite /run_step/= EF CFl !eq_refl/= /look fnd_set eq_sym (negPf FT).
-        move: ET; rewrite /look; case: (P.lbl).[? T] =>// LT'->.
-        by rewrite CTl !eq_refl/= fnd_set (negPf pT) fnd_set (negPf pF).
-    - rewrite /run_step/= EF CFl !eq_refl /= /look fnd_set eq_sym (negPf FT).
-      move: ET; rewrite /look; case: (P.lbl).[? T] =>// LT'->.
-      rewrite CTl !eq_refl /= /enq PFT /deq fnd_set eq_refl /= remf1_set eq_refl.
+        rewrite /run_step/= LF_E CFl !eq_refl/= look_comm// LT_E CTl.
+        rewrite !eq_refl/= ?look_comm.
+        by apply/(EqL_IProj _ Lp_E)/(PRJp _ _ _ _ Cl).
+        by rewrite eq_sym.
+        by rewrite eq_sym.
+    - rewrite /run_step/= LF_E CFl !eq_refl /= look_comm // LT_E CTl !eq_refl/=.
+      rewrite /enq PFT /deq fnd_set eq_refl /= remf1_set eq_refl.
       rewrite remf1_id; first by apply/qPRJ/Cl.
       by rewrite -fndSome PFT.
   Qed.
@@ -864,16 +865,16 @@ actually they should be doubled*)
     | a CG G0 ST_G0 Ih
     ] /= in P PRJ *.
   - rewrite /runnable/=.
-    move: (PRJ.1 F) => [L_F [IProj_F E_F]].
+    move: (PRJ.1 F) => IProj_F.
     move: (IProj_send1_inv IProj_F)=>[_ [lC [LF_msg [/(_ L Ty)-[DOM _] PRJ_C]]]].
     move: (DOM (ex_intro _ _ C_L)) => [L' lC_L].
-    by rewrite E_F LF_msg lC_L !eq_refl.
+    by rewrite LF_msg lC_L !eq_refl /=.
   - rewrite /runnable/=.
-    move: (PRJ.1 T) => [L_F [IProj_F E_F]].
+    move: (PRJ.1 T) => IProj_F.
     move: (IProj_recv_inv IProj_F)=>[_ [lC [LF_msg [/(_ L Ty)-[DOM _] PRJ_C]]]].
     move: (DOM (ex_intro _ _ C_L)) => [L' lC_L].
     move: (qProject_Some_inv PRJ.2) => [Ty' [{}G [Q' [C_L' [/eqP-Q_FT _]]]]].
-    rewrite E_F LF_msg lC_L !eq_refl/= Q_FT.
+    rewrite LF_msg lC_L !eq_refl/= Q_FT.
     by move: C_L C_L'=>-> [->]; rewrite !eq_refl.
   - move: PRJ=>/Proj_None_next-PRJ.
     move: NE=>[Ty [G0 C0l]].
@@ -892,8 +893,7 @@ actually they should be doubled*)
   - apply: Ih.
     move: PRJ=>[ePRJ qPRJ]; split.
     + move: ePRJ; rewrite /eProject=>[PRJ].
-      move=>p; move: (PRJ p).
-      move=>[L [{}PRJ Ep]]; exists L; split=>//.
+      move=>p; move: (PRJ p)=>IPRJ.
       by apply/IProj_unr.
     + by apply/QProj_unr.
   Qed.
@@ -1094,20 +1094,20 @@ actually they should be doubled*)
     runnable (mk_act l_recv T F l Ty) P.
   Proof.
     move=> Cl [EPROJ QPROJ].
-    move: EPROJ; rewrite /eProject=>/(_ T)-[LT] [PRJ] [PT].
+    move: EPROJ; rewrite /eProject=>/(_ T)-PRJ.
     move: PRJ=>/IProj_recv_inv=>[[FT] [lC] [E_lT] [DOM] PRJ].
     move: QPROJ=>/qProject_Some_inv=>[] [Ty'] [G0] [Q'] [Cl'] [DEQ] QPRJ.
     move: Cl' DEQ QPRJ; rewrite Cl =>[] [<-<-] /eqP-DEQ QPRJ {Ty' G0}.
     move: (DOM l Ty)=>[/(_ (ex_intro _ _ Cl))-[L' lCl] _].
-    by rewrite /runnable/= PT E_lT lCl !eq_refl /= DEQ !eq_refl.
+    by rewrite /runnable/= E_lT lCl !eq_refl /= DEQ !eq_refl.
   Qed.
 
   Lemma Projection_unr G P :
     Projection (ig_end G) P -> Projection (rg_unr G) P.
   Proof.
     move=>[EPRJ QPRJ]; split.
-    - move=>p; move: (EPRJ p)=>[L] [{}EPRJ Pp].
-      by exists L; split=>//; apply: IProj_unr.
+    - move=>p; move: (EPRJ p)=>{}EPRJ.
+      by apply: IProj_unr.
     - by apply: QProj_unr.
   Qed.
 
@@ -1119,30 +1119,30 @@ actually they should be doubled*)
     split.
     (* EProj first *)
     move=>p.
-    move: (PRJ.1 p)=>[Lp] [PRJp] LOOKp.
-    case: (boolP (p == T))=>pT.
-    (* Casing *)
-    move: pT PRJp LOOKp=>/eqP-> /IProj_recv_inv-[FT] [lC] [lP] [DOM] PRJp LOOK.
-    exists Lp; split.
-    move: FT; rewrite eq_sym=>FT.
-    by move: (iprj_recv None FT DOM PRJp); rewrite lP.
-    move: LOOK; rewrite /look/run_step/=/look.
-    case: P.1.[? _] =>[[|a R C0]|]//.
-    case: (C0 l)=>// [[Ty0 L'']].
-    by case: ifP=>//= COND; rewrite fnd_set eq_sym (negPf FT).
-    (* This seems to work *)
-    move: PRJp.
-    move=>/IProj_send2_inv/(_ pT)-[FT] [lC] [Ty0] [lCl] [DOM] ALL.
+    (* move: (PRJ.1 p)=>[Lp] [PRJp] LOOKp. *)
+    (* case: (boolP (p == T))=>pT. *)
+    (* (* Casing *) *)
+    (* move: pT PRJp LOOKp=>/eqP-> /IProj_recv_inv-[FT] [lC] [lP] [DOM] PRJp LOOK. *)
+    (* exists Lp; split. *)
+    (* move: FT; rewrite eq_sym=>FT. *)
+    (* by move: (iprj_recv None FT DOM PRJp); rewrite lP. *)
+    (* move: LOOK; rewrite /look/run_step/=/look. *)
+    (* case: P.1.[? _] =>[[|a R C0]|]//. *)
+    (* case: (C0 l)=>// [[Ty0 L'']]. *)
+    (* by case: ifP=>//= COND; rewrite fnd_set eq_sym (negPf FT). *)
+    (* (* This seems to work *) *)
+    (* move: PRJp. *)
+    (* move=>/IProj_send2_inv/(_ pT)-[FT] [lC] [Ty0] [lCl] [DOM] ALL. *)
 
-    case: (boolP (p == F))=>pF.
-    (* Casing *)
-    admit. (* Require as an argument? *)
-    exists Lp.
-    split.
-    apply (iprj_mrg FT pF pT DOM ALL).
-    admit. (* I need to merge all participants that are not F and T *)
-    admit. (* easy *)
-    admit. (* easy *)
+    (* case: (boolP (p == F))=>pF. *)
+    (* (* Casing *) *)
+    (* admit. (* Require as an argument? *) *)
+    (* exists Lp. *)
+    (* split. *)
+    (* apply (iprj_mrg FT pF pT DOM ALL). *)
+    (* admit. (* I need to merge all participants that are not F and T *) *)
+    (* admit. (* easy *) *)
+    (* admit. (* easy *) *)
   Admitted.
 
   (* Lemma Proj_None_mrg C F T : *)
