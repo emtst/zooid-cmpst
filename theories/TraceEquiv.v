@@ -1321,11 +1321,28 @@ actually they should be doubled*)
 
   (* FIXME: fix statement so it is true and provable *)
   Lemma Proj_recv_undo l F T C lCT Ty P G Q' :
+    F != T ->
     C l = Some (Ty, G) ->
     look P.lbl T = rl_msg l_recv F lCT ->
+    same_dom C lCT ->
     deq P.2 (F, T) = Some (l, Ty, Q') ->
     Projection G (run_step (mk_act l_recv T F l Ty) P) ->
     Projection (ig_msg (Some l) F T C) P.
+  Proof.
+    move=> FT Cl ET DOM PFT PRJ; split.
+    - move=>p.
+      case: (boolP (p == T))=>[/eqP->|pT].
+      + move: FT; rewrite eq_sym ET=>TF.
+        apply (iprj_recv (Some l) TF)=>//.
+        admit.
+      + move: (buildC C P.1) => Cp.
+        apply: (iprj_send2 pT FT).
+        admit.
+        admit.
+        admit.
+    - move: PFT=>/eqP-PFT; apply: (qprj_some Cl PFT).
+      move: PFT=>/eqP-PFT; move: (dom DOM Cl)=>[L] lCtl.
+      by move: PRJ.2; rewrite /run_step/= ET lCtl !eq_refl/= PFT.
   Admitted.
 
   Lemma runstep_proj G P : forall A G',
@@ -1356,7 +1373,7 @@ actually they should be doubled*)
       by apply: Ih; [apply: C0l | apply: C1l |].
     - move: Ih=>[SAME_C] [Tyl] [G0] [G1] [C0l] [C1l] [STEP_G0_G1] Ih.
       move: (Projection_runnable C0l PRJ) => RUN.
-      move: (IProj_recv_inv (PRJ.1 T))=>[_] [lCT] [ET] [DOMT] _.
+      move: (IProj_recv_inv (PRJ.1 T))=>[FT] [lCT] [ET] [DOMT] _.
       move: ET; rewrite -(look_act _ aT)=>{}ET.
       move _: DOM=> DOM1; move: DOM1=>/same_dom_sym-DOM1.
       move: (same_dom_trans DOM1 DOMT)=>{}DOMT.
@@ -1364,7 +1381,7 @@ actually they should be doubled*)
       rewrite C0l=>[][<-<-] [/eqP/(deq_act aT)-DEQ] _ {Ty G2}.
       move: PRJ=>/Proj_Some_next/(_ _ _ C0l)/Ih.
       rewrite run_stepC ?RUN ?orbT // => {}Ih.
-      by apply/(Proj_recv_undo C1l ET DEQ).
+      by apply (Proj_recv_undo FT C1l ET DOMT DEQ).
     - by apply/Ih/Projection_unr.
   Qed.
 
