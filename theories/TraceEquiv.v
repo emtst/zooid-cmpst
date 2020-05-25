@@ -1284,9 +1284,46 @@ actually they should be doubled*)
       + by move: (dom_none DOM lCF0)=>lCT0; rewrite /run_step/= ET lCT0.
   Qed.
 
+  Lemma deq_act A F T P l Tyl Q' :
+    subject A != T ->
+    deq P.2 (F, T) = Some (l, Tyl, Q') ->
+    deq (run_step A P).2 (F, T) = Some (l, Tyl, (run_step A (P.1, Q')).2).
+  Proof.
+    case: A=>[a p q l' Ty']; rewrite /run_step/=.
+    case: look=>[|a0 r0 C0]//.
+    case: (C0 l')=>// [[Ty1 L1]].
+    case: ifP=>//COND; case: a COND=>//= COND pT DEQ.
+    - by apply: (deq_enq_sameC DEQ).
+    - move: DEQ; rewrite /deq/=.
+      case EQ: (P.2.[? (F, T)]) =>[[|V0 W]|]//.
+      case EQ': (P.2.[? (q, p)])=>[[|V1 W']|]//.
+      + rewrite EQ.
+        case: ifP EQ=>[/eqP->|WEQ]; move=>PFT [<-] <-.
+        * by rewrite fnd_rem1 xpair_eqE negb_and orbC pT /= EQ'.
+        * by rewrite fnd_set xpair_eqE andbC (negPf pT) /= EQ'.
+      + case: ifP EQ=>[/eqP-EQW|WEQ]  PFT [<-<-]; case:ifP=>EQ//.
+        * rewrite fnd_rem1 xpair_eqE negb_and orbC eq_sym pT PFT /orb EQW.
+          rewrite eq_refl fnd_rem1 xpair_eqE negb_and pT orbT EQ' EQ /orb.
+          by rewrite !remf_comp fsetUC.
+        * rewrite fnd_set xpair_eqE andbC eq_sym (negPf pT) PFT /andb EQW.
+          rewrite fnd_rem1 xpair_eqE negb_and pT orbT EQ' EQ remf1_set.
+          by rewrite xpair_eqE andbC eq_sym (negPf pT).
+        * rewrite fnd_rem1 xpair_eqE negb_and orbC eq_sym pT /orb PFT.
+          rewrite fnd_set xpair_eqE (negPf pT) andbC /andb EQ' EQ WEQ.
+          by rewrite remf1_set xpair_eqE (negPf pT) andbC.
+        * rewrite fnd_set xpair_eqE andbC eq_sym (negPf pT) /andb PFT WEQ.
+          rewrite fnd_set xpair_eqE andbC (negPf pT) /andb EQ' EQ.
+          by rewrite setfC xpair_eqE andbC eq_sym (negPf pT).
+      + case: ifP EQ=>[/eqP->|WEQ] PFT [<-<-]; rewrite PFT.
+        * by rewrite fnd_rem1 xpair_eqE negb_and pT orbC /= EQ'.
+        * by rewrite WEQ fnd_set xpair_eqE andbC (negPf pT)/= EQ'.
+  Qed.
+
   (* FIXME: fix statement so it is true and provable *)
-  Lemma Proj_recv_undo l F T C Ty P G :
+  Lemma Proj_recv_undo l F T C lCT Ty P G Q' :
     C l = Some (Ty, G) ->
+    look P.lbl T = rl_msg l_recv F lCT ->
+    deq P.2 (F, T) = Some (l, Ty, Q') ->
     Projection G (run_step (mk_act l_recv T F l Ty) P) ->
     Projection (ig_msg (Some l) F T C) P.
   Admitted.
@@ -1319,11 +1356,15 @@ actually they should be doubled*)
       by apply: Ih; [apply: C0l | apply: C1l |].
     - move: Ih=>[SAME_C] [Tyl] [G0] [G1] [C0l] [C1l] [STEP_G0_G1] Ih.
       move: (Projection_runnable C0l PRJ) => RUN.
-      move: PRJ=>/Proj_Some_next-PRJ.
-      move: (PRJ _ _ C0l)=> H0; move: (Ih _ H0)=>H1.
-      (* TODO: use SAME_C in the undo step lemma *)
-      apply/(Proj_recv_undo C1l).
-      by rewrite -run_stepC //= RUN orbT.
+      move: (IProj_recv_inv (PRJ.1 T))=>[_] [lCT] [ET] [DOMT] _.
+      move: ET; rewrite -(look_act _ aT)=>{}ET.
+      move _: DOM=> DOM1; move: DOM1=>/same_dom_sym-DOM1.
+      move: (same_dom_trans DOM1 DOMT)=>{}DOMT.
+      move: PRJ.2=>/qProject_Some_inv-[Ty] [G2] [Q'] [].
+      rewrite C0l=>[][<-<-] [/eqP/(deq_act aT)-DEQ] _ {Ty G2}.
+      move: PRJ=>/Proj_Some_next/(_ _ _ C0l)/Ih.
+      rewrite run_stepC ?RUN ?orbT // => {}Ih.
+      by apply/(Proj_recv_undo C1l ET DEQ).
     - by apply/Ih/Projection_unr.
   Qed.
 
