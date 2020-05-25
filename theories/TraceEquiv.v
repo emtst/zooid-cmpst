@@ -1319,7 +1319,9 @@ actually they should be doubled*)
         * by rewrite WEQ fnd_set xpair_eqE andbC (negPf pT)/= EQ'.
   Qed.
 
-  (* FIXME: fix statement so it is true and provable *)
+  (* FIXME: fix statement by adding the fact that continuations != l do not change (and therefore we know
+     their projection)
+  *)
   Lemma Proj_recv_undo l F T C lCT Ty P G Q' :
     F != T ->
     C l = Some (Ty, G) ->
@@ -1344,6 +1346,12 @@ actually they should be doubled*)
       move: PFT=>/eqP-PFT; move: (dom DOM Cl)=>[L] lCtl.
       by move: PRJ.2; rewrite /run_step/= ET lCtl !eq_refl/= PFT.
   Admitted.
+
+  Definition updC (l : lbl) (Ty : mty) C E p l' :=
+    if l == l' then
+      Some (Ty, look E p)
+    else
+      C l'.
 
   Lemma runstep_proj G P : forall A G',
     step A G G' -> Projection G P -> Projection G' (run_step A P).
@@ -1394,6 +1402,5 @@ actually they should be doubled*)
   - apply/(runstep_proj ST Prj).
   - apply/run_step_sound/(local_runnable ST Prj).
   Qed.
-End TraceEquiv.
 
-Print Assumptions Project_step.
+End TraceEquiv.
