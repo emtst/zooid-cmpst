@@ -1164,12 +1164,127 @@ actually they should be doubled*)
     - by apply: QProj_unr.
   Qed.
 
-  Lemma Proj_send_undo l F T C Ty P :
-    Projection (ig_msg (Some l) F T C) (run_step (mk_act l_send F T l Ty) P) ->
+
+  Definition PAll (C : lbl /-> mty * ig_ty) P
+    := forall l Ty G, C l = Some (Ty, G) -> Projection G (P l Ty).
+
+  Definition send_recv F T L Ty P :=
+    run_step (mk_act l_recv T F L Ty) (run_step (mk_act l_send F T L Ty) P).
+
+  Lemma look_act A P F :
+    subject A != F -> look (run_step A P).1 F = look P.1 F.
+  Proof.
+    case A=>[a p q l Ty]; rewrite /run_step/do_act/=.
+    case: (look P.1 p) =>// a' r' C'; case: (C' l)=> [[Ty' L]|]//.
+    by case: ifP=>// _ pF; rewrite look_comm.
+  Qed.
+
+  Lemma queue_act A F T P :
+    (subject A != F) ->
+    (subject A != T) ->
+    ((run_step A P).2).[? (F, T)] = P.2.[? (F, T)].
+  Proof.
+    case A=>[a p q l Ty]; rewrite /run_step/do_act/=.
+    case: (look P.1 p) =>// a' r' C'; case: (C' l)=> [[Ty' L]|]//.
+    case: ifP=>// _ pF pT; case: a=>//; rewrite /enq/deq.
+    - by case: P.2.[? _] =>[a|]; rewrite fnd_set xpair_eqE eq_sym (negPf pF).
+    - case: P.2.[? _] =>[[|V0 [|V1 W]]|]//.
+      + by rewrite fnd_rem1 xpair_eqE negb_and orbC eq_sym  (negPf pT).
+      + by rewrite fnd_set xpair_eqE andbC eq_sym (negPf pT).
+  Qed.
+
+  Lemma dom_none A B (C0 : lbl /-> mty * A) (C1 : lbl /-> mty * B)
+    : same_dom C0 C1 -> forall l, C0 l = None -> C1 l = None.
+  Proof.
+    move=>DOM l Cl; case C1l: (C1 l)=>[[Ty] b|]//.
+    by move: (dom' DOM C1l)=>[G0]; rewrite Cl.
+  Qed.
+
+  Lemma dom_none' A B (C0 : lbl /-> mty * A) (C1 : lbl /-> mty * B)
+    : same_dom C0 C1 -> forall l, C1 l = None -> C0 l = None.
+  Proof. by rewrite same_dom_sym; apply/dom_none. Qed.
+
+  Definition buildC (C : lbl /-> mty * ig_ty) E p :=
+    fun l => match C l with
+             | Some (Ty, _) => Some (Ty, look E p)
+             | None => None
+             end.
+
+  Lemma dom_buildC C E p : same_dom C (buildC C E p).
+  Proof.
+    move=>l Ty; rewrite/buildC;case EQ: (C l)=>[[Ty' G]|]; split=>[][G']//[->_].
+    - by exists (look E p).
+    - by exists G.
+  Qed.
+
+  Lemma mrg_buildC C E p : Merge (buildC C E p) (look E p).
+  Proof.
+    move=> l Ty L'; rewrite /buildC; case: (C l)=>[[Ty' G]|]// [_->].
+    by apply: EqL_refl.
+  Qed.
+  Arguments mrg_buildC C E p : clear implicits.
+
+  Lemma proj_all P C Cl :
+    same_dom C Cl ->
+    PAll C P ->
+    forall p,
+      (forall l Ty L, Cl l = Some (Ty, L) -> look (P l Ty).1 p = L) ->
+      R_all (IProj p) C Cl.
+  Proof.
+    move=> DOM All p H l Ty G L /All-[ePRJ qPRJ] Cll.
+    by move: (H l Ty L Cll) (ePRJ p) =>->.
+  Qed.
+
+  Lemma case_part (p F T : role) : p = F \/ p = T \/ (p != F /\ p != T).
+  Proof.
+    case: (boolP (p == F))=>[/eqP-pF|pF]; [by left|right].
+    by case: (boolP (p == T))=>[/eqP-pT|pT]; [by left|right].
+  Qed.
+
+  Lemma Proj_send_undo F lCF T lCT C P l Ty G1 :
+    F != T ->
+    C l = Some (Ty, G1) ->
+    same_dom C lCF ->
+    same_dom C lCT ->
+    look P.1 F = rl_msg l_send T lCF ->
+    look P.1 T = rl_msg l_recv F lCT ->
+    PAll C (fun L : lbl => (send_recv F T L)^~ P) ->
+    (P.2).[? (F, T)] = None ->
     Projection (ig_msg None F T C) P.
-  Admitted.
+  Proof.
+    move=> FT Cl DOMF DOMT EF ET PRJ QPRJ.
+    have DOM: same_dom lCF lCT by move: DOMT; apply/same_dom_trans/same_dom_sym.
+    split.
+    - move: (buildC C P.1) => Cp.
+      move: (dom_buildC C P.1)=>DOMp.
+      move: (mrg_buildC C P.1)=>MRGp.
+      move=> p; move: (case_part p F T)=>[->|[->|[pF pT]]].
+      + rewrite EF; constructor=>//; apply/(proj_all DOMF PRJ)=>l0 Ty0 L lCF0.
+        rewrite /send_recv look_act//=; last by rewrite eq_sym.
+        by rewrite /run_step/= EF lCF0 !eq_refl /= look_same.
+      + rewrite ET; constructor=>//; first by rewrite eq_sym.
+        apply/(proj_all DOMT PRJ)=>l0 Ty0 L lCT0; rewrite /send_recv.
+        move: (dom' DOM lCT0)=>[L'] lCF0.
+        rewrite /run_step/= EF lCF0 !eq_refl /= look_comm // ET lCT0 !eq_refl/=.
+        by rewrite look_same.
+      + apply: (iprj_mrg FT pF pT (DOMp p)); last by apply/MRGp.
+        apply/(proj_all (DOMp p) PRJ)=>l0 Ty0 L lCp0.
+        rewrite /send_recv look_act //=; last by rewrite eq_sym.
+        rewrite look_act //=; last by rewrite eq_sym.
+        by move: lCp0; rewrite /buildC; case: (C l0)=>[[Ty1 _] []|].
+    - constructor=>// l0 Ty0 G0 /PRJ-[_].
+      rewrite /send_recv [in run_step (mk_act l_send _ _ _ _) _]/run_step/=.
+      rewrite EF; case lCF0: (lCF l0)=>[[Ty1 L0]|].
+      + move: (dom DOM lCF0)=>[LT] lCT0.
+        rewrite !eq_refl/=; case: ifP=>E.
+        * rewrite /enq QPRJ/run_step/= look_comm // ET lCT0 E !eq_refl/=.
+          rewrite /deq fnd_set eq_refl /= remf1_set eq_refl remf1_id //.
+          by rewrite -fndSome QPRJ.
+        * by rewrite /run_step/= ET !eq_refl/= lCT0 E.
+      + by move: (dom_none DOM lCF0)=>lCT0; rewrite /run_step/= ET lCT0.
+  Qed.
 
-
+  (* FIXME: fix statement so it is true and provable *)
   Lemma Proj_recv_undo l F T C Ty P G :
     C l = Some (Ty, G) ->
     Projection G (run_step (mk_act l_recv T F l Ty) P) ->
@@ -1188,26 +1303,20 @@ actually they should be doubled*)
     ]/= in P PRJ *.
     - by apply: (Projection_send Cl).
     - by apply: (Projection_recv Cl).
-    - move: (IProj_send1_inv (PRJ.1 F))=>[FT] [lCF] [EF] [DOMF] ALLF.
-      move: (IProj_recv_inv (PRJ.1 T))=>[_] [lCT] [ET] [DOMT] ALLT.
-      have {}Ih :
-        forall (L : lbl) (Ty : mty) (G : ig_ty),
-          C1 L = Some (Ty, G) ->
-          Projection G (run_step A
-                                 (run_step (mk_act l_recv T F L Ty)
-                                           (run_step (mk_act l_send F T L Ty)
-                                                     P))).
-      { move=>l0 Ty G1 C1l; move: (dom' DOM C1l)=>[G0 C0l].
-        move: (Proj_None_next PRJ C0l)=>PRJ0.
-        by apply: Ih; [apply: C0l | apply: C1l |].
-      }
-      move: NE=>[Tyl [G0 C0l]].
-      move: (dom DOM C0l) => [G1 C1l].
-      (* TODO: We need to use this refined IH for the "undo" lemmas *)
-      apply: (Proj_send_undo (l:=l) (Ty:=Tyl)).
-      apply/(Proj_recv_undo (l:=l) (Ty:=Tyl) C1l).
-      rewrite -(run_stepC (A:=A)) ?aT //= -(run_stepC (A:=A)) ?aF ?aT //= .
-      by apply: Ih.
+    - move: (IProj_send1_inv (PRJ.1 F))=>[FT] [lCF] [EF] [DOMF] _.
+      move: (IProj_recv_inv (PRJ.1 T))=>[_] [lCT] [ET] [DOMT] _.
+      move: EF; rewrite -(look_act _ aF)=>{}EF.
+      move: ET; rewrite -(look_act _ aT)=>{}ET.
+      move _: DOM=> DOM1; move: DOM1=>/same_dom_sym-DOM1.
+      move: (same_dom_trans DOM1 DOMF) (same_dom_trans DOM1 DOMT)=>{}DOMF {}DOMT.
+      move: NE=>[Ty] [Gl] /(dom DOM)-[G1] C1l.
+      move: PRJ.2=>/qProject_None_inv-[QPRJ] _.
+      suff Ih': PAll C1 (fun L Ty => send_recv F T L Ty (run_step A P))
+        by apply: (Proj_send_undo FT C1l DOMF DOMT) =>//; rewrite queue_act.
+      move=>l0 Ty0 {}G1 {}C1l; move: (dom' DOM C1l)=>[G0 C0l].
+      move: (Proj_None_next PRJ C0l)=>PRJ0; rewrite /send_recv.
+      rewrite -(run_stepC (A:=A)) ?aT //=  -(run_stepC (A:=A)) ?aF ?aT //= .
+      by apply: Ih; [apply: C0l | apply: C1l |].
     - move: Ih=>[SAME_C] [Tyl] [G0] [G1] [C0l] [C1l] [STEP_G0_G1] Ih.
       move: (Projection_runnable C0l PRJ) => RUN.
       move: PRJ=>/Proj_Some_next-PRJ.
