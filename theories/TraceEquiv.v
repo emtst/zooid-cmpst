@@ -1328,23 +1328,34 @@ actually they should be doubled*)
     look P.lbl T = rl_msg l_recv F lCT ->
     same_dom C lCT ->
     deq P.2 (F, T) = Some (l, Ty, Q') ->
+    (forall p, exists lC,
+          same_dom C lC /\
+          (forall l' Ty' G' L',
+              l != l' ->
+              C l' = Some (Ty', G') ->
+              lC l' = Some (Ty', L') ->
+              IProj p G' L'))  ->
     Projection G (run_step (mk_act l_recv T F l Ty) P) ->
     Projection (ig_msg (Some l) F T C) P.
   Proof.
-    move=> FT Cl ET DOM PFT PRJ; split.
-    - move=>p.
-      case: (boolP (p == T))=>[/eqP->|pT].
+    move=> FT Cl ET DOM PFT PRJ0 PRJ1; split.
+    - move=>p; case: (boolP (p == T))=>[/eqP->|pT].
       + move: FT; rewrite eq_sym ET=>TF.
-        apply (iprj_recv (Some l) TF)=>//.
-        admit.
+        apply (iprj_recv (Some l) TF)=>// l0 Ty0 G0 L0 Cl0 lCT0.
+        move: (PRJ1.1 T); rewrite /run_step/= ET.
+        move: (dom DOM Cl)=>[LT] lCTl; rewrite lCTl !eq_refl /= look_same=>PRJ.
+        case: (boolP (l == l0)) => [/eqP|]ll0.
+        * by move: ll0 Cl0 lCT0=><-; rewrite Cl lCTl =>[][<-]<-[<-] //.
+        * move: (PRJ0 T)=>[lC'] [DOM'] H; apply/(H _ _ _ _ ll0).
+
+          admit.
+
       + move: (buildC C P.1) => Cp.
-        apply: (iprj_send2 pT FT).
-        admit.
         admit.
         admit.
     - move: PFT=>/eqP-PFT; apply: (qprj_some Cl PFT).
       move: PFT=>/eqP-PFT; move: (dom DOM Cl)=>[L] lCtl.
-      by move: PRJ.2; rewrite /run_step/= ET lCtl !eq_refl/= PFT.
+      by move: PRJ1.2; rewrite /run_step/= ET lCtl !eq_refl/= PFT.
   Admitted.
 
   Definition updC (l : lbl) (Ty : mty) C E p l' :=
@@ -1352,6 +1363,31 @@ actually they should be doubled*)
       Some (Ty, look E p)
     else
       C l'.
+
+  (* Not quite right yet *)
+  Lemma  proj_same l C0 C1 F T E :
+    same_dom C0 C1 ->
+    (forall l' K, l != l' -> C0 l' = Some K <-> C1 l' = Some K) ->
+    eProject (ig_msg (Some l) F T C0) E ->
+    forall p, exists lC,
+        same_dom C1 lC /\
+        forall l' Ty' G' L',
+          l != l' ->
+          C1 l' = Some (Ty', G') ->
+          lC l' = Some (Ty', L') ->
+          IProj p G' L'.
+  Proof.
+    move=> DOM SAME_C PRJ p.
+    move: (IProj_recv_inv (PRJ T))=>[FT] [lC] [ET] [DOMT] ALLC.
+    move _: DOM => DOM'; move:DOM'=>/same_dom_sym/same_dom_trans/(_ DOMT)-{}DOMT.
+    case: (boolP (p == T))=>[/eqP->|NEQ].
+    - exists lC; split=>// l' Ty' G' L' NE C1l lCl.
+      by apply/(ALLC _ _ _ _ _ lCl)/SAME_C.
+    - move: (IProj_send2_inv (PRJ p) NEQ)=>[_] [lCp] [Typ] [lCpl] [DOMp] ALLp.
+      move _: DOM => DOM'; move:DOM'=>/same_dom_sym/same_dom_trans/(_ DOMp)-{}DOMp.
+      exists lCp; split=>// l' Ty' G' L' NE C1l lCl.
+      by apply/(ALLp _ _ _ _ _ lCl)/SAME_C.
+  Qed.
 
   Lemma runstep_proj G P : forall A G',
     step A G G' -> Projection G P -> Projection G' (run_step A P).
@@ -1387,9 +1423,10 @@ actually they should be doubled*)
       move: (same_dom_trans DOM1 DOMT)=>{}DOMT.
       move: PRJ.2=>/qProject_Some_inv-[Ty] [G2] [Q'] [].
       rewrite C0l=>[][<-<-] [/eqP/(deq_act aT)-DEQ] _ {Ty G2}.
+      move: (proj_same DOM SAME_C PRJ.1)=>PRJ_C1.
       move: PRJ=>/Proj_Some_next/(_ _ _ C0l)/Ih.
       rewrite run_stepC ?RUN ?orbT // => {}Ih.
-      by apply (Proj_recv_undo FT C1l ET DOMT DEQ).
+      by apply (Proj_recv_undo FT C1l ET DOMT DEQ PRJ_C1).
     - by apply/Ih/Projection_unr.
   Qed.
 
