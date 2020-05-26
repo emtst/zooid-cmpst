@@ -737,6 +737,174 @@ Section CProject.
   Definition Project p CG CL := paco2 (Proj_ p) bot2 CG CL.
 
 
+  Lemma cProj_end_inv_aux p GG lT:
+    Project p GG lT -> GG = rg_end ->
+    lT = rl_end.
+  Proof.
+  (*by move=> hp; punfold hp; [move: hp => [] //=| by apply Proj_monotone].*)
+  by move=> hp; punfold hp; move: hp => [].
+  Qed.
+
+  Lemma cProj_end_inv p lT:
+    Project p rg_end lT -> lT = rl_end.
+  Proof.
+  by move=> hp; apply (cProj_end_inv_aux hp).
+  Qed.
+
+  Lemma cProj_send_inv_aux F T C GG lT:
+    Project F GG lT -> GG = (rg_msg F T C) ->
+    F != T /\ (exists lC, lT = rl_msg l_send T lC /\
+    same_dom C lC /\ R_all (upaco2 (Proj_ F) bot2) C lC).
+  Proof.
+  (*move=> hp; punfold hp; [move: hp => [] //=| by apply Proj_monotone].*)
+  move=> hp; punfold hp; move: hp => [] //=.
+  + move=> q gC lC neq samedom rall [eq1 eq2].
+    by rewrite -eq1 -eq2; split; [| exists lC;  split; [ |]].
+  + move=> q gC lC neq samedom rall [eq1 eq2 eq3].
+    by move: neq; rewrite eq1 -(rwP negP).
+  + move=> q s gC lC L neq1 neq2 neq3 samedom rall mer [eq1 eq2 eq3].
+    by move: neq2; rewrite eq1 -(rwP negP).
+  Qed.
+
+  Lemma cProj_send_inv F T C lT:
+    Project F (rg_msg F T C) lT ->
+    F != T /\ (exists lC, lT = rl_msg l_send T lC /\
+    same_dom C lC /\ R_all (upaco2 (Proj_ F) bot2) C lC).
+  Proof.
+  by move=> hp; apply: (cProj_send_inv_aux hp).
+  Qed.
+
+
+  Lemma cProj_recv_inv_aux F T C GG lT:
+    Project T GG lT -> GG = (rg_msg F T C) ->
+    F != T /\ (exists lC, lT = rl_msg l_recv F lC /\
+    same_dom C lC /\ R_all (upaco2 (Proj_ T) bot2) C lC).
+  Proof.
+  (*move=> hp; punfold hp; [move: hp => [] //=| by apply Proj_monotone].*)
+  move=> hp; punfold hp; move: hp => [] //=.
+  + move=> q gC lC neq samedom rall [eq1 eq2 eq3].
+    by move: neq; rewrite eq2 -(rwP negP).
+  + move=> q gC lC neq samedom rall [eq1 eq2].
+    by rewrite -eq1 -eq2; split; [rewrite eq_sym| exists lC; split; [ | split; [|]]].
+  + move=> q s gC lC L neq1 neq2 neq3 samedom rall mer [eq1 eq2 eq3].
+    by move: neq3; rewrite eq2 -(rwP negP).
+  Qed.
+
+  Lemma cProj_recv_inv F T C lT:
+    Project T (rg_msg F T C) lT ->
+    F != T /\ (exists lC, lT = rl_msg l_recv F lC /\
+    same_dom C lC /\ R_all (upaco2 (Proj_ T) bot2) C lC).
+  Proof.
+  by move=> hp; apply: (cProj_recv_inv_aux hp).
+  Qed.
+
+
+  Lemma cProj_mrg_inv_aux p F T C GG lT:
+    Project p GG lT ->
+    p != F -> p != T -> GG = rg_msg F T C ->
+    F != T /\ (exists lC, same_dom C lC /\
+      R_all (upaco2 (Proj_ p) bot2) C lC /\
+      Merge lC lT).
+  Proof.
+  (*move=> hp; punfold hp; [move: hp => [] //=| by apply Proj_monotone].*)
+  move=> hp; punfold hp; move: hp => [] //=.
+  + move=> q gC lC neq samedom rall neqF neqT [eq1 eq2 eq3].
+    by move: neqF; rewrite eq1 -(rwP negP).
+  + move=> q gC lC neq samedom rall neqF neqT [eq1 eq2 eq3].
+    by move: neqT; rewrite eq2 -(rwP negP).
+  + move=> q s gC lC lT0 neq1 neq2 neq3 samedom rall mer neqF neqT [eq1 eq2 eq3].
+    split; [by move: neq1; rewrite eq1 eq2|exists lC].
+    by rewrite -eq3; split; [ |split; [|]].
+  Qed.
+
+  Lemma cProj_mrg_inv p F T C lT:
+    Project p (rg_msg F T C) lT ->
+    p != F -> p != T ->
+    F != T /\ (exists lC, same_dom C lC /\
+      R_all (upaco2 (Proj_ p) bot2) C lC /\
+      Merge lC lT).
+  Proof.
+  by move=> hp neq1 neq2; apply: (cProj_mrg_inv_aux hp neq1 neq2).
+  Qed.
+
+
+  Lemma EqL_Project p G lT lT':
+    EqL lT lT' -> Project p G lT -> Project p G lT'.
+  Proof.
+  move=> eql prj; move: (conj eql prj) => {eql prj}.
+  move=> /(ex_intro (fun lT=> _) lT) {lT}.
+  move: G lT'; apply /paco2_acc; move=> r0 _ CIH G lT'.
+  elim=> lT; elim; case lT'.
+  + move=> eql; move: (EqL_r_end_inv eql); move=>->.
+    rewrite /Project; move=> pro; move: paco2_mon; rewrite /monotone2.
+    by move=> pamo; apply (pamo _ _ _ _ _ _ _ pro).
+  + move=> a q C eql; move: (EqL_r_msg_inv eql).
+    elim=> C0; elim=> samed; elim=> rall lTeq; rewrite lTeq.
+    case G; [by move => hp; move: (cProj_end_inv hp)|].
+    move=> (*op*) F T CONT; case: (@eqP _ p F).
+    * move=> pF; rewrite pF.
+      - move=> hpro; move: (cProj_send_inv hpro); elim=> neq.
+        elim=> lC0; elim; move=> [eq1 eq2 eq3]; elim=> samed0 ral.
+        apply /paco2_fold; rewrite eq1 eq2.
+        apply (prj_send neq).
+        + rewrite /same_dom; rewrite /same_dom in samed samed0.
+          by move=> LL Tyy; rewrite (samed0 LL Tyy) -eq3.
+        + rewrite /R_all; move=> LL Tyy GG lTT contLL lcontLL.
+          rewrite /upaco2; right; apply CIH.
+          have lT0aux: exists lT0, C0 LL = Some (Tyy, lT0).
+            rewrite /same_dom in samed; rewrite (samed LL Tyy).
+            by exists lTT.
+          move: lT0aux; elim=> lT0 lcont0LL; exists lT0.
+          split; rewrite /R_all in rall ral; [by apply (rall LL Tyy)|].
+          rewrite eq3 in lcont0LL; move: (ral _ _ _ _ contLL lcont0LL).
+          by rewrite /upaco2 pF; elim=> //=.
+    * rewrite (rwP eqP) (rwP negP); move=> neq; case: (@eqP _ p T).
+      - move=> pT; rewrite pT; move=> hpro.
+        move: (cProj_recv_inv hpro); elim=> neqFT; elim=> lC; elim.
+        move=> [eq1 eq2 eq3]; elim=> samed0 ral; apply /paco2_fold.
+        rewrite eq_sym in neqFT.
+        rewrite eq1 eq2; apply: (prj_recv neqFT).
+        + rewrite /same_dom; rewrite /same_dom in samed samed0.
+          by move=> LL Tyy; rewrite (samed0 LL Tyy) -eq3.
+        + rewrite /R_all; move=> LL Tyy GG lTT contLL lcontLL.
+          rewrite /upaco2; right; apply CIH.
+          have lT0aux: exists lT0, C0 LL = Some (Tyy, lT0).
+            rewrite /same_dom in samed; rewrite (samed LL Tyy).
+            by exists lTT.
+          move: lT0aux; elim=> lT0 lcont0LL; exists lT0.
+          split; rewrite /R_all in rall ral; [by apply (rall LL Tyy)|].
+          rewrite eq3 in lcont0LL; move: (ral _ _ _ _ contLL lcont0LL).
+          by rewrite /upaco2 pT; elim=> //=.
+      - rewrite (rwP eqP) (rwP negP); move=> neqpT hpro.
+        move: (cProj_mrg_inv hpro neq neqpT); elim=> neqFT.
+        elim=> lC0; elim=> samed0; elim=> ral mer.
+        apply /paco2_fold.
+        apply: (@prj_mrg _ _ _ _ _
+          (same_dom_const CONT (rl_msg a q C)) _ neqFT neq neqpT).
+        + by apply same_dom_const_same_dom.
+        + rewrite /R_all; move=> LL Tyy GG lTT contLL lcontLL.
+          rewrite /upaco2; right; apply CIH.
+          have lT0aux: exists lT0, lC0 LL = Some (Tyy, lT0).
+            rewrite /same_dom in samed0; rewrite -(samed0 LL Tyy).
+            by exists GG.
+          have lTTeq : lTT = (rl_msg a q C).
+            rewrite /same_dom_const contLL in lcontLL.
+            by move: lcontLL=> [].
+          rewrite lTTeq; move: lT0aux; elim=> lT0 lcont0LL.
+          exists lT0; split.
+          * rewrite /Merge in mer; move: (mer _ _ _ lcont0LL).
+            move=> eql_1; apply: (EqL_trans eql_1).
+            rewrite /EqL; apply /paco2_fold; apply (el_msg _ _ samed).
+            move: rall; rewrite /R_all /upaco2.
+            move=> rall Le Tye lTe0 lTe eqe0 eqe; left.
+            by apply: (rall _ _ _ _ eqe0 eqe).
+          * rewrite /R_all in ral; move: (ral _ _ _ _ contLL lcont0LL).
+            by rewrite /upaco2; elim.
+          * rewrite /Merge; move=> Ln Tn lTn sdc.
+            move: (same_dom_const_some sdc) =>-> //=.
+  Qed.
+
+
   Lemma gclosed_lclosed d G r L :
     g_fidx d G == fset0 ->
     project G r == Some L ->
@@ -1207,4 +1375,167 @@ Section CProject.
       Merge KsL L ->
       IProj p (ig_msg None q s KsG) L
   .
+
+
+  
+
+
+  Lemma IProj_end_inv_aux p GG CG CL:
+    IProj p GG CL -> GG = ig_end CG ->
+    Project p CG CL.
+  Proof.
+  by case=>//; move=> CG0 CL0 ipro [CGeq]; rewrite -CGeq.
+  Qed.
+
+  Lemma IProj_end_inv p CG CL:
+    IProj p (ig_end CG) CL -> Project p CG CL.
+  Proof.
+  by move=> hp; apply (IProj_end_inv_aux hp).
+  Qed.
+
+  Lemma IProj_send1_inv_aux F T C GG CL:
+    IProj F GG CL -> GG = (ig_msg None F T C) ->
+    F != T /\ (exists lC, CL = rl_msg l_send T lC /\
+    same_dom C lC /\ R_all (IProj F) C lC).
+  Proof.
+  case=>//.
+  + move=> q gC lC neq samedom rall [eq1 eq2].
+    by rewrite -eq1 -eq2; split; [| exists lC;  split; [ |]].
+  + move=> o q gC lC neq samedom rall [eq1 eq2 eq3 eq4].
+    by move: neq; rewrite eq2 -(rwP negP).
+  + move=> q s gC lC L neq1 neq2 neq3 samedom rall mer [eq1 eq2 eq3].
+    by move: neq2; rewrite eq1 eq_refl.
+  Qed.
+
+  Lemma IProj_send1_inv F T C CL:
+    IProj F (ig_msg None F T C) CL ->
+    F != T /\ (exists lC, CL = rl_msg l_send T lC /\
+    same_dom C lC /\ R_all (IProj F) C lC).
+  Proof.
+  by move=> hp; apply: (IProj_send1_inv_aux hp).
+  Qed.
+
+
+  Lemma IProj_send2_inv_aux L p F T C GG CL:
+    IProj p GG CL -> GG = (ig_msg (Some L) F T C) -> p != T ->
+    F != T /\ (exists lC Ty, lC L = Some (Ty, CL) /\
+    same_dom C lC /\ R_all (IProj p) C lC).
+  Proof.
+  case=>//.
+  + move=> l Ty q r gC lC CL0 neq1 neq2 samedom rall Cleq [<-<-<-<-] neq3.
+    by split=>//; exists lC, Ty; split.
+  + move=> o q gC lC neq samedom rall [_ <-<-<-] {o F T C}.
+    by rewrite eq_refl.
+  Qed.
+
+  Lemma IProj_send2_inv L p F T C CL:
+    IProj p (ig_msg (Some L) F T C) CL -> p != T ->
+    F != T /\ (exists lC Ty, lC L = Some (Ty, CL) /\
+    same_dom C lC /\ R_all (IProj p) C lC).
+  Proof.
+  by move=> hp; apply: (IProj_send2_inv_aux hp).
+  Qed.
+
+ Lemma IProj_recv_inv_aux olb F T C GG CL:
+    IProj T GG CL -> GG = (ig_msg olb F T C) ->
+    F != T /\ (exists lC, CL = rl_msg l_recv F lC /\
+    same_dom C lC /\ R_all (IProj T) C lC).
+  Proof.
+  case =>//.
+  + move=> q gC lC neq samedom rall [eq1 eq2 eq3].
+    by move: neq; rewrite eq3 -(rwP negP).
+  + move=> l Ty q r cG cL L neq1 _ _ _ _ [_ _ eq1].
+    by move: eq1 neq1=>->/eqP.
+  + move=> o q gC lC neq samedom rall [eq1 eq2 eq3].
+    by rewrite -eq2 -eq3; split; [rewrite eq_sym| exists lC; split; [ | split; [|]]].
+  + move=> q s gC lC L neq1 neq2 neq3 samedom rall mer [eq1 eq2 eq3 eq4].
+    by move: neq3; rewrite eq3 -(rwP negP).
+  Qed.
+
+  Lemma IProj_recv_inv olb F T C CL:
+    IProj T (ig_msg olb F T C) CL ->
+    F != T /\ (exists lC, CL = rl_msg l_recv F lC /\
+    same_dom C lC /\ R_all (IProj T) C lC).
+  Proof.
+  by move=> hp; apply: (IProj_recv_inv_aux hp).
+  Qed.
+
+  Lemma IProj_mrg_inv_aux p F T C GG CL:
+    IProj p GG CL ->
+    p != F -> p != T -> GG = ig_msg None F T C ->
+    F != T /\ (exists lC, same_dom C lC /\
+      R_all (IProj p) C lC /\
+      Merge lC CL).
+  Proof.
+  case =>//.
+  + move=> q gC lC neq samedom rall neqF neqT [eq1 eq2 eq3].
+    by move: neqF; rewrite eq1 -(rwP negP).
+  + case=>// q cG cL neq samedom rall neqF neqT [eq1 eq2 eq3].
+    by move: neqT; rewrite eq2 -(rwP negP).
+  + move=>q s gC lC CL0 neq1 neq2 neq3 samedom rall mer neqF neqT [eq1 eq2 eq3].
+    split; [by move: neq1; rewrite eq1 eq2|exists lC].
+    by rewrite -eq3; split; [ |split; [|]].
+  Qed.
+
+  Lemma IProj_mrg_inv p F T C CL:
+    IProj p (ig_msg None F T C) CL ->
+    p != F -> p != T ->
+    F != T /\ (exists lC, same_dom C lC /\
+      R_all (IProj p) C lC /\
+      Merge lC CL).
+  Proof.
+  by move=> hp neq1 neq2; apply: (IProj_mrg_inv_aux hp neq1 neq2).
+  Qed.
+
+
+
+  Lemma EqL_IProj p G lT lT':
+    IProj p G lT -> EqL lT lT' -> IProj p G lT'.
+  Proof.
+  move=> hp; move: hp lT'; elim.
+  + move=> CG {}lT Pro lT' eqL; apply: iprj_end.
+    by apply: (EqL_Project eqL Pro).
+  + move=> q C lC neq samed rall Ih lT' eqL.
+    move: (EqL_l_msg_inv eqL); elim=> lC'; elim=> samedom.
+    elim=> rall' ->; apply: (iprj_send1 neq).
+    * by move=> L Ty; rewrite (samed L Ty).
+    * move=> L Ty G0 lT0' CL lCL'.
+      move: (samedom L Ty); elim=> _.
+      elim; [move=> lT0 lCL | by exists lT0'].
+      apply: (Ih _ _ _ _ CL lCL).
+      by apply: (rall' _ _ _ _ lCL lCL').
+  + move=> L Ty q r C lC lT0 neq1 neq2 samed rall Ih lCL lT0' eqL.
+    move:(samed L Ty);elim=> _;elim;[move=> G0 CL|by exists lT0].
+    apply: (@iprj_send2 p L Ty q r C (extend L (Ty, lT0') lC) _ neq1 neq2).
+    * apply: (same_dom_extend_some_l _ samed CL).
+    * move=> LL TTy GG lTT CLL; rewrite /extend; case: ifP.
+      - rewrite -(rwP eqP); move=> eqLL [eqTy eqlT0'].
+        rewrite -eqlT0'; rewrite -eqLL in CLL.
+        move: CLL; rewrite CL; move=> [_ eqG0]; rewrite -eqG0.
+        by apply: (Ih _ _ _ _ CL lCL).
+      - by move=> neqLL lCLL; apply: rall CLL lCLL.
+    * by rewrite /extend; case: ifP =>//; rewrite eq_refl //.
+  + move=> o q C lC neq samed rall Ih lT' eqL.
+    move: (EqL_l_msg_inv eqL); elim=> lC'; elim=> samedom.
+    elim=> rall' ->; apply: (iprj_recv o neq).
+    * by move=> L Ty; rewrite (samed L Ty).
+    * move=> L Ty G0 lT0' CL lCL'.
+      move: (samedom L Ty); elim=> _.
+      elim; [move=> lT0 lCL | by exists lT0'].
+      apply: (Ih _ _ _ _ CL lCL).
+      by apply: (rall' _ _ _ _ lCL lCL').
+  + move=> q s C lC lT0 neqqs neqpq neqps samed rall Ih mer lT' eqL.
+    apply: (@iprj_mrg _ _ _ _
+          (same_dom_const C lT') _ neqqs neqpq neqps).
+    * by apply: same_dom_const_same_dom.
+    * move=> L Ty G0 lTT' CL sdLa.
+      move: (same_dom_const_some sdLa)=>->.
+      move: (samed L Ty); elim=> sam _; move: sam.
+      elim; [move=> lTT lCL | by exists G0].
+      by apply: (Ih _ _ _ _ CL lCL) (EqL_trans (mer _ _ _ lCL) eqL).
+    * move=> Ln Tn lTn sdc; move: (same_dom_const_some sdc) =>-> //=.
+  Qed.
+
+
+
 End CProject.
