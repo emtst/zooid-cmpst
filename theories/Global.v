@@ -797,6 +797,29 @@ Section Semantics.
   + move=> a0 CG G0 s; apply: P_unr =>//=.
   Qed.
 
+(*  Lemma step_send_inv_aux F T C L Ty aa GG:
+    step aa GG (ig_msg (Some L) F T C) ->
+    aa = mk_act l_send F T L Ty -> GG = ig_msg None F T C ->
+    exists G, C L = Some (Ty, G).
+  Proof.
+  elim/step_ind => //=.
+  + move=> L0 F0 T0 C0 Ty0 G eqC => [] [].
+    move=> H0 H1 H2 H3 =>[] []. elim; elim; move=> H4.
+    by exists G; rewrite -H2 -H3 -H4.
+  + move=> a l F0 T0 C0 C1 sub1 sub2 ne samed rall hp eqa => [] [].
+    move=> eq1 eq2 eq3; move: sub1; rewrite eqa eq1 //=.
+    by rewrite -(rwP negP) //=.
+  Qed.
+
+  Lemma step_send_inv F T C L Ty:
+    step (mk_act l_send F T L Ty) (ig_msg None F T C) (ig_msg (Some L) F T C) ->
+    exists G, C L = Some (Ty, G).
+  Proof.
+  by move=> hp; apply: (step_send_inv_aux hp).
+  Qed.*)
+
+
+
   Definition gtrc_rel := trace -> ig_ty -> Prop.
   Inductive g_lts_ (r : gtrc_rel) : gtrc_rel :=
   | eg_end : @g_lts_ r tr_end (ig_end rg_end)

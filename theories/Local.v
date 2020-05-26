@@ -640,7 +640,7 @@ Section Semantics.
     move=>L1 L2 r r' E H; elim: E =>[|a p C1 C2 D E]//; constructor=>//.
     by move: E; rewrite /R_all=>E L Ty G G' /E-{E}E /E/H.
   Qed.
-  (*Hint Resolve EqL_monotone. *)
+  Hint Resolve EqL_monotone.
 
   Lemma EqL_refl CL : EqL CL CL.
   Proof.
@@ -652,6 +652,93 @@ Section Semantics.
     - by move=> Lb Ty CG CG'-> [->]; right; apply: CIH.
   Qed.
   (*Hint Resolve EqL_refl. *)
+
+
+  Lemma EqL_r_end_inv_aux lT lT':
+    EqL lT lT' -> lT' = rl_end -> lT = rl_end.
+  Proof.
+  by move=> hp; punfold hp; move: hp => [] //=.
+  Qed.
+
+  Lemma EqL_r_end_inv lT:
+    EqL lT rl_end -> lT = rl_end.
+  Proof.
+  by move=> hp; apply (EqL_r_end_inv_aux hp).
+  Qed.
+
+  Lemma EqL_r_msg_inv_aux lT lT' a p C':
+    EqL lT lT' -> lT' = rl_msg a p C' ->
+    exists C, same_dom C C' /\
+       R_all EqL C C' /\ lT = rl_msg a p C.
+  Proof.
+  move=> hp; punfold hp; move: hp => [] //=.
+  move=> a0 p0 C1 C2 samed rall [eq1 eq2 eq3].
+  exists C1; rewrite eq1 eq2 -eq3; split; [|split] => //=.
+  rewrite /R_all; move=> L Ty lT1 lT2 ceq1 ceq2.
+  rewrite /R_all in rall; move: (rall L Ty lT1 lT2 ceq1 ceq2).
+  by rewrite /upaco2; elim; rewrite //=.
+  Qed.
+
+  Lemma EqL_r_msg_inv a p C' lT:
+    EqL lT (rl_msg a p C') ->
+    exists C, same_dom C C' /\
+       R_all EqL C C' /\ lT = rl_msg a p C.
+  Proof.
+  by move=> hp; apply: (EqL_r_msg_inv_aux hp).
+  Qed.
+
+
+  Lemma EqL_l_msg_inv_aux lT lT' a p C:
+    EqL lT lT' -> lT = rl_msg a p C ->
+    exists C', same_dom C C' /\
+       R_all EqL C C' /\ lT' = rl_msg a p C'.
+  Proof.
+  move=> hp; punfold hp; move: hp => [] //=.
+  move=> a0 p0 C1 C2 samed rall [eq1 eq2 eq3].
+  exists C2; rewrite eq1 eq2 -eq3; split; [|split] => //=.
+  rewrite /R_all; move=> L Ty lT1 lT2 ceq1 ceq2.
+  rewrite /R_all in rall; move: (rall L Ty lT1 lT2 ceq1 ceq2).
+  by rewrite /upaco2; elim; rewrite //=.
+  Qed.
+
+  Lemma EqL_l_msg_inv a p C lT':
+    EqL (rl_msg a p C) lT' ->
+    exists C', same_dom C C' /\
+       R_all EqL C C' /\ lT' = rl_msg a p C'.
+  Proof.
+  by move=> hp; apply: (EqL_l_msg_inv_aux hp).
+  Qed.
+
+
+
+
+  Lemma EqL_trans lT1 lT2 lT3:
+    EqL lT1 lT2 -> EqL lT2 lT3 -> EqL lT1 lT3.
+  Proof.
+  move=> hp1 hp2; move: (conj hp1 hp2) => {hp1 hp2}.
+  move=> /(ex_intro (fun lT=> _) lT2) {lT2}; move: lT1 lT3.
+  apply /paco2_acc; move=> r0 _ CIH lT1 lT3; elim=> lT2.
+  elim; case: lT3 =>//=.
+  + move=> eql12 eql23; move: (EqL_r_end_inv eql23) eql12 =>->.
+    move=> eql12; move: (EqL_r_end_inv eql12) =>->.
+    by apply /paco2_fold; apply el_end.
+  + move=> a r C eql12 eql23; move: (EqL_r_msg_inv eql23).
+    elim=> C2; elim=> samed23; elim=> rall23 lT2eq.
+    rewrite lT2eq in eql12; move: (EqL_r_msg_inv eql12).
+    elim=> C1; elim=> samed12; elim=> rall12 lT1eq.
+    rewrite lT1eq; apply /paco2_fold; apply el_msg.
+    - rewrite /same_dom; rewrite /same_dom in samed12 samed23.
+      by move=> L Ty; rewrite (samed12 L Ty).
+    - rewrite /R_all; move=> L Ty cT1 cT3 C1L C3L.
+      rewrite /upaco2; right; apply CIH.
+      have cT2aux: exists cT2, C2 L = Some (Ty, cT2).
+        rewrite /same_dom in samed12; rewrite -(samed12 L Ty).
+        by exists cT1.
+      move: cT2aux; elim=> cT2 C2L; exists cT2.
+      rewrite /R_all in rall12 rall23.
+      by split; [apply (rall12 L Ty)|apply (rall23 L Ty)].
+  Qed.
+
 
 
 
