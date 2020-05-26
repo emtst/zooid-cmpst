@@ -1255,11 +1255,10 @@ actually they should be doubled*)
     move=> FT Cl DOMF DOMT EF ET PRJ QPRJ.
     have DOM: same_dom lCF lCT by move: DOMT; apply/same_dom_trans/same_dom_sym.
     split.
-    - move: (buildC C P.1) => Cp.
-      move: (dom_buildC C P.1)=>DOMp.
-      move: (mrg_buildC C P.1)=>MRGp.
+    - move: (dom_buildC C P.1) (mrg_buildC C P.1)=> DOMp MRGp.
       move=> p; move: (case_part p F T)=>[->|[->|[pF pT]]].
-      + rewrite EF; constructor=>//; apply/(proj_all DOMF PRJ)=>l0 Ty0 L lCF0.
+      + rewrite EF; constructor=>//.
+        apply/(proj_all DOMF PRJ)=>l0 Ty0 L lCF0.
         rewrite /send_recv look_act//=; last by rewrite eq_sym.
         by rewrite /run_step/= EF lCF0 !eq_refl /= look_same.
       + rewrite ET; constructor=>//; first by rewrite eq_sym.
@@ -1278,9 +1277,9 @@ actually they should be doubled*)
       + move: (dom DOM lCF0)=>[LT] lCT0.
         rewrite !eq_refl/=; case: ifP=>E.
         * rewrite /enq QPRJ/run_step/= look_comm // ET lCT0 E !eq_refl/=.
-          rewrite /deq fnd_set eq_refl /= remf1_set eq_refl remf1_id //.
+          rewrite /deq fnd_set !eq_refl /= remf1_set eq_refl remf1_id //.
           by rewrite -fndSome QPRJ.
-        * by rewrite /run_step/= ET !eq_refl/= lCT0 E.
+        * by rewrite /run_step/= ET !eq_refl /= lCT0 E.
       + by move: (dom_none DOM lCF0)=>lCT0; rewrite /run_step/= ET lCT0.
   Qed.
 
@@ -1423,7 +1422,7 @@ actually they should be doubled*)
       move: (IProj_recv_inv (PRJ.1 T))=>[_] [lCT] [ET] [DOMT] _.
       move: EF; rewrite -(look_act _ aF)=>{}EF.
       move: ET; rewrite -(look_act _ aT)=>{}ET.
-      move _: DOM=> DOM1; move: DOM1=>/same_dom_sym-DOM1.
+      move _: DOM=>DOM1; move: DOM1=>/same_dom_sym-DOM1.
       move: (same_dom_trans DOM1 DOMF) (same_dom_trans DOM1 DOMT)=>{}DOMF {}DOMT.
       move: NE=>[Ty] [Gl] /(dom DOM)-[G1] C1l.
       move: PRJ.2=>/qProject_None_inv-[QPRJ] _.
@@ -1431,7 +1430,7 @@ actually they should be doubled*)
         by apply: (Proj_send_undo FT C1l DOMF DOMT) =>//; rewrite queue_act.
       move=>l0 Ty0 {}G1 {}C1l; move: (dom' DOM C1l)=>[G0 C0l].
       move: (Proj_None_next PRJ C0l)=>PRJ0; rewrite /send_recv.
-      rewrite -(run_stepC (A:=A)) ?aT //=  -(run_stepC (A:=A)) ?aF ?aT //= .
+      rewrite -(run_stepC (A:=A)) ?aT //= -(run_stepC (A:=A)) ?aF ?aT //=.
       by apply: Ih; [apply: C0l | apply: C1l |].
     - move: Ih=>[SAME_C] [Tyl] [G0] [G1] [C0l] [C1l] [STEP_G0_G1] Ih.
       move: (Projection_runnable C0l PRJ) => RUN.
@@ -1459,5 +1458,6 @@ actually they should be doubled*)
   - apply/(runstep_proj ST Prj).
   - apply/run_step_sound/(local_runnable ST Prj).
   Qed.
+
 
 End TraceEquiv.
