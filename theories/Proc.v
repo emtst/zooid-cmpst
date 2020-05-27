@@ -29,38 +29,22 @@ Fixpoint unfold l :=
 
 Inductive Proc : l_ty -> Type :=
 | Finish : Proc l_end
-| Recv a (p : role) :
-    Alts a -> Proc (l_msg l_recv p a)
 
 | Rec : forall (v : nat), Proc (l_var v)
 | Loop L: Proc L -> Proc (l_rec L)
-(* | Unroll L: Proc (l_rec (l_open 0 L L)) -> Proc (l_rec L) *)
 
-(* | Unfold L : Proc (l_open 0 (l_rec L) L) -> *)
-(*     Proc (l_rec L) *)
-
+| Recv a (p : role) : Alts a -> Proc (l_msg l_recv p a)
 | Send (p : role) L a T (l : lbl) :
   coq_ty T ->
   Proc L ->
   (l, (T, L)) \in a ->
   Proc (l_msg l_send p a)
-(* | Case T Ts L : coq_ty T ->
-           CAlts Ts L ->
-           Proc L
- *)
 
 with Alts : seq (lbl * (mty * l_ty)) -> Type :=
-| A_nil : Alts [::]
+| A_sing T L l : (coq_ty T -> Proc L) -> Alts [:: (l, (T, L))]
 | A_cons T L a l : (coq_ty T -> Proc L) ->
                    Alts a ->
                    Alts ((l, (T, L)) :: a)
-(*
-with CAlts : seq mty -> l_ty -> Type :=
-| C_sing T L : (coq_ty T -> Proc L) -> CAlts [:: T] L
-| C_cons T L Ts : (coq_ty T -> Proc L) ->
-                 CAlts Ts L ->
-                 CAlts (T :: Ts) L
-*)
 .
 
 (* convenience definition for conditional processes *)
@@ -102,28 +86,25 @@ Fixpoint gen_proc T (n:nat) (p : Proc T): MP.t unit
     | Loop _ p =>
       MP.loop n (gen_proc (n+1) p)
 
-    (* | Unroll _ p => gen_proc n p *)
-
-    (* | Unfold _ p => gen_proc n p *)
-
     | Rec x => MP.set_current (n - x - 1)
      end
 with gen_alts (a :seq (lbl * (mty * l_ty)))
               (n:nat) (r : role) (alts : Alts a)
               (f : (lbl -> MP.t unit))
      : (lbl -> MP.t unit) :=
+       let new_f L T (dproc : coq_ty T -> Proc L) l (label : lbl) : MP.t unit :=
+           if label == l then
+             MP.bind
+               (MP.recv_one (coq_ty T) r)
+               (fun d=> gen_proc n (dproc d))
+           else
+             f label
+       in
        match alts with
-       | A_nil => f
+       | A_sing T _ l dproc =>
+         new_f _ T dproc l
        | A_cons T _ a l dproc alts =>
-         let new_f (label : lbl) : MP.t unit :=
-            if label == l then
-                         MP.bind
-                           (MP.recv_one (coq_ty T) r)
-                           (fun d=> gen_proc n (dproc d))
-                       else
-                         f label
-         in
-         gen_alts n r alts new_f
+         gen_alts n r alts (new_f _ T dproc l)
        end.
 
 (* Definition p := Eval compute in gen_proc (Fix (Rec T_nat 0)). *)
@@ -145,25 +126,25 @@ Axiom C S : role. (* two roles *)
 Parameter lbl_A lbl_B lbl_C : lbl.
 
 (* receive a natural and end *)
-Definition p1 := Recv C (@A_cons T_nat _ _ lbl_A (fun=> Finish) A_nil).
+Definition p1 := Recv C (@A_sing T_nat  _ lbl_A (fun=> Finish)).
 Definition ep1 := Eval compute in gen_proc 0 p1.
 (* Extraction ep1. *)
 
 (* receive one of two labels and end *)
 Definition p2 := Recv C (@A_cons T_nat _ _ lbl_A (fun=> Finish)
-                                 (@A_cons T_nat _ _ lbl_B (fun=> Finish) A_nil)).
+                                 (@A_sing T_nat _ lbl_B (fun=> Finish))).
 Definition ep2 := Eval compute in gen_proc 0 p2.
 (* Extraction ep2. *)
 
 (* recursive process that receives or stops *)
 Definition p3 :=
-  Loop(Recv C (@A_cons T_nat _ _ lbl_A (fun=> Finish) (@A_cons T_nat _ _ lbl_B (fun=> Rec 0) A_nil))).
+  Loop(Recv C (@A_cons T_nat _ _ lbl_A (fun=> Finish) (@A_sing T_nat  _ lbl_B (fun=> Rec 0)))).
 Definition ep3 := Eval compute in gen_proc 0 p3.
 (* Extraction ep3. *)
 
 (* nested recursion *)
 Definition p4 :=
-  Loop(Loop(Recv C (@A_cons T_nat _ _ lbl_A (fun=> Finish) (@A_cons T_nat _ _ lbl_B (fun=> Rec 0) (@A_cons T_nat _ _ lbl_C (fun=> Rec 1) A_nil))))).
+  Loop(Loop(Recv C (@A_cons T_nat _ _ lbl_A (fun=> Finish) (@A_cons T_nat _ _ lbl_B (fun=> Rec 0) (@A_sing T_nat _ lbl_C (fun=> Rec 1)))))).
 Definition ep4 := Eval compute in gen_proc 0 p4.
 (* Extraction ep4. *)
 
@@ -190,7 +171,7 @@ Definition PingPongServer : Proc PP_S.
   refine (Loop (@Recv _ C _)).
   (*alts*)
   refine (@A_cons T_unit _ _ Bye (fun=> Finish)
-                  (@A_cons T_nat _ _ Ping (fun d=> _) A_nil)).
+                  (@A_sing T_nat  _ Ping (fun d=> _))).
   refine (@Send C _ _ T_nat Pong d (Rec 0) _).
   apply mem_head.
 Defined.
@@ -205,7 +186,7 @@ Qed.
 Definition PingPongClient1 : Proc PP_C.
   refine (Loop (@Send S _ _ T_nat Ping 7 (@Recv _ S _) _)).
   (* alts *)
-  refine (@A_cons T_nat _ _ Pong (fun=> Rec 0) A_nil).
+  refine (@A_sing T_nat  _ Pong (fun=> Rec 0)).
   (* proof that we used the labels under the right type *)
   apply (@mem_drop 1)=>//=.
   apply mem_head.
@@ -215,7 +196,7 @@ Defined.
 Definition PingPongClient2 : Proc PP_C.
   refine (Loop (@Send S _ _ T_nat Ping 7 (@Recv _ S _) _)).
   (* alts *)
-  refine (@A_cons T_nat _ _ Pong (fun=> _) A_nil).
+  refine (@A_sing T_nat _ Pong (fun=> _)).
 
   refine (@Send S _ _ T_unit Bye tt Finish _).
   apply mem_head.
@@ -231,7 +212,7 @@ Definition PingPongClient2 : Proc PP_C_unrolled.
   rewrite/PP_C_unrolled. (* not necessary, just for convenience *)
   refine (@Send S _ _ T_nat Ping 3 (@Recv _ S _) _).
   (* alts *)
-  refine (@A_cons T_nat _ _ Pong (fun=> _) A_nil)=>//=.
+  refine (@A_sing T_nat _ Pong (fun=> _))=>//=.
   refine PingPongClientBye.
 
   apply (@mem_drop 1)=>//=.
@@ -245,7 +226,7 @@ Definition ppc2 := Eval compute in gen_proc 0 PingPongClient2.
 Definition PingPongClient3 : Proc PP_C_unrolled.
   refine (@Send S _ _ T_nat Ping 3 (@Recv _ S _) _).
   (* alts *)
-  refine (@A_cons T_nat _ _ Pong (fun n=> _) A_nil)=>//=.
+  refine (@A_sing T_nat _ Pong (fun n=> _))=>//=.
   refine (Loop _).
   (* finish if you got 3 *)
   refine (IFP (n == 3) (@Send S _ _ T_unit Bye tt Finish _) _).
@@ -253,7 +234,7 @@ Definition PingPongClient3 : Proc PP_C_unrolled.
   apply mem_head.
 
   refine (@Send S _ _ T_nat Ping 7 (@Recv _ S _) _).
-  refine (@A_cons T_nat _ _ Pong (fun=> _) A_nil).
+  refine (@A_sing T_nat _ Pong (fun=> _)).
   refine (Rec 0).
 
   apply (@mem_drop 1)=>/=.
