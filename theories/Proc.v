@@ -267,7 +267,7 @@ Defined.
 Definition ppc3 := Eval compute in gen_proc 0 PingPongClient3.
 Extraction ppc3.
 
-Section Semantics.
+Section OperationalSemantics.
 
 (*   SearchAbout rl_ty. *)
 
@@ -335,7 +335,7 @@ Section Semantics.
     (* | None => None *)
     (* end%fmap. *)
 
-  (* Inductive pstep : act -> penv * pqenv -> penv * pqenv -> Prop := *)
+  Inductive pstep : act -> penv * pqenv -> penv * pqenv -> Prop :=
   (* | ls_send (T : mty) (t : coq_ty T) p q lb (P P' : penv) (Q Q' : pqenv) : *)
   (*     Q' == penq Q (p, q) (lb, (existT _ T t)) -> *)
   (*     (* do_act P l_send p q lb t = Some P' -> *) *)
@@ -344,7 +344,26 @@ Section Semantics.
   (*     (* deq Q (p, q) == Some ((lb, t), Q') -> *) *)
   (*     (* do_act P l_recv q p lb t = Some P' -> *) *)
   (*     pstep (a_recv p q lb t) (P, Q) (P', Q') *)
-  (* . *)
+  .
+
+  Definition look_proc (E : penv) p :=
+    match E.[? p] with
+    | Some L => L
+    | None => existT _ l_end Finish
+    end%fmap.
+
+  Definition do_act_proc (P : penv) (A : act) : option penv :=
+    let: (mk_act a p q l t) := A in
+    match look_proc P p with
+    | existT  _ (Send q' _ _ _ _ _ _ _) => None
+    | _ => None
+    end%fmap.
+
+  Definition runnable_proc (A : act) (P : penv * pqenv) : bool :=
+    false
+  .
+
+
 
 (*   Lemma process_behave *)
 (*         (a : act) *)
@@ -356,4 +375,4 @@ Section Semantics.
 (*        pstep a (rP, rQ) (rP', rQ') -> lstep a (P, Q) (P', Q'). *)
 (* Abort. *)
 
-End Semantics.
+End OperationalSemantics.
