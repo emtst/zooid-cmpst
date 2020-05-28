@@ -597,7 +597,28 @@ Section Semantics.
     | None => rl_end
     end%fmap.
 
+  Definition do_act_lt (L : rl_ty) A :=
+    let: (mk_act a p q l t) := A in
+    match L with
+    | rl_msg a' q' Ks =>
+      match Ks l with
+      | Some (t', Lp) =>
+        if (a == a') && (q == q') && (t == t')
+        then Some Lp
+        else None
+      | None => None
+      end
+    | _ => None
+    end%fmap.
+
   Definition do_act (P : renv) A :=
+    let: (mk_act a p q l t) := A in
+    match do_act_lt (look P p) A with
+    | Some Lp => Some (P.[p <- Lp]%fmap)
+    | None => None
+    end.
+
+  Definition do_act'' (P : renv) A :=
     let: (mk_act a p q l t) := A in
     match look P p with
     | rl_msg a' q' Ks =>
@@ -616,7 +637,7 @@ Section Semantics.
     (KsL lb = Some (t, Lp)) ->
     exists E', (do_act E (mk_act l_send p q lb t) = Some E').
   Proof.
-    move=>H1 H2; rewrite /do_act H1 H2 !eq_refl/=.
+    move=>H1 H2; rewrite /do_act/do_act_lt H1 H2 !eq_refl/=.
     by exists E.[ p <- Lp]%fmap.
     (*case: Lp H2 =>[|a r Ks]; [|set (Lp := rl_msg _ _ _)].
     - by (exists E.[~ p]%fmap).

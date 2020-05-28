@@ -122,7 +122,7 @@ Section TraceEquiv.
   Lemma doact_diff A E E' :
     do_act E A = Some E' -> exists L, E' = E.[subject A <- L].
   Proof.
-    rewrite /do_act/look/=; case: A=>[a p q l Ty]; case Ep: E.[? p] =>[[|ap r C]|]//.
+    rewrite /do_act/do_act_lt/look/=; case: A=>[a p q l Ty]; case Ep: E.[? p] =>[[|ap r C]|]//.
     by case Cl: C=>[[Ty' L]|//]; case: ifP=>//= _ [/esym-H]; exists L.
   Qed.
 
