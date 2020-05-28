@@ -391,12 +391,8 @@ Section OperationalSemantics.
     end.
 
   Inductive pstep : rt_act -> penv -> penv -> Prop :=
-  | ls_send (Ti : mty) (t : coq_ty Ti)  (sact :rt_act) (P P' : penv) :
+  | ls_rel (Ti : mty) (t : coq_ty Ti)  (sact :rt_act) (P P' : penv) :
       pstep sact P (run_rt_step P sact)
-  (* | ls_recv t p q lb (P P' : penv) (Q Q' : pqenv) : *)
-  (*     (* deq Q (p, q) == Some ((lb, t), Q') -> *) *)
-  (*     (* do_act P l_recv q p lb t = Some P' -> *) *)
-  (*     pstep (a_recv p q lb t) (P, Q) (P', Q') *)
   .
 
  Definition related (rP : penv) (P : {fmap role -> rl_ty}) : Prop :=
