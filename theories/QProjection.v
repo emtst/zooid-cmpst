@@ -28,21 +28,11 @@ Open Scope fmap.
 
   Definition qproj_rel := ig_ty -> {fmap role * role -> seq (lbl * mty) } -> Prop.
   Inductive qProject : qproj_rel :=
-  | qprj_end G : qProject (ig_end G) [fmap]%fmap(*[fmap qq:PAR2 => [::]]*)
+  | qprj_end G : qProject (ig_end G) [fmap]%fmap
 
   | qprj_none p p' CONT Q :
       (forall l Ty G, CONT l = Some (Ty, G) -> qProject G Q) ->
       Q.[? (p,p')] = None ->
-
-  (*| qprj_none p p' CONT Q :
-      p != p' -> 
-      (forall l Ty G, CONT l = Some (Ty, G) -> qProject G Q) ->
-      qProject (ig_msg None p p' CONT) Q*)
-  (*| qprj_none p p' CONT (Q:{fmap role * role -> seq (lbl * mty)}) :
-      p != p' -> 
-     Q.[?(p, p')] = None ->
-      (forall l Ty G, CONT l = Some (Ty, G) -> qProject G Q) ->*)
-
       qProject (ig_msg None p p' CONT) Q
 
   | qprj_some p p' CONT l Ty G Q Q':
