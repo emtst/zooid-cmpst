@@ -1,4 +1,4 @@
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import all_ssreflect seq.
 From mathcomp Require Import finmap.
 
 
@@ -384,7 +384,6 @@ Section OperationalSemantics.
     | _, _ => None
     end%fmap.
 
-
   Definition run_rt_step (P : penv) (A : rt_act) : penv :=
     match do_rt_act P A with
     | Some P => P
@@ -400,11 +399,15 @@ Section OperationalSemantics.
   (*     pstep (a_recv p q lb t) (P, Q) (P', Q') *)
   .
 
+ Definition related (rP : penv) (P : {fmap role -> rl_ty}) : Prop :=
+   forall p, LUnroll (projT1 (look_proc rP p)) (look P p).
+
   Lemma process_behave
         (a : rt_act)
         (PQ  PQ' : {fmap role -> rl_ty} * {fmap role * role -> seq (lbl * mty)})
         (rP rP' : penv)
     :
+      related rP PQ.1 ->
       rP' = run_rt_step rP a ->
       PQ' = run_step (erase_act a) PQ ->
 
