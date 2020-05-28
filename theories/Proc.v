@@ -51,7 +51,7 @@ with Alts : seq (lbl * (mty * l_ty)) -> Type :=
 
 Print sigT.
 Fixpoint lookup_alt_cont T (a : seq (lbl * (mty * l_ty)))
-                                                   (* the existential is silly, it should be what a says *)
+          (* the existential is silly, it should be what a says *)
           (l : lbl) (alts : Alts a): option (sigT (fun x => (coq_ty T -> Proc x))) :=
   match alts with
   (* | A_sing _ _ l' dproc => *)
@@ -109,7 +109,6 @@ End MP.
 (*   (* Parameter rec : forall T1, nat -> t T1. *) *)
 (* End MP'. *)
 
-
 Fixpoint gen_proc T (n:nat) (p : Proc T): MP.t unit
   := match p with
     | Finish => MP.pure tt
@@ -144,7 +143,6 @@ with gen_alts (a :seq (lbl * (mty * l_ty)))
        end.
 
 Print gen_proc.
-
 
 (* Some examples *)
 
@@ -242,7 +240,7 @@ Definition PingPongClient2 : Proc PP_C.
 Abort.
 
 Definition PP_C_unrolled := Eval compute in unfold PP_C.
-Print PP_C_unrolled.
+(* Print PP_C_unrolled. *)
 
 Definition PingPongClient2 : Proc PP_C_unrolled.
   rewrite/PP_C_unrolled. (* not necessary, just for convenience *)
@@ -282,7 +280,7 @@ Definition PingPongClient3 : Proc PP_C_unrolled.
 Defined.
 
 Definition ppc3 := Eval compute in gen_proc 0 PingPongClient3.
-Extraction ppc3.
+(* Extraction ppc3. *)
 
 Section OperationalSemantics.
 
@@ -366,6 +364,11 @@ Section OperationalSemantics.
     | Some L => L
     | None => existT _ l_end Finish
     end%fmap.
+
+  (* SearchAbout l_ty. *)
+
+  (* Definition do_rt_act_1 L (P : Proc L) (A : rt_act) : option (Proc (do_act_lt_ind L A)). *)
+  (* Admitted. *)
 
   Definition do_rt_act (P : penv) (A : rt_act) : option penv :=
     let: (mk_rt_act a p q l t data) := A in
