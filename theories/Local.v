@@ -471,6 +471,34 @@ Section Syntax.
   + by [].
   Qed.
 
+  Fixpoint lookup_l_ty_cont (Ks : seq (lbl * (mty * l_ty))) (l :lbl) : option (mty * l_ty) :=
+    match Ks with
+    | [::] => None
+    | (l', (t, L)) :: Ks' =>
+      if l == l' then Some (t, L)
+      else lookup_l_ty_cont Ks' l
+    end.
+
+  Definition do_act_l_ty (L: l_ty) (A : act) : option l_ty :=
+    let: (mk_act a p q l t) := A in
+    match L with
+    | l_msg a' q' Ks =>
+      match lookup_l_ty_cont Ks l with
+      | Some (t', Lp) =>
+        if (a == a') && (q == q') && (t == t')
+        then Some Lp
+        else None
+      | None => None
+      end
+    | _ => None
+    end.
+
+  Definition run_act_l_ty (L: l_ty) (A : act) : l_ty :=
+    match do_act_l_ty L A with
+    | Some L' => L'
+    | None => L
+    end.
+
 End Syntax.
 
 Section Semantics.
@@ -597,7 +625,7 @@ Section Semantics.
     | None => rl_end
     end%fmap.
 
-  Definition do_act_lt (L : rl_ty) A :=
+    Definition do_act_lt (L : rl_ty) A :=
     let: (mk_act a p q l t) := A in
     match L with
     | rl_msg a' q' Ks =>
@@ -611,26 +639,18 @@ Section Semantics.
     | _ => None
     end%fmap.
 
-  Definition do_act (P : renv) A :=
-    let: (mk_act a p q l t) := A in
-    match do_act_lt (look P p) A with
-    | Some Lp => Some (P.[p <- Lp]%fmap)
-    | None => None
-    end.
+    Definition run_act_lt (L : rl_ty) A :=
+      match do_act_lt L A with
+      | Some L' => L
+      | None => L
+      end.
 
-  Definition do_act'' (P : renv) A :=
-    let: (mk_act a p q l t) := A in
-    match look P p with
-    | rl_msg a' q' Ks =>
-      match Ks l with
-      | Some (t', Lp) =>
-        if (a == a') && (q == q') && (t == t')
-        then Some P.[p <- Lp]
-        else None
+    Definition do_act (P : renv) A :=
+      let: (mk_act a p q l t) := A in
+      match do_act_lt (look P p) A with
+      | Some Lp => Some (P.[p <- Lp]%fmap)
       | None => None
-      end
-    | _ => None
-    end%fmap.
+      end.
 
   Lemma doact_send (E : renv) p q lb t KsL Lp :
     (look E p = rl_msg l_send q KsL) ->
@@ -643,8 +663,6 @@ Section Semantics.
     - by (exists E.[~ p]%fmap).
     - by exists E.[ p <- Lp]%fmap.*)
   Qed.
-
-
 
   Definition rlty_rel := rl_ty -> rl_ty -> Prop.
   Inductive EqL_ (r : rlty_rel) : rlty_rel :=
@@ -760,8 +778,8 @@ Section Semantics.
       by split; [apply (rall12 L Ty)|apply (rall23 L Ty)].
   Qed.
 
-
-
+  Lemma do_act_works : forall Li Lr A, LUnroll Li Lr -> LUnroll (run_act_l_ty Li A) (run_act_lt Lr A).
+  Admitted.
 
   Open Scope fmap_scope.
   (** lstep a Q P Q' P' is the 'step' relation <P, Q> ->^a <P', Q'> in Coq*)
