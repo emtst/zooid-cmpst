@@ -655,6 +655,7 @@ Section Semantics.
       @EqL_ r (rl_msg a p C1) (rl_msg a p C2).
   Hint Constructors EqL_.
   Definition EqL L1 L2 := paco2 EqL_ bot2 L1 L2.
+  Derive Inversion EqL__inv with (forall r L0 L1, EqL_ r L0 L1) Sort Prop.
 
   Lemma EqL_monotone : monotone2 EqL_.
   Proof.
@@ -672,8 +673,17 @@ Section Semantics.
     - by move=> Lb Ty; split=>[[CL ->]|[CL ->]]; exists CL.
     - by move=> Lb Ty CG CG'-> [->]; right; apply: CIH.
   Qed.
-  (*Hint Resolve EqL_refl. *)
 
+  Lemma EqL_sym CL1 CL2 : EqL CL1 CL2 -> EqL CL2 CL1.
+  Proof.
+    move: CL2 CL1; apply/paco2_acc=>r0 _ CIh L0 L1.
+    move=>/(paco2_unfold EqL_monotone); elim/EqL__inv=>// _.
+    + by move=> _ _; apply/paco2_fold; constructor.
+    + move=> a p C1 C2 DOM ALL _ _ {L0 L1}.
+      apply/paco2_fold; constructor; first by rewrite same_dom_sym.
+      move=> l Ty L L' C2l C1l; right; apply/CIh.
+      by move: (ALL l Ty _ _ C1l C2l)=>[].
+  Qed.
 
   Lemma EqL_r_end_inv_aux lT lT':
     EqL lT lT' -> lT' = rl_end -> lT = rl_end.

@@ -171,6 +171,15 @@ Definition extend A (L : lbl) (X : A) f :=
 Definition same_dom T T' (C : lbl /-> mty * T) (C' : lbl /-> mty * T') :=
   forall L Ty, (exists G, C L = Some (Ty, G)) <-> (exists G', C' L = Some (Ty, G')).
 
+Lemma same_dom_sym A B (C1 : lbl /-> mty * A) (C2 : lbl /-> mty * B) :
+  same_dom C1 C2 <-> same_dom C2 C1.
+Proof. by split=>H l Ty; move: (H l Ty)=>->. Qed.
+
+Lemma same_dom_trans A B C
+      (C1 : lbl /-> mty * A) (C2 : lbl /-> mty * B) (C3 : lbl /-> mty * C) :
+  same_dom C1 C2 -> same_dom C2 C3 -> same_dom C1 C3.
+  Proof. by move=>H0 H1 l Ty; move: (H0 l Ty) (H1 l Ty)=>->. Qed.
+
 Lemma same_dom_extend T1 T2 l Ty G1 G2
   (C1 : lbl /-> mty * T1) (C2 : lbl /-> mty * T2):
   same_dom C1 C2 ->

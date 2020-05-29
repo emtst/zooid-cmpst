@@ -171,21 +171,12 @@ Section TraceEquiv.
         by case: P.2.[? _] =>[[|V0 [|V1 W0]]|]/=.
   Qed.
 
-  Lemma same_dom_sym A B (C1 : lbl /-> mty * A) (C2 : lbl /-> mty * B) :
-    same_dom C1 C2 <-> same_dom C2 C1.
-  Proof. by split=>H l Ty; move: (H l Ty)=>->. Qed.
-
-  Lemma same_dom_trans A B C
-        (C1 : lbl /-> mty * A) (C2 : lbl /-> mty * B) (C3 : lbl /-> mty * C) :
-    same_dom C1 C2 -> same_dom C2 C3 -> same_dom C1 C3.
-  Proof. by move=>H0 H1 l Ty; move: (H0 l Ty) (H1 l Ty)=>->. Qed.
-
   Lemma IProj_unr p CG L:
     IProj p (ig_end CG) L -> IProj p (rg_unr CG) L.
   Proof.
     move=>/IProj_end_inv; case: CG.
-    + move=>PRJ; move: (cProj_end_inv PRJ)=>EQ.
-      by move: EQ PRJ=>->PRJ; constructor.
+    + elim/Project_inv=>// G0 -> _ pof {G0 L}.
+      by constructor; apply/paco2_fold; constructor.
     + move=>F T C /=; set CC := fun l=>_.
       have DOM_CC: same_dom C CC.
       { move=> l Ty; split; move=>[G E1];
@@ -193,7 +184,10 @@ Section TraceEquiv.
         by move: E1; rewrite /CC; case: (C l)=>[[Ty' iG]|//] [->_]; exists iG.
       }
       case: (boolP (p == F))=>[/eqP->|pF]; [|case: (boolP (p == T))=>[/eqP->|pT]].
-      - move=>/cProj_send_inv-[FT [Cl [-> [DOM PRJ]]]].
+      - elim/Project_inv=>// .
+        admit.
+        admit.
+      move=>/cProj_send_inv-[FT [Cl [-> [DOM PRJ]]]].
         constructor=>//; first by move=> l Ty; rewrite -DOM_CC.
         move=> L0 Ty G L' CC_L0 Cl_L0; move: CC_L0; rewrite /CC.
         move: (DOM L0 Ty)=>[_ /(_ (ex_intro _ _ Cl_L0))-[CG C_L0]].
@@ -270,16 +264,6 @@ Section TraceEquiv.
       by apply/IProj_unr.
     + by apply/QProj_unr.
   Qed.
-
-  Lemma dom T T' (C0 : lbl /-> mty * T) (C1 : lbl /-> mty * T')
-        (DOM : same_dom C0 C1)
-    : forall l Ty G, C0 l = Some (Ty, G) -> exists G', C1 l = Some (Ty, G').
-  Proof. by move=> l Ty; move: (DOM l Ty)=>[/(_ (ex_intro _ _ _))-H _]. Qed.
-
-  Lemma dom' T T' (C0 : lbl /-> mty * T) (C1 : lbl /-> mty * T')
-        (DOM : same_dom C0 C1)
-    : forall l Ty G, C1 l = Some (Ty, G) -> exists G', C0 l = Some (Ty, G').
-  Proof. by move=> l Ty; move: (DOM l Ty)=>[_ /(_ (ex_intro _ _ _))-H]. Qed.
 
   Lemma look_same E F L : look E.[F <- L] F = L.
   Proof. by rewrite /look fnd_set eq_refl. Qed.
