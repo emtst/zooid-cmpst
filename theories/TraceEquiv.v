@@ -171,42 +171,92 @@ Section TraceEquiv.
         by case: P.2.[? _] =>[[|V0 [|V1 W0]]|]/=.
   Qed.
 
+  (* Lemma part_of_unr p CG : part_of p CG <-> iPart_of p (rg_unr CG). *)
+  (* Proof. *)
+  (*   split. *)
+  (*   - case=>//. *)
+  (*     + by move=> F T C; constructor. *)
+  (*     + by move=> F T C; constructor. *)
+  (*     + move=> {}p F T C L G Ty CL PART /=. *)
+  (*       set CC := fun lbl => _. *)
+  (*       have CCL: CC L = Some (Ty, ig_end G) by rewrite /CC CL. *)
+  (*       by apply/(ipof_cont None _ _ CCL)/ipof_end. *)
+  (*   - case: CG=>//. *)
+  (*     + case E: _ / =>[q cG PART|||] //. *)
+  (*       by move: E PART=>/=[<-]. *)
+  (*     + move=> F T C /=; set CC := fun l => _. *)
+  (*       move: {-1}(ig_msg _ _ _ _) (erefl (ig_msg None F T CC)) => cG MSG P. *)
+  (*       move: P MSG=>[]//. *)
+  (*       * by move=>F' T' C' [<- _ _]; constructor. *)
+  (*       * by move=>o F' T' C' [_ _ <- _]; constructor. *)
+  (*       * move=> {}p o F' T' C' L G Ty C'L PART E. *)
+  (*         move: E C'L=>[_ _ _ <-] {o F' T' C'}. *)
+  (*         rewrite /CC; case CL: (C L) =>[[Ty' iG]|]//. *)
+  (*         move=> E; move: E CL PART=>[-><-] CL PART {Ty' G}. *)
+  (*         apply (pof_cont _ _ CL); case E: _ / PART =>[{}p {}cG PART|||] //. *)
+  (*         by move: E=>[->]. *)
+  (* Qed. *)
+
+  Lemma iproj_end p cG : ~ part_of p cG -> WF cG -> IProj p (rg_unr cG) rl_end.
+  Proof.
+    move=>POF /(paco1_unfold WF_mon)-H; move: H POF; case=>/=.
+    - move=> P; constructor; apply/paco2_fold; constructor=>//.
+      by apply/paco1_fold; constructor.
+    - move=> F T C FT WF.
+      case: (boolP (p == F))=>[/eqP->|pF]; first by move=>/(_ (pof_from _ _ _)).
+      case: (boolP (p == T))=>[/eqP->|pT]; first by move=>/(_ (pof_to _ _ _)).
+      move=>PART.
+      have PARTC: forall l Ty G, C l = Some (Ty, G) -> ~ part_of p G
+          by move=> l Ty G Cl P; move: PART=>/(_ (pof_cont _ _ Cl P)).
+      set CC := fun l => _.
+      set CL := fun l => match C l with
+                         | Some (Ty, _) => Some (Ty, rl_end)
+                         | None => None
+                         end.
+      have DOM: same_dom CC CL.
+      * move=> l Ty; rewrite /CC/CL.
+        split=>[][A]; case: (C l)=>[[Ty' A']|//] [->_].
+        by exists rl_end.
+        by exists (ig_end A').
+      apply: (iprj_mrg FT pF pT DOM).
+      * move=> l Ty G G'; rewrite /CC/CL; case E: (C l)=>//[[Ty' G0]].
+        move=>[-> <-] [<-]; constructor.
+        apply/paco2_fold/prj_end; first by apply/PARTC/E.
+        by move: (WF _ _ _ E)=>[].
+      * move=> l Ty L'; rewrite /CL.
+        by case: (C l)=>//[][Ty' _] [_<-]; apply/paco2_fold; constructor.
+  Qed.
+
+  Lemma samedom_unr A (CG0 : lbl /-> mty * rg_ty) (CL : lbl /-> mty * A)  :
+    same_dom CG0 CL ->
+    same_dom (fun lbl : lbl => match CG0 lbl with
+                               | Some (t, G) => Some (t, ig_end G)
+                               | None => None
+                               end) CL.
+  Proof.
+    move=>DOM l Ty; split=>[][a].
+    - case E: (CG0 l)=>[[Ty' a']|]// EQ.
+      by move: EQ E=>[<-_] /(dom DOM).
+    - by move=>/(dom' DOM)-[b]->; exists (ig_end b).
+  Qed.
+
   Lemma IProj_unr p CG L:
     IProj p (ig_end CG) L -> IProj p (rg_unr CG) L.
   Proof.
-    move=>/IProj_end_inv; case: CG.
-    + elim/Project_inv=>// G0 -> _ pof {G0 L}.
-      by constructor; apply/paco2_fold; constructor.
-    + move=>F T C /=; set CC := fun l=>_.
-      have DOM_CC: same_dom C CC.
-      { move=> l Ty; split; move=>[G E1];
-          first (by exists (ig_end G); rewrite /CC E1).
-        by move: E1; rewrite /CC; case: (C l)=>[[Ty' iG]|//] [->_]; exists iG.
-      }
-      case: (boolP (p == F))=>[/eqP->|pF]; [|case: (boolP (p == T))=>[/eqP->|pT]].
-      - elim/Project_inv=>// .
-        admit.
-        admit.
-      move=>/cProj_send_inv-[FT [Cl [-> [DOM PRJ]]]].
-        constructor=>//; first by move=> l Ty; rewrite -DOM_CC.
-        move=> L0 Ty G L' CC_L0 Cl_L0; move: CC_L0; rewrite /CC.
-        move: (DOM L0 Ty)=>[_ /(_ (ex_intro _ _ Cl_L0))-[CG C_L0]].
-        rewrite C_L0 =>[[<-]]; constructor.
-        by move: PRJ; move=>/(_ L0 Ty CG L' C_L0 Cl_L0)=>[[PRJ|//]].
-      - move=>/cProj_recv_inv-[FT [Cl [-> [DOM PRJ]]]].
-        move: FT; rewrite eq_sym=>FT.
-        constructor=>//; first by move=> l Ty; rewrite -DOM_CC.
-        move=> L0 Ty G L' CC_L0 Cl_L0; move: CC_L0; rewrite /CC.
-        move: (DOM L0 Ty)=>[_ /(_ (ex_intro _ _ Cl_L0))-[CG C_L0]].
-        rewrite C_L0 =>[[<-]]; constructor.
-        by move: PRJ; move=>/(_ L0 Ty CG L' C_L0 Cl_L0)=>[[PRJ|//]].
-      - move=>/cProj_mrg_inv/(_ pF pT)-[FT [lC [DOM [PRJ MRG]]]].
-        have /same_dom_trans/(_ DOM)-DOM_CC':
-          same_dom CC C by move: DOM_CC=>/same_dom_sym.
-        apply: iprj_mrg=>// l Ty G L' CC_l lC_l.
-        move: CC_l; rewrite /CC; case C_l: (C l)=>[[Ty' CG]|//] H.
-        move: H C_l=>[-><-] C_l {Ty'}; constructor.
-        by move: PRJ; move=>/(_ l Ty CG L' C_l lC_l)=>[[PRJ|//]].
+    move=>/IProj_end_inv; elim/Project_inv=>/=.
+    - by move=> G0 -> _ {G0 L}; apply/iproj_end.
+    - move=> q CG0 CL _ _ {CG L} pq DOM ALL.
+      constructor=>//; first by apply/samedom_unr.
+      move=>l Ty G G1; case CG0l : (CG0 l) =>[[Ty' G']|]// E CLl.
+      by move: E CG0l=>[-><-] /ALL/(_ CLl); apply/iprj_end.
+    - move=> q CG0 CL _ _ {CG L} pq DOM ALL.
+      constructor=>//; first by apply/samedom_unr.
+      move=>l Ty G G1; case CG0l : (CG0 l) =>[[Ty' G']|]// E CLl.
+      by move: E CG0l=>[-><-] /ALL/(_ CLl); apply/iprj_end.
+    - move=>q r CG0 CL L0 qr pq pr _ _ PART DOM PRJ MRG {CG L0}.
+      apply/(iprj_mrg qr pq pr _ _ MRG)=>//; first by apply/samedom_unr.
+      move=>l Ty G G1; case CG0l : (CG0 l) =>[[Ty' G']|]// E CLl.
+      by move: E CG0l=>[-><-] /PRJ/(_ CLl); apply/iprj_end.
   Qed.
 
   Lemma QProj_unr CG Q :

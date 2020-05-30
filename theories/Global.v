@@ -524,14 +524,15 @@ Section Semantics.
            (CONT : lbl /-> mty * ig_ty).
   Set Elimination Schemes.
 
+  (* To do induction on the proof that p is in G, we need to be able to know
+   * whether part_of p G for all G such that C l = Some (_, G)
+   *)
 
   Inductive part_of: role -> rg_ty -> Prop :=
     | pof_from F T C: part_of F (rg_msg F T C)
     | pof_to F T C: part_of T (rg_msg F T C)
     | pof_cont p F T C L G Ty: C L = Some (Ty, G)
       -> part_of p G -> part_of p (rg_msg F T C).
-
-
 
   Inductive iPart_of: role -> ig_ty -> Prop :=
     | ipof_end p cG: part_of p cG -> iPart_of p (ig_end cG)

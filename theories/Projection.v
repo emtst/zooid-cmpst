@@ -1,7 +1,7 @@
 From mathcomp.ssreflect Require Import all_ssreflect seq.
 From mathcomp Require Import finmap.
 
-From Paco Require Import paco paco2.
+From Paco Require Import paco paco1 paco2.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -700,9 +700,21 @@ Section CProject.
   Definition P_all A (P : A -> Prop) (F : lbl /-> mty * A) : Prop :=
     forall l Ty a, F l = Some (Ty, a) -> P a.
 
+  Inductive WF_ (r : rg_ty -> Prop) : rg_ty -> Prop :=
+  | WF_end : WF_ r rg_end
+  | WF_msg F T C : F != T -> P_all r C -> WF_ r (rg_msg F T C).
+  Definition WF := paco1 WF_ bot1.
+
+  Lemma WF_mon : monotone1 WF_.
+  Proof.
+    move=> G r r' [].
+    - by move=> _; apply/WF_end.
+    - by move=> F T C FT ALL H; apply/WF_msg=>// l Ty {}G Cl; apply/H/ALL/Cl.
+  Qed.
+
   Definition proj_rel := rg_ty -> rl_ty -> Prop.
   Inductive Proj_ (p : role) (r : proj_rel) : proj_rel :=
-  | prj_end G : ~ part_of p G -> Proj_ p r G rl_end
+  | prj_end G : ~ part_of p G -> WF G -> Proj_ p r G rl_end
   | prj_send q KsG KsL :
       p != q ->
       same_dom KsG KsL ->
@@ -743,7 +755,7 @@ Section CProject.
 
   Lemma Project_inv (p : role) (G : rg_ty) (L : rl_ty)
         (P : (let (sort, _) := role in sort) -> rg_ty -> rl_ty -> Prop) :
-    (forall G0, G0 = G -> rl_end = L -> ~ part_of p G0 -> P p G0 rl_end) ->
+    (forall G0, G0 = G -> rl_end = L -> ~ part_of p G0 -> WF G0 -> P p G0 rl_end) ->
     (forall q CG CL,
        rg_msg p q CG = G -> rl_msg l_send q CL = L ->
        p != q -> same_dom CG CL -> R_all (Project p) CG CL ->
@@ -761,7 +773,7 @@ Section CProject.
   Proof.
     move=> Hend Hsnd Hrcv Hmrg /(paco2_unfold (Proj_monotone (p:=p))).
     elim/Proj__inv =>/(paco2_fold _ _ _ _); rewrite -/(Project p G L) => PRJ.
-    + by move=> G0 PART EQ1 EQ2; apply/Hend.
+    + by move=> G0 PART WF EQ1 EQ2; apply/Hend.
     + move=> q CG CL pq DOM ALL EQ1 EQ2; apply/Hsnd=>//.
       by move=>l Ty G0 G1 CGl CLl; move: (ALL l Ty G0 G1 CGl CLl)=>[|//].
     + move=> q CG CL pq DOM ALL EQ1 EQ2; apply/Hrcv=>//.
@@ -1365,30 +1377,6 @@ Section CProject.
         by split.
   Qed.
 
-  (* Lemma unroll_all_exists_c K CONT CC : *)
-  (*   @unroll_all (upaco2 g_unroll bot2) CONT CC -> *)
-  (*   member K CONT -> *)
-  (*   exists K' cG, member K' CONT /\ CC K'.1 = Some (Ty, cG) /\ GUnroll K.2.2 cG. *)
-  (* Proof. *)
-  (*   elim: CONT CC. *)
-  (*   - move=> CC; by case E: _ _ / =>//. *)
-  (*   - move=> K' Ks Ih CC UA. *)
-  (*     case E: _ _ / UA Ih =>[|l' Ty' iG cG iK cK GU UA]// Ih. *)
-  (*     move: E UA Ih =>[EQK<-] UA Ih [->|] {iK}.  *)
-  (*     + by exists cG; rewrite /extend eq_refl; split=>//; move: GU=>[]. *)
-  (*     + rewrite -/member =>/(Ih _ UA)-[cG'] [CKK] GU'.  *)
-  (*       rewrite /extend; case: ifP=>//. *)
-  (*       * move=> _. *)
-  (*       exists cG'; rewrite /extend. *)
-  (*     rewrite /extend; case: ifP. *)
-  (*     + move=>/eqP-EQ_l [_ <-]. *)
-  (*       exists (l', (Ty', iG)) =>/=; split; first by left. *)
-  (*       by split=>//; move: GU=>[|//]. *)
-  (*     + move=> ll' cKl; move: E UA=>[_ <-] /Ih/(_ cKl)-[K' [M'] [E] GU']. *)
-  (*       exists K'=>/=; split; first by right. *)
-  (*       by split. *)
-  (* Qed. *)
-
   Lemma merge_equal (A : eqType) (L : A) Ks :
     merge L [seq K.cnt | K <- Ks] = Some L ->
     forall (K : (lbl * (mty  *A))), member K Ks -> K.cnt = L.
@@ -1396,6 +1384,10 @@ Section CProject.
     elim: Ks=>//= K Ks Ih; case: ifP=>//.
     by move=>/eqP-Kl /Ih-{}Ih K0 [->|/Ih].
   Qed.
+
+  Lemma project_wf G r L CG : project G r == Some L -> GUnroll G CG -> WF CG.
+  Proof.
+  Admitted.
 
   Lemma project_nonrec (r0 : proj_rel ) r CL CG L G
         (CIH : forall cG cL iG iL,
@@ -1417,9 +1409,9 @@ Section CProject.
     case: (boolP (r \notin participants G)); [| rewrite negbK].
     - move=> PARTS nvG; move: iPrj=>/eqP-iPrj.
       move: (proj1 (project_parts cG iPrj) PARTS)=> endL.
-      move: (lunroll_end LU endL)=>->.
-      apply/paco2_fold; constructor; move=>/(partof_unroll GU)-PARTS'.
-      by move: PARTS' PARTS=>->.
+      move: (lunroll_end LU endL)=>->; apply/paco2_fold.
+      constructor; first by move=>/(partof_unroll GU)-PARTS'; move: PARTS' PARTS=>->.
+      by apply/(project_wf iPrj).
     - case: G cG gG nrG iPrj GU=>//;
               first by move=> GT _ _ /(_ GT); rewrite eq_refl.
       move=>FROM TO CONT; rewrite project_msg /g_closed/=.
