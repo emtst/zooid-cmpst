@@ -1,7 +1,6 @@
 From mathcomp Require Import all_ssreflect seq.
 From mathcomp Require Import finmap.
 
-
 Require Import MPST.Actions.
 Require Import MPST.AtomSets.
 Require Import MPST.Global.
@@ -49,7 +48,6 @@ with Alts : seq (lbl * (mty * l_ty)) -> Type :=
 
 (* Unset Printing Notations. *)
 
-Print sigT.
 Fixpoint lookup_alt_cont T (a : seq (lbl * (mty * l_ty)))
           (* the existential is silly, it should be what a says *)
           (l : lbl) (alts : Alts a): option (sigT (fun x => (coq_ty T -> Proc x))) :=
@@ -141,8 +139,6 @@ with gen_alts (a :seq (lbl * (mty * l_ty)))
        | A_cons T _ a l dproc alts =>
          gen_alts n r alts (new_f _ T dproc l)
        end.
-
-Print gen_proc.
 
 (* Some examples *)
 
@@ -365,10 +361,12 @@ Section OperationalSemantics.
     | None => existT _ l_end Finish
     end%fmap.
 
-  (* SearchAbout l_ty. *)
+  Section OneProc.
 
-  (* Definition do_rt_act_1 L (P : Proc L) (A : rt_act) : option (Proc (do_act_lt_ind L A)). *)
-  (* Admitted. *)
+    Definition run_rt_act L (P : Proc L) (A : rt_act) : (Proc (run_act_l_ty L (erase_act A))).
+    Abort.
+
+  End OneProc.
 
   Definition do_rt_act (P : penv) (A : rt_act) : option penv :=
     let: (mk_rt_act a p q l t data) := A in
