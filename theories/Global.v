@@ -534,6 +534,12 @@ Section Semantics.
     | pof_cont p F T C L G Ty: C L = Some (Ty, G)
       -> part_of p G -> part_of p (rg_msg F T C).
 
+  Inductive part_of_all: role -> rg_ty -> Prop :=
+    | pall_from F T C: part_of_all F (rg_msg F T C)
+    | pall_to F T C: part_of_all T (rg_msg F T C)
+    | pall_cont p F T C :
+        P_all (part_of_all p) C -> part_of_all p (rg_msg F T C).
+
   Inductive iPart_of: role -> ig_ty -> Prop :=
     | ipof_end p cG: part_of p cG -> iPart_of p (ig_end cG)
     | ipof_from F T C: iPart_of F (ig_msg None F T C)
@@ -620,6 +626,10 @@ Section Semantics.
       @unroll_all r iCONT cCONT ->
       @unroll_all r ((L, (T, IG)) :: iCONT) (extend L (T, CG) cCONT).
   Definition GUnroll IG CG : Prop := paco2 g_unroll bot2 IG CG.
+
+  Derive Inversion gunr_inv with (forall r G cG, g_unroll r G cG) Sort Prop.
+  Derive Inversion gunrall_inv with (forall r G cG, @unroll_all r G cG) Sort Prop.
+
   Hint Constructors g_unroll.
   Hint Constructors unroll_all.
 

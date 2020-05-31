@@ -222,6 +222,8 @@ rewrite /same_dom_const; case: (C L) => //=; move=> a.
 case: a=> Tyy _ [] =>//=.
 Qed.
 
+Definition P_all A (P : A -> Prop) (F : lbl /-> mty * A) : Prop :=
+  forall l Ty a, F l = Some (Ty, a) -> P a.
 
 Definition R_all T T' (R : rel2 T (fun=>T'))
            (C : lbl /-> mty * T) (C' : lbl /-> mty * T'):=

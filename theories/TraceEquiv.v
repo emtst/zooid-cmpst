@@ -27,11 +27,7 @@ Section TraceEquiv.
   Definition eProject (G: ig_ty) (E : {fmap role -> rl_ty}) : Prop :=
     forall p, IProj p G (look E p).
 
-
-
   Definition Projection G P := eProject G P.1 /\ qProject G P.2.
-
-
 
   Lemma doact_other p E A L :
     subject A != p -> match do_act E A with
@@ -171,31 +167,31 @@ Section TraceEquiv.
         by case: P.2.[? _] =>[[|V0 [|V1 W0]]|]/=.
   Qed.
 
-  (* Lemma part_of_unr p CG : part_of p CG <-> iPart_of p (rg_unr CG). *)
-  (* Proof. *)
-  (*   split. *)
-  (*   - case=>//. *)
-  (*     + by move=> F T C; constructor. *)
-  (*     + by move=> F T C; constructor. *)
-  (*     + move=> {}p F T C L G Ty CL PART /=. *)
-  (*       set CC := fun lbl => _. *)
-  (*       have CCL: CC L = Some (Ty, ig_end G) by rewrite /CC CL. *)
-  (*       by apply/(ipof_cont None _ _ CCL)/ipof_end. *)
-  (*   - case: CG=>//. *)
-  (*     + case E: _ / =>[q cG PART|||] //. *)
-  (*       by move: E PART=>/=[<-]. *)
-  (*     + move=> F T C /=; set CC := fun l => _. *)
-  (*       move: {-1}(ig_msg _ _ _ _) (erefl (ig_msg None F T CC)) => cG MSG P. *)
-  (*       move: P MSG=>[]//. *)
-  (*       * by move=>F' T' C' [<- _ _]; constructor. *)
-  (*       * by move=>o F' T' C' [_ _ <- _]; constructor. *)
-  (*       * move=> {}p o F' T' C' L G Ty C'L PART E. *)
-  (*         move: E C'L=>[_ _ _ <-] {o F' T' C'}. *)
-  (*         rewrite /CC; case CL: (C L) =>[[Ty' iG]|]//. *)
-  (*         move=> E; move: E CL PART=>[-><-] CL PART {Ty' G}. *)
-  (*         apply (pof_cont _ _ CL); case E: _ / PART =>[{}p {}cG PART|||] //. *)
-  (*         by move: E=>[->]. *)
-  (* Qed. *)
+  Lemma part_of_unr p CG : part_of p CG <-> iPart_of p (rg_unr CG).
+  Proof.
+    split.
+    - case=>//.
+      + by move=> F T C; constructor.
+      + by move=> F T C; constructor.
+      + move=> {}p F T C L G Ty CL PART /=.
+        set CC := fun lbl => _.
+        have CCL: CC L = Some (Ty, ig_end G) by rewrite /CC CL.
+        by apply/(ipof_cont None _ _ CCL)/ipof_end.
+    - case: CG=>//.
+      + case E: _ / =>[q cG PART|||] //.
+        by move: E PART=>/=[<-].
+      + move=> F T C /=; set CC := fun l => _.
+        move: {-1}(ig_msg _ _ _ _) (erefl (ig_msg None F T CC)) => cG MSG P.
+        move: P MSG=>[]//.
+        * by move=>F' T' C' [<- _ _]; constructor.
+        * by move=>o F' T' C' [_ _ <- _]; constructor.
+        * move=> {}p o F' T' C' L G Ty C'L PART E.
+          move: E C'L=>[_ _ _ <-] {o F' T' C'}.
+          rewrite /CC; case CL: (C L) =>[[Ty' iG]|]//.
+          move=> E; move: E CL PART=>[-><-] CL PART {Ty' G}.
+          apply (pof_cont _ _ CL); case E: _ / PART =>[{}p {}cG PART|||] //.
+          by move: E=>[->].
+  Qed.
 
   Lemma iproj_end p cG : ~ part_of p cG -> WF cG -> IProj p (rg_unr cG) rl_end.
   Proof.
@@ -865,6 +861,5 @@ Section TraceEquiv.
   - apply/(runstep_proj ST Prj).
   - apply/run_step_sound/(local_runnable ST Prj).
   Qed.
-
 
 End TraceEquiv.
