@@ -878,7 +878,9 @@ Section Semantics.
 
   Definition rel_trc := trace -> renv*qenv -> Prop.
   Inductive l_lts_ (r : rel_trc) : rel_trc :=
-  | lt_end : @l_lts_ r tr_end ([fmap], [fmap])
+  | lt_end E :
+      (forall p, look E p = rl_end) ->
+      @l_lts_ r tr_end (E, [fmap])
   | lt_next a t P P' :
       lstep a P P' ->
       r t P' ->

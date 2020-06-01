@@ -1164,4 +1164,41 @@ Section TraceEquiv.
     by apply: (Project_gstep_proj ST GST).
   Qed.
 
+  Theorem TraceEquivalence G P :
+    Projection G P -> forall TRACE, g_lts TRACE G <-> l_lts TRACE P.
+  Proof.
+    move=> PRJ TRC; split => STEPS.
+    - move: (ex_intro (fun=>_) G (conj PRJ STEPS)) =>{PRJ STEPS G}.
+      move: TRC P; apply/paco2_acc=> r _ /(_ _ _ (ex_intro _ _ (conj _ _)))-CIH.
+      move=>TRC P [G [PRJ] /(paco2_unfold g_lts_monotone)-GLTS].
+      case: GLTS PRJ.
+      + move=> PRJ; apply/paco2_fold.
+        move: PRJ.1; rewrite /eProject=>EPRJ.
+        have: forall p, look P.1 p = rl_end
+            by move=>p; move: (EPRJ p)=>/IProj_end_inv; elim/Project_inv=>//.
+        move: PRJ.2 => /qProject_end_inv {PRJ EPRJ}; case: P=>[E Q]/=-> H.
+        by constructor.
+      + move=> A {}TRC {}G G' ST [LTS|//] PRJ; apply/paco2_fold.
+        move: (Project_step ST PRJ)=>[P'][PRJ']LST.
+        by apply: (lt_next LST); right; apply: (CIH _ _ _ PRJ' LTS).
+    - move: (ex_intro (fun=>_) P (conj PRJ STEPS)) =>{PRJ STEPS P}.
+      move: TRC G; apply/paco2_acc=> r _ /(_ _ _ (ex_intro _ _ (conj _ _)))-CIH.
+      move=>TRC G [P [PRJ] /(paco2_unfold l_lts_monotone)-LLTS].
+      case: LLTS PRJ.
+      + move=> E EMPTY PRJ; apply/paco2_fold.
+        move: PRJ.1; rewrite /eProject/==>EPRJ.
+        have GEND: forall p, IProj p G rl_end
+            by move=>p; move: (EPRJ p); rewrite EMPTY.
+        suff: G = ig_end rg_end by move=>->; constructor.
+        move=>{PRJ EPRJ}; case: G GEND=>[[]|]//.
+        * move=> F T C /(_ F) /IProj_end_inv; elim/Project_inv=>//.
+          by move=>{}G->_/(_ (pof_from _ _ _)).
+          by move=> q s CG CL L0 _ /eqP-FF _ [/esym/FF].
+        * by move=> O F T C /(_ T) /IProj_recv_inv-[_][lC][]//.
+      + move=> A {}TRC {}P P' STEP [TRACE|//] PROJ.
+        move: (Project_lstep STEP PROJ)=>[G'][PRJ']{}STEP.
+        apply/paco2_fold; apply/eg_trans; first by apply/STEP.
+        by right; apply/(CIH _ _ _ PRJ' TRACE).
+  Qed.
+
 End TraceEquiv.
