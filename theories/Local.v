@@ -536,6 +536,8 @@ Section Semantics.
   Scheme lunroll_ind := Induction for l_unroll Sort Prop
   with lunrollall_ind := Induction for l_unroll_all Sort Prop.
 
+  Derive Inversion lunr_all_inv with (forall r KsL CL, l_unroll_all r KsL CL) Sort Prop.
+
   Lemma l_unroll_monotone : monotone2 l_unroll.
   Proof.
     move=>IL CL r r' U H; move: IL CL U.

@@ -198,7 +198,7 @@ Section TraceEquiv.
     move=>POF /(paco1_unfold WF_mon)-H; move: H POF; case=>/=.
     - move=> P; constructor; apply/paco2_fold; constructor=>//.
       by apply/paco1_fold; constructor.
-    - move=> F T C FT WF.
+    - move=> F T C FT WF NE.
       case: (boolP (p == F))=>[/eqP->|pF]; first by move=>/(_ (pof_from _ _ _)).
       case: (boolP (p == T))=>[/eqP->|pT]; first by move=>/(_ (pof_to _ _ _)).
       move=>PART.
@@ -214,7 +214,9 @@ Section TraceEquiv.
         split=>[][A]; case: (C l)=>[[Ty' A']|//] [->_].
         by exists rl_end.
         by exists (ig_end A').
-      apply: (iprj_mrg FT pF pT DOM).
+      have {}NE:  exists (l : lbl) (Ty : mty) (G : ig_ty), CC l = Some (Ty, G)
+        by move: NE=>[l][Ty][G] Cl; exists l, Ty, (ig_end G); rewrite /CC Cl.
+      apply (iprj_mrg FT pF pT NE DOM).
       * move=> l Ty G G'; rewrite /CC/CL; case E: (C l)=>//[[Ty' G0]].
         move=>[-> <-] [<-]; constructor.
         apply/paco2_fold/prj_end; first by apply/PARTC/E.
@@ -249,8 +251,14 @@ Section TraceEquiv.
       constructor=>//; first by apply/samedom_unr.
       move=>l Ty G G1; case CG0l : (CG0 l) =>[[Ty' G']|]// E CLl.
       by move: E CG0l=>[-><-] /ALL/(_ CLl); apply/iprj_end.
-    - move=>q r CG0 CL L0 qr pq pr _ _ PART DOM PRJ MRG {CG L0}.
-      apply/(iprj_mrg qr pq pr _ _ MRG)=>//; first by apply/samedom_unr.
+    - move=>q r CG0 CL L0 qr pq pr _ _ NE PART DOM PRJ MRG {CG L0}.
+      have {}NE: exists (l : lbl) (Ty : mty) (G : ig_ty),
+          (fun lbl : lbl => match CG0 lbl with
+                            | Some (t, G) => Some (t, ig_end G)
+                            | None => None
+                            end) l = Some (Ty, G)
+        by move: NE=>[l][Ty][G]CGl0; exists l, Ty, (ig_end G); rewrite CGl0.
+      apply/(iprj_mrg qr pq pr NE _ _ MRG)=>//; first by apply/samedom_unr.
       move=>l Ty G G1; case CG0l : (CG0 l) =>[[Ty' G']|]// E CLl.
       by move: E CG0l=>[-><-] /PRJ/(_ CLl); apply/iprj_end.
   Qed.
@@ -669,7 +677,8 @@ Section TraceEquiv.
         move: (dom' DOM lCT0)=>[L'] lCF0.
         rewrite /run_step/= EF lCF0 !eq_refl /= look_comm // ET lCT0 !eq_refl/=.
         by rewrite look_same.
-      + apply: (iprj_mrg FT pF pT (DOMp p)); last by apply/MRGp.
+      + apply: (iprj_mrg FT pF pT _ (DOMp p)); last by apply/MRGp.
+        by exists l, Ty, G1.
         apply/(proj_all (DOMp p) PRJ)=>l0 Ty0 L lCp0.
         rewrite /send_recv look_act //=; last by rewrite eq_sym.
         rewrite look_act //=; last by rewrite eq_sym.
@@ -730,18 +739,18 @@ Section TraceEquiv.
     forall l Ty G L,
       l' != l -> C l = Some (Ty, G) -> lC l = Some (Ty, L) -> R G L.
 
-  Definition updC (l : lbl) (Ty : mty) C E p l' :=
+  Definition updC A (l : lbl) (Ty : mty) C (a : A) l' :=
     if l == l' then
-      Some (Ty, look E p)
+      Some (Ty, a) (* look E p *)
     else
       C l'.
 
-  Lemma dom_updC l Ty C E p L' :
+  Lemma dom_updC A l Ty C (a : A) L' :
     C l = Some (Ty, L') ->
-    same_dom C (updC l Ty C E p).
+    same_dom C (updC l Ty C a).
   Proof.
     move=>Cl l1 Ty1;split=>[][G]; rewrite/updC; case: ifP=>EQ.
-    + by move: EQ=>/eqP<-; rewrite Cl=>[][<- _]; exists (look E p).
+    + by move: EQ=>/eqP<-; rewrite Cl=>[][<- _]; exists a.
     + by move=>->; exists G.
     + by move: EQ=>/eqP<-; move=>[<-]; exists L'.
     + by move=>->; exists G.
@@ -769,7 +778,7 @@ Section TraceEquiv.
         * by apply/(ALLT _ _ _ _ ll0 Cl0).
       + move: (PRJ0 p)=>[lCp] [DOMp] ALLp.
         move: (dom DOMp Cl) => [Lp] lCpl.
-        move: (dom_updC P.1 p lCpl)=>DOMp'.
+        move: (dom_updC (look P.1 p) lCpl)=>DOMp'.
         move: (same_dom_trans DOMp DOMp')=>{}DOMp'.
         apply: (iprj_send2 pT FT DOMp'); last by rewrite /updC eq_refl.
         move=> l0 Ty0 G0 G'; rewrite /updC.
@@ -862,16 +871,53 @@ Section TraceEquiv.
   - apply/run_step_sound/(local_runnable ST Prj).
   Qed.
 
-  Lemma step_find A P P' :
+  Definition payload A :=
+    let: (mk_act _ _ _ l Ty) := A in (l, Ty).
+
+  Definition match_fst (A : eqType) (a : A) B (V : option (A * B)) :=
+    match V with
+    | None => false
+    | Some (t, _) => t == a
+    end.
+
+  Lemma step_queue A P P' :
     lstep A P P' ->
-    exists a p C,
-      look P.1 (subject A) = rl_msg a p C.
+    (act_ty A == l_send) || match_fst (payload A) (deq P.2 (object A, subject A)).
   Proof.
-    case=>Ty F T l {P P'}E E' Q Q' QFT /=;
-      case EF: look=>[|a p C]//; case Cl: (C l) =>[[Ty' L]|]//;
-      case: ifP=>// EQ; move: EQ EF Cl=> /andP-[/andP-[/eqP<-/eqP<-]/eqP<-] _ _ _.
-    - by exists l_send, T, C.
-    - by exists l_recv, F, C.
+      by case=>// Ty F T l {P P'}E E' Q Q' /eqP/=->; rewrite /match_fst eq_refl.
+  Qed.
+
+  Lemma step_look_notend P P' A :
+    lstep A P P' -> look P.lbl (subject A) = rl_end -> False.
+  Proof. by elim/lstep_inv=>//= _ Ty F T l E E' Q Q' _; case: look. Qed.
+
+  Lemma step_look_cont P P' A a p C :
+    lstep A P P' -> look P.lbl (subject A) = rl_msg a p C ->
+    match_fst (payload A).2 (C (payload A).1) /\ act_ty A = a /\ object A = p.
+  Proof.
+    by elim/lstep_inv=>//= _ Ty F T l E E' Q Q' _; case: look=>// a' p' C';
+       case C'l: (C' l)=>[[Ty' L']|]//; case: ifP=>//B _ _ _ _ EQ {A P P'};
+       rewrite /match_fst; move: EQ B=>[<- <-<-] /andP-[/andP-[]];
+       move=>/eqP<-/eqP<- EQ; rewrite C'l eq_sym EQ; do ! split.
+  Qed.
+
+  Definition step_find A P P' :
+    lstep A P P' ->
+    {C & { L |
+      look P.1 (subject A) = rl_msg (act_ty A) (object A) C /\
+      C (payload A).1 = Some ((payload A).2, L) } }.
+  Proof.
+    case: A=>[[] F T l Ty]/=; move: {-1}(look P.1 F) (erefl (look P.1 F))=>[].
+    - by move=> LF ST; move: (step_look_notend ST LF).
+    - move=> a R C L ST; exists C.
+      move: (step_look_cont ST L)=>/=; rewrite /match_fst.
+      case: (C l)=>[[Ty' L']|]//; last by move=>[][].
+      by move=>[/eqP->][<-]<-; exists L'.
+    - by move=> LF ST; move: (step_look_notend ST LF).
+    - move=> a R C L ST; exists C.
+      move: (step_look_cont ST L)=>/=; rewrite /match_fst.
+      case: (C l)=>[[Ty' L']|]//; last by move=>[][].
+      by move=>[/eqP->][<-]<-; exists L'.
   Qed.
 
   Lemma Project_gstep_proj G P A P' G' :
@@ -884,11 +930,242 @@ Section TraceEquiv.
     by apply/runstep_proj.
   Qed.
 
+  Lemma project_pall F G L a T C :
+    Project F G L ->
+    L = rl_msg a T C ->
+    part_of_all F G.
+  Proof.
+    elim/Project_inv=>//.
+    - by move=> q {}C _ _ _ _ _ _ _; constructor.
+    - by move=> q {}C _ _ _ _ _ _ _; constructor.
+    - move=> F' T' C' CL L' F'T' FF' FT' _ _ _ ALL _ _ _ _ {G L'}.
+      by constructor.
+  Qed.
+
+  Inductive option_spec A (o : option A) : Type :=
+  | oSome x : o = Some x -> option_spec o
+  | oNone : o = None -> option_spec o.
+
+  Lemma optionP A (o : option A) : option_spec o.
+  Proof.
+    case: o=>[x|].
+    by apply/oSome/erefl.
+    by apply/oNone.
+  Qed.
+
+  Lemma CProj_step l Ty L1 F G L0 T C :
+    C l = Some (Ty, L1) ->
+    Project F G L0 ->
+    L0 = rl_msg l_send T C ->
+    { G' | step (mk_act l_send F T l Ty) (ig_end G) G' }.
+  Proof.
+    move=> Cl PRJ EL; move: (project_pall PRJ EL)=>/find_partsc-PART.
+    move: EL PRJ=>->; elim: PART.
+    - move=> {}F T' C' PRJ.
+      have [<- DOM]: T = T'/\ same_dom C' C.
+      { move: PRJ; elim/Project_inv=>//;
+                 last by move=> q s CG CL L2 _ /eqP-Fq _ [] /esym/Fq.
+        by move=>q CG CL  [->->] [->->] FT DOM _; split.
+      }
+      exists (ig_msg (Some l) F T (fun l =>
+                                     match C' l with
+                                     | Some (Ty, G) => Some (Ty, ig_end G)
+                                     | None => None
+                                     end)).
+      by move: (dom' DOM Cl)=>[G'] Cl'; apply/st_unr/st_send; rewrite Cl'.
+    - move=> F' T' C' PRJ.
+      have: False.
+      { move: PRJ; elim/Project_inv=>// .
+        + by move=> q CG CL [->->->]; rewrite eq_refl.
+        + by move=> q s CG CL L2 qs T'q /eqP-T's [_ /esym/T's].
+      }
+      by [].
+    - move=> p {}F T' C' H0 Ih.
+      case: (boolP (p == F))=>[/eqP->|].
+      + move=> PRJ; have [<- DOM]: T = T'/\ same_dom C' C.
+        { move: PRJ; elim/Project_inv=>//;
+                         last by move=> q s CG CL L2 _ /eqP-Fq _ [] /esym/Fq.
+            by move=>q CG CL  [->->] [->->] FT DOM _; split.
+        }
+        exists (ig_msg (Some l) F T (fun l =>
+                                       match C' l with
+                                       | Some (Ty, G) => Some (Ty, ig_end G)
+                                       | None => None
+                                       end)).
+        by move: (dom' DOM Cl)=>[G'] Cl'; apply/st_unr/st_send; rewrite Cl'.
+      + move=> pF PRJ.
+        have [{}PRJ [NE pT']]: (forall l Ty G, C' l = Some (Ty, G) ->
+                                               Project p G (rl_msg l_send T C))
+                               /\ (exists l' Ty' G', C' l' = Some (Ty', G'))
+                               /\ p != T'.
+        { move: PRJ; elim/Project_inv=>//.
+          - by move=>q CG CL [/eqP]; rewrite (negPf pF).
+          - move=>q s CG CL L2 qs pq ps E1 E2.
+            move: E1 E2 qs pq ps=>[->->->] _ FT PF PT {q s CG L2}.
+            move=> NE _ DOM ALL MRG; split=>//.
+            move=> l0 Ty0 G0 Cl1.
+            move: (dom DOM Cl1)=>[L'] CLl'; move: (MRG _ _ _ CLl')=>EQ.
+            by apply/(EqL_Project EQ)/(ALL _ _ _ _ Cl1).
+        }
+        set C'' :=
+          fun l =>
+            match optionP (C' l) with
+            | oSome (Ty, G) P => Some (Ty, sval (Ih _ _ _ P (PRJ _ _ _ P)))
+            | oNone _ => None
+            end.
+        exists (ig_msg None F T' C''); move: NE=>[l' NE].
+        have {}NE: exists Ty' G', (fun lbl : lbl =>
+                                     match C' lbl with
+                                     | Some (t, G0) => Some (t, ig_end G0)
+                                     | None => None
+                                     end) l' = Some (Ty', G')
+            by move: NE=>[Ty' [G' C'l']]; rewrite C'l'; exists Ty', (ig_end G').
+        apply/st_unr/(st_amsg1 _ _ NE)=>//=.
+        * rewrite /C'' /==> l0 Ty0; case: optionP=>[[Ty1 G1] E|->]//; rewrite E.
+          split=>[][G2][<-] _; last by exists (ig_end G1).
+          by exists (sval (Ih l0 Ty1 G1 E (PRJ l0 Ty1 G1 E))).
+        * move=> l0 Ty0 G0 G1; rewrite /C''; case: optionP=>//.
+          move=> [Ty1 G2] E; rewrite E=>[][<-<-] [<-].
+          by move: (Ih l0 Ty1 G2 E (PRJ l0 Ty1 G2 E))=>[IG ST]/=.
+  Qed.
+
+  Definition match_lbl A (l : lbl) (o : option (lbl * mty * A)) : Prop :=
+    match o with
+    | Some (l', _, _) => l == l'
+    | None => false
+    end.
+
   Lemma Project_gstep G P A P' :
     lstep A P P' ->
     Projection G P ->
-    exists G', step A G G'.
-  Admitted.
+    {G' | step A G G'}.
+  Proof.
+    case: A=>a F T l Ty ST PRJ.
+    move: PRJ.2 (step_queue ST)=>/=.
+    move: (step_find ST) (PRJ.1 F)=>/=[C][L1][]/=-> Cl {ST P'}PRJ QPRJ DEQ.
+    elim: G P.2=>[CG|o F' T' C' Ih] {P}Q in PRJ DEQ QPRJ *.
+    - move: (qProject_end_inv QPRJ)=>EQ; move: EQ DEQ=>->.
+      rewrite /match_fst/deq/= not_fnd//= orbC /==>/eqP-a_snd.
+      move: a_snd PRJ=>->PRJ.
+      by apply/(CProj_step Cl (IProj_end_inv PRJ)).
+    - move: PRJ QPRJ DEQ; case: (boolP (F == T'))=>[|FT'].
+      { move=>/eqP<- PRJ; move: (IProj_recv_inv PRJ)=>[FF']PRJ' QPRJ DEQ{Ih}.
+        have [a_rcv [TF'][DOM]{}PRJ]:
+          a = l_recv /\ T = F' /\ same_dom C' C /\ R_all (IProj F) C' C
+          by move: PRJ'=>[lC][][->->->][DOM] PRJ0; do 2 split=>//.
+        move: a_rcv TF' DEQ=>->->/= DEQ {a PRJ' T}.
+        have OL: o = Some l.
+        { case: o QPRJ=>[l'|].
+          * move=>/qProject_Some_inv-[Ty'][G'][Q'][_][DEQ'] _.
+            move: DEQ DEQ'; rewrite /match_fst /deq.
+            case PTF: Q.[? _] =>[[|V1 W1]|]//.
+            rewrite -fun_if -fun_if=>E1; move: E1 PTF=>/eqP->PTF {V1}.
+            by move=>/eqP-[->].
+          * move=>/qProject_None_inv=>[][PFF'] _.
+            move: DEQ PFF'; rewrite /match_fst/deq.
+            by case PTF: Q.[? _] =>[[|V1 W1]|]//.
+        }
+        move: OL QPRJ=>-> QPRJ {DEQ QPRJ}.
+        case: (optionP (C' l)); last by move=>/(dom_none DOM); rewrite Cl.
+        move=>[Ty' G'] C'l; have: Ty = Ty'
+                by move: (dom' DOM Cl)=>[G'']; rewrite C'l=>[][->].
+        move=> ETy; move: ETy C'l=><- ETy; exists G'.
+        by constructor.
+      }
+      case: o =>[l'|].
+      { move=>PRJ; move: (IProj_send2_inv PRJ FT')=>[F'T']{}PRJ QPRJ.
+        move: (qProject_Some_inv QPRJ)=>{}QPRJ DEQ.
+        have: match_lbl l' (deq Q (F', T'))
+          by move: QPRJ=>[Ty1][G][Q'][_][]/eqP->; rewrite /match_lbl eq_refl.
+        case DQ1: deq =>[[[l'' Ty'] Q']|]//= /eqP-ll'.
+        move: ll' DQ1=><- DQ1 {l''}.
+        have {}DEQ: (a == l_send) || match_fst (l, Ty) (deq Q' (T, F)).
+        { move: DEQ=>/orP-[/eqP->//|]; move: DQ1; rewrite /match_fst/deq/=.
+          case EQ1: Q.[? _] =>[[|V1 W1]|]//; do 2 rewrite -fun_if.
+          move=>[_ <-];case EQ2: Q.[? _] =>[[|V2 W2]|]//; do 2 rewrite -fun_if.
+          move=>/eqP<-; apply/orP; right.
+          rewrite (fun_if (fun Q => (ffun_of_fmap Q).[? _])).
+          rewrite ?fnd_rem1 ?fnd_set xpair_eqE (negPf FT') Bool.andb_false_r.
+          by rewrite if_same EQ2; do 2 rewrite -fun_if; rewrite eq_refl.
+        }
+        have: match_fst Ty' (C' l')
+          by move: QPRJ=>[Ty0][G0][Q0][->][]; rewrite DQ1=>/eqP-[<-]; rewrite /match_fst eq_refl.
+        case C'l': (C' l')=>[[Ty0 G']|]//; rewrite /match_fst=>/eqP-ETy.
+        move: ETy C'l'=>-> C'l' {Ty0}.
+        move: Ih=>/(_ _ _ _ C'l' Q' _ DEQ)-Ih.
+        have {}PRJ: IProj F G' (rl_msg a T C).
+        { move: PRJ=>[lC][Ty0][lCl'][DOM] PRJ.
+          move: (dom DOM C'l')=>[L]; rewrite lCl'=>[][ETy0] _.
+          move: ETy0 lCl' =>-> lCl' {Ty0}.
+          by apply/(PRJ _ _ _ _ C'l' lCl').
+        }
+        have {}QPRJ: qProject G' Q'.
+        { move: QPRJ=>[Ty0][G0][Q''][C'l'0][]; rewrite DQ1=>/eqP-[_ <-].
+          by move: C'l'0; rewrite C'l'=>[][_]<-.
+        }
+        move: Ih=>/(_ PRJ QPRJ)-Ih.
+        set C'' := fun l => if l == l' then Some (Ty', sval Ih) else C' l.
+        exists (ig_msg (Some l') F' T' C'').
+        apply/st_amsg2=>//=; last split.
+        + rewrite /C'' =>l1 Ty1; case: ifP=>[/eqP->|]//; rewrite C'l'.
+          by split=>[][IG][<-] _; [exists (sval Ih) | exists G'].
+        + by move=> l0 K0 NE; rewrite /C'' eq_sym (negPf NE).
+        + exists Ty', G', (sval Ih); do 2 split=>//; first by rewrite /C'' eq_refl.
+          by apply/(proj2_sig Ih).
+      }
+      case: (boolP (F == F'))=>[/eqP<-|].
+      {move=>PRJ; move: (IProj_send1_inv PRJ)=>[_] PRJ' QPRJ DEQ{Ih}.
+        have [a_snd [TF'][DOM]{}PRJ]:
+          a = l_send /\ T = T' /\ same_dom C' C /\ R_all (IProj F) C' C
+          by move: PRJ'=>[lC][][->->->][DOM] PRJ0; do 2 split=>//.
+        move: a_snd TF' FT' DEQ QPRJ=>-><- FT _ QPRJ {a PRJ' T'}.
+        exists (ig_msg (Some l) F T C').
+        move: (dom' DOM Cl)=>[G'] C'l.
+        by apply/st_send/C'l.
+      }
+      { move=> FF' PRJ.
+        have [{}PRJ [NE pT']]: (forall l Ty G, C' l = Some (Ty, G) ->
+                                               IProj F G (rl_msg a T C))
+                               /\ (exists Ty' G', C' l = Some (Ty', G'))
+                               /\ F' != T'.
+        { move: (IProj_mrg_inv PRJ FF' FT')=>[F'T'][lC][DOM][{}PRJ]MRG; split.
+          - move=>l0 Ty0 G C'l0; move: (dom DOM C'l0)=>[L'] lCl0.
+            move: (MRG _ _ _ lCl0)=>EQ.
+            by apply/(EqL_IProj _ EQ)/(PRJ _ _ _ _ C'l0).
+          - move: ()
+            apply/(PRJ _ _ _ _ C'l0 lCl0).
+
+          - by move=>q CG CL [/eqP]; rewrite (negPf pF).
+          - move=>q s CG CL L2 qs pq ps E1 E2.
+            move: E1 E2 qs pq ps=>[->->->] _ FT PF PT {q s CG L2}.
+            move=> NE _ DOM ALL MRG; split=>//.
+            move=> l0 Ty0 G0 Cl1.
+            move: (dom DOM Cl1)=>[L'] CLl'; move: (MRG _ _ _ CLl')=>EQ.
+            by apply/(EqL_Project EQ)/(ALL _ _ _ _ Cl1).
+        }
+        set C'' :=
+          fun l =>
+            match optionP (C' l) with
+            | oSome (Ty, G) P => Some (Ty, sval (Ih _ _ _ P (PRJ _ _ _ P)))
+            | oNone _ => None
+            end.
+        exists (ig_msg None F T' C''); move: NE=>[l' NE].
+        have {}NE: exists Ty' G', (fun lbl : lbl =>
+                                     match C' lbl with
+                                     | Some (t, G0) => Some (t, ig_end G0)
+                                     | None => None
+                                     end) l' = Some (Ty', G')
+            by move: NE=>[Ty' [G' C'l']]; rewrite C'l'; exists Ty', (ig_end G').
+        apply/st_unr/(st_amsg1 _ _ NE)=>//=.
+        * rewrite /C'' /==> l0 Ty0; case: optionP=>[[Ty1 G1] E|->]//; rewrite E.
+          split=>[][G2][<-] _; last by exists (ig_end G1).
+          by exists (sval (Ih l0 Ty1 G1 E (PRJ l0 Ty1 G1 E))).
+        * move=> l0 Ty0 G0 G1; rewrite /C''; case: optionP=>//.
+          move=> [Ty1 G2] E; rewrite E=>[][<-<-] [<-].
+          by move: (Ih l0 Ty1 G2 E (PRJ l0 Ty1 G2 E))=>[IG ST]/=.
+      }
+  Qed.
+
 
   Theorem Project_lstep G P A P' :
     lstep A P P' ->

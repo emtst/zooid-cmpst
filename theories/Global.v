@@ -540,6 +540,62 @@ Section Semantics.
     | pall_cont p F T C :
         P_all (part_of_all p) C -> part_of_all p (rg_msg F T C).
 
+  (* Needed to build the next global type in a step  *)
+  Inductive part_of_allT: role -> rg_ty -> Type :=
+    | pallT_from F T C: part_of_allT F (rg_msg F T C)
+    | pallT_to F T C: part_of_allT T (rg_msg F T C)
+    | pallT_cont p F T C :
+        (forall l Ty G, C l = Some (Ty, G) -> part_of_allT p G) ->
+        part_of_allT p (rg_msg F T C).
+
+  Lemma rgend_part p G : part_of_all p G -> G = rg_end -> False.
+  Proof. by move=>[]. Qed.
+
+  Lemma pall_inv F T C G p :
+    part_of_all p G -> G = rg_msg F T C -> F <> p -> T <> p ->
+    (forall l Ty G, C l = Some (Ty, G) -> part_of_all p G).
+  Proof.
+      by move=>[ F' T' C' [->]//
+               | F' T' C' [_ ->]//
+               |{}p F' T' C' ALL [_ _ <-] _ _ l Ty {}G /ALL
+               ].
+  Defined.
+
+  Fixpoint find_partsc p G (H : part_of_all p G) {struct H}
+    : part_of_allT p G
+    :=
+    match G as G0 return G = G0 -> part_of_allT p G0 with
+    | rg_msg F T C => fun EQ =>
+                        match @eqP role F p with
+                        | ReflectT pF => match EQ, pF with
+                                         | erefl, erefl => pallT_from F T C
+                                         end
+                        | ReflectF pF =>
+                          match @eqP role T p with
+                          | ReflectT pT => match EQ, pT with
+                                           | erefl, erefl => pallT_to F T C
+                                           end
+                          | ReflectF pT =>
+                            pallT_cont F T
+                                       (fun l Ty G Cl =>
+                                          find_partsc (pall_inv H EQ pF pT Cl))
+                          end
+                        end
+    | rg_end => fun E => match rgend_part H E with end
+    end erefl.
+
+  Definition rg_unr (G : rg_ty) : ig_ty :=
+    match G with
+    | rg_msg F T C
+        => ig_msg None F T
+                  (fun lbl =>
+                    match C lbl with
+                    | None => None
+                    | Some (t, G) => Some (t, ig_end G)
+                    end)
+    | rg_end => ig_end rg_end
+    end.
+
   Inductive iPart_of: role -> ig_ty -> Prop :=
     | ipof_end p cG: part_of p cG -> iPart_of p (ig_end cG)
     | ipof_from F T C: iPart_of F (ig_msg None F T C)
@@ -570,13 +626,13 @@ Section Semantics.
 
 
 
-  Definition P_option A (P : A -> Prop) (C : option A) : Prop :=
+  Definition P_option A (P : A -> Type) (C : option A) : Type :=
     match C with
     | Some X => P X
     | None => True
     end.
 
-  Definition P_prod A B (P : B -> Prop) (C : A * B) : Prop :=
+  Definition P_prod A B (P : B -> Type) (C : A * B) : Type :=
     match C with
     | (X, Y)=> P Y
     end.
@@ -610,6 +666,35 @@ Section Semantics.
     by move=> P_G' [_ <-].
   Qed.
 
+  Lemma ig_ty_rect'
+    (P : ig_ty -> Type)
+    (P_end : forall CONT, P (ig_end CONT))
+    (P_msg : (forall ST FROM TO CONT,
+      (forall L, P_option (P_prod P) (CONT L)) ->
+      P (ig_msg ST FROM TO CONT)))
+  : forall G, P G.
+  Proof.
+    fix Ih 1; case.
+    - by apply: P_end.
+    - move=> ST F T C; apply: P_msg => L.
+      case: (C L)=>[[Ty G]|].
+      + by rewrite /P_option/P_prod; apply/Ih.
+      + by rewrite /P_option.
+  Qed.
+
+  Lemma ig_ty_rect
+    (P : ig_ty -> Type)
+    (P_end : forall CONT, P (ig_end CONT))
+    (P_msg : (forall ST FROM TO CONT,
+      (forall L Ty G, CONT L = Some (Ty, G) -> P G) ->
+      P (ig_msg ST FROM TO CONT)))
+  : forall G, P G.
+  Proof.
+    elim/ig_ty_rect'=>// ST FROM TO CONT Ih.
+    apply/P_msg => L Ty G; move: (Ih L); case: (CONT L) =>[[Ty' G']|]//=.
+    by move=> P_G' [_ <-].
+  Qed.
+
   Definition grel := g_ty -> rg_ty -> Prop.
 
   Inductive g_unroll (r : grel) : grel :=
@@ -620,7 +705,9 @@ Section Semantics.
       @g_unroll r (g_msg FROM TO iCONT) (rg_msg FROM TO cCONT)
   with unroll_all (r : grel)
        : rel2 (seq (lbl * (mty * g_ty))) (fun=>lbl /-> mty * rg_ty) :=
-  | gu_nil : @unroll_all r [::] (empty _)
+  | gu_nil L T IG CG :
+      r IG CG ->
+      @unroll_all r [:: (L, (T, IG))] (extend L (T, CG) (empty _))
   | gu_cons L T IG CG iCONT cCONT :
       r IG CG ->
       @unroll_all r iCONT cCONT ->
@@ -641,6 +728,7 @@ Section Semantics.
     - by move: E R=>[<-]{G'} /H; constructor.
     - move: E U=>[<-<-<-]{F' T' C'} U; constructor; move: U IH.
       elim=>[|L Ty IG CG' iCONT cCONT /H-R U /=IH1 IH2]; constructor=>//.
+      by apply/H.
       by apply/IH1=> K M; apply/IH2; right.
   Qed.
   Hint Resolve gunroll_monotone.
@@ -714,18 +802,6 @@ Section Semantics.
       C L0 = Some (Ty, G0)
       /\ C' L0 = Some (Ty, G1)
       /\ R G0 G1.
-
-  Definition rg_unr (G : rg_ty) : ig_ty :=
-    match G with
-    | rg_msg F T C
-        => ig_msg None F T
-                  (fun lbl =>
-                    match C lbl with
-                    | None => None
-                    | Some (t, G) => Some (t, ig_end G)
-                    end)
-    | rg_end => ig_end rg_end
-    end.
 
   Unset Elimination Schemes.
   Inductive step : act -> ig_ty -> ig_ty -> Prop :=
