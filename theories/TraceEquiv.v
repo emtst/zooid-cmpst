@@ -862,4 +862,42 @@ Section TraceEquiv.
   - apply/run_step_sound/(local_runnable ST Prj).
   Qed.
 
+  Lemma step_find A P P' :
+    lstep A P P' ->
+    exists a p C,
+      look P.1 (subject A) = rl_msg a p C.
+  Proof.
+    case=>Ty F T l {P P'}E E' Q Q' QFT /=;
+      case EF: look=>[|a p C]//; case Cl: (C l) =>[[Ty' L]|]//;
+      case: ifP=>// EQ; move: EQ EF Cl=> /andP-[/andP-[/eqP<-/eqP<-]/eqP<-] _ _ _.
+    - by exists l_send, T, C.
+    - by exists l_recv, F, C.
+  Qed.
+
+  Lemma Project_gstep_proj G P A P' G' :
+    lstep A P P' ->
+    step A G G' ->
+    Projection G P ->
+    Projection G' P'.
+  Proof.
+    move=> ST; move: (run_step_compl ST)=>E; move: E ST=>->_.
+    by apply/runstep_proj.
+  Qed.
+
+  Lemma Project_gstep G P A P' :
+    lstep A P P' ->
+    Projection G P ->
+    exists G', step A G G'.
+  Admitted.
+
+  Theorem Project_lstep G P A P' :
+    lstep A P P' ->
+    Projection G P ->
+    exists G', Projection G' P' /\ step A G G'.
+  Proof.
+    move=> ST PRJ; move: (Project_gstep ST PRJ)=>[G' GST].
+    exists G'; split=>//.
+    by apply: (Project_gstep_proj ST GST).
+  Qed.
+
 End TraceEquiv.

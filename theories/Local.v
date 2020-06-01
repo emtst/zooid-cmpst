@@ -803,51 +803,75 @@ Section Semantics.
       do_act P (mk_act l_recv q p lb t) = Some P' ->
       lstep (mk_act l_recv q p lb t) (P, Q) (P', Q')
   .
+  Derive Inversion lstep_inv with (forall A P P', lstep A P P') Sort Prop.
 
-Definition runnable (A : act) (P : renv * qenv) : bool :=
-  match do_act P.1 A with
-  | Some _ =>
-    let: mk_act a p q l t := A in
-    match a with
-    | l_send => true
-    | l_recv =>
-      match deq P.2 (q, p) with
-      | Some ((l', t'), Q) => (l == l') && (t == t')
-      | None => false
+  Definition runnable (A : act) (P : renv * qenv) : bool :=
+    match do_act P.1 A with
+    | Some _ =>
+      let: mk_act a p q l t := A in
+      match a with
+      | l_send => true
+      | l_recv =>
+        match deq P.2 (q, p) with
+        | Some ((l', t'), Q) => (l == l') && (t == t')
+        | None => false
+        end
       end
-    end
-  | None => false
-  end.
+    | None => false
+    end.
 
-Definition do_queue (Q : qenv) (A : act) : qenv :=
-  match A with
-  | mk_act l_send F T l Ty => enq Q (F, T) (l, Ty)
-  | mk_act l_recv F T l Ty =>
-    match deq Q (T, F) with
-    | Some (_, Q') => Q'
-    | None => Q
-    end
-  end.
+  Lemma lstep_runnable A P P' : lstep A P P' -> runnable A P.
+  Proof.
+    by case=> Ty F T l {P P'}E E' Q Q' /eqP-QFT /=; case LOOK: look=>[|a p C]//;
+       case Cl: (C l)=>[[Ty' L]|]//; case: ifP=>//EQ _;
+       rewrite /runnable/= LOOK Cl EQ // QFT !eq_refl.
+  Qed.
 
-(* Attempts to run a step, does nothing if it cannot run *)
-Definition run_step (A : act) (P : renv * qenv) : renv * qenv :=
-  match do_act P.1 A with
-  | Some E' => (E', do_queue P.2 A)
-  | _ => P
-  end.
+  Lemma lstep_eq A P P0 P1 : lstep A P P0 -> lstep A P P1 -> P0 = P1.
+  Proof.
+    case=>Ty0 F0 T0 l0 {P P0}E E0 Q Q0 /eqP-QFT/=; case LOOK: look=>[|a p C]//;
+    case Cl: (C l0)=>[[Ty' L]|]//; case: ifP=>//EQ [<-];
+    elim/lstep_inv =>// _ Ty1 F1 T1 l1 E' E1 Q' Q1 /eqP-QFT'/= ACT EQ1 EQ2 EQ3;
+    move: EQ1 EQ2 EQ3 ACT QFT QFT'=>[->->->->] [->->] _ {F1 T1 l1 Ty1 E' Q' P1};
+    rewrite LOOK Cl EQ=>[][<-]->.
+    - by move=>->.
+    - by move=>[->].
+  Qed.
 
-(* Lemma run_step 'makes sense' *)
-Lemma run_step_sound A P : runnable A P -> lstep A P (run_step A P).
-Proof.
-  case: P => E Q.
-  rewrite /runnable /=; case E_doact: (do_act _ _)=>[E'|//].
-  case: A E_doact=> [[|] p q l t E_doact]/=.
-  - by move=> _; rewrite /run_step E_doact; constructor=>//.
-  - case E_deq: (deq _ _) =>[[[l' t'] Q']|//].
-    case: (boolP ((l == l') && _)) =>[/andP-[/eqP-ll' /eqP-tt']|//] _.
-    move: ll' tt' E_deq =><-<- E_deq.
-    rewrite /run_step E_doact /= E_deq.
-      by constructor =>//; first by apply/eqP.
+  Definition do_queue (Q : qenv) (A : act) : qenv :=
+    match A with
+    | mk_act l_send F T l Ty => enq Q (F, T) (l, Ty)
+    | mk_act l_recv F T l Ty =>
+      match deq Q (T, F) with
+      | Some (_, Q') => Q'
+      | None => Q
+      end
+    end.
+
+  (* Attempts to run a step, does nothing if it cannot run *)
+  Definition run_step (A : act) (P : renv * qenv) : renv * qenv :=
+    match do_act P.1 A with
+    | Some E' => (E', do_queue P.2 A)
+    | _ => P
+    end.
+
+  (* Lemma run_step 'makes sense' *)
+  Lemma run_step_sound A P : runnable A P -> lstep A P (run_step A P).
+  Proof.
+    case: P => E Q.
+    rewrite /runnable /=; case E_doact: (do_act _ _)=>[E'|//].
+    case: A E_doact=> [[|] p q l t E_doact]/=.
+    - by move=> _; rewrite /run_step E_doact; constructor=>//.
+    - case E_deq: (deq _ _) =>[[[l' t'] Q']|//].
+      case: (boolP ((l == l') && _)) =>[/andP-[/eqP-ll' /eqP-tt']|//] _.
+      move: ll' tt' E_deq =><-<- E_deq.
+      rewrite /run_step E_doact /= E_deq.
+        by constructor =>//; first by apply/eqP.
+  Qed.
+
+  Lemma run_step_compl A P P' : lstep A P P' -> P' = run_step A P.
+  Proof.
+    by move=> ST; move: (lstep_runnable ST)=>/run_step_sound/(lstep_eq ST).
   Qed.
 
   Definition rel_trc := trace -> renv*qenv -> Prop.
