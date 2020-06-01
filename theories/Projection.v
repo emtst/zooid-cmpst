@@ -1752,7 +1752,9 @@ Section CProject.
   Lemma IProj_mrg_inv_aux p F T C GG CL:
     IProj p GG CL ->
     p != F -> p != T -> GG = ig_msg None F T C ->
-    F != T /\ (exists lC, same_dom C lC /\
+    F != T /\
+    (exists l Ty G, C l = Some (Ty, G)) /\
+    (exists lC, same_dom C lC /\
       R_all (IProj p) C lC /\
       Merge lC CL).
   Proof.
@@ -1762,14 +1764,19 @@ Section CProject.
   + case=>// q cG cL neq samedom rall neqF neqT [eq1 eq2 eq3].
     by move: neqT; rewrite eq2 -(rwP negP).
   + move=>q s gC lC CL0 neq1 neq2 neq3 NE samedom rall mer neqF neqT [eq1 eq2 eq3].
-    split; [by move: neq1; rewrite eq1 eq2|exists lC].
-    by rewrite -eq3; split; [ |split; [|]].
+    split; [by move: neq1; rewrite eq1 eq2|
+            split;
+            [ by move: eq3=><-; apply/NE
+            | by exists lC; rewrite -eq3; split; [ |split; [|]]
+           ]].
   Qed.
 
   Lemma IProj_mrg_inv p F T C CL:
     IProj p (ig_msg None F T C) CL ->
     p != F -> p != T ->
-    F != T /\ (exists lC, same_dom C lC /\
+    F != T /\
+    (exists l Ty G, C l = Some (Ty, G)) /\
+    (exists lC, same_dom C lC /\
       R_all (IProj p) C lC /\
       Merge lC CL).
   Proof.

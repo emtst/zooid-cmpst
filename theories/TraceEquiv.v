@@ -101,7 +101,7 @@ Section TraceEquiv.
         rewrite !eq_refl/= fnd_set eq_refl.
         by apply/(PRJT _ _ _ _ Cl).
       + (* T != p != F *)
-        move: (H p)=>/IProj_mrg_inv/(_ pF)/(_ pT)-[_] [Cp] [DOMp] [PRJp] MRG.
+        move: (H p)=>/IProj_mrg_inv/(_ pF)/(_ pT)-[_] [_] [Cp] [DOMp] [PRJp] MRG.
         move: (DOMp l Ty) => [/(_ (ex_intro _ _ Cl))-[Lp' Cpl] _].
         move: (MRG _ _ _ Cpl)=>Lp_E.
         rewrite /run_step/= LF_E CFl !eq_refl/= look_comm// LT_E CTl.
@@ -340,7 +340,7 @@ Section TraceEquiv.
       + rewrite look_comm //= ET.
         by apply: (iprj_recv _ _ DOMT ALLT); rewrite eq_sym.
       + rewrite look_comm //=; last by rewrite eq_sym.
-        move: (IProj_mrg_inv (PRJ.1 p) pF pT)=>[_] [lCp] [DOMp] [ALLp] MRGp.
+        move: (IProj_mrg_inv (PRJ.1 p) pF pT)=>[_] [_] [lCp] [DOMp] [ALLp] MRGp.
         move: (dom DOMp Cl) => [Lp lCpl].
         by apply/(EqL_IProj _ (MRGp _ _ _ lCpl))/(iprj_send2 pT FT DOMp ALLp lCpl).
     - move: (qProject_None_inv PRJ.2)=>[PFT] /(_ _ _ _ Cl)-QPRJ.
@@ -861,16 +861,6 @@ Section TraceEquiv.
     - by apply/Ih/Projection_unr.
   Qed.
 
-  Theorem Project_step G P : forall A G',
-    step A G G' ->
-    Projection G P ->
-    exists P', Projection G' P' /\ lstep A P P'.
-  Proof.
-  move=> A G' ST Prj; exists (run_step A P); split.
-  - apply/(runstep_proj ST Prj).
-  - apply/run_step_sound/(local_runnable ST Prj).
-  Qed.
-
   Definition payload A :=
     let: (mk_act _ _ _ l Ty) := A in (l, Ty).
 
@@ -1126,46 +1116,43 @@ Section TraceEquiv.
       { move=> FF' PRJ.
         have [{}PRJ [NE pT']]: (forall l Ty G, C' l = Some (Ty, G) ->
                                                IProj F G (rl_msg a T C))
-                               /\ (exists Ty' G', C' l = Some (Ty', G'))
+                               /\ (exists l Ty' G', C' l = Some (Ty', G'))
                                /\ F' != T'.
-        { move: (IProj_mrg_inv PRJ FF' FT')=>[F'T'][lC][DOM][{}PRJ]MRG; split.
+        { move: (IProj_mrg_inv PRJ FF' FT')=>[F'T'][NE][lC][DOM][{}PRJ]MRG; split.
           - move=>l0 Ty0 G C'l0; move: (dom DOM C'l0)=>[L'] lCl0.
             move: (MRG _ _ _ lCl0)=>EQ.
             by apply/(EqL_IProj _ EQ)/(PRJ _ _ _ _ C'l0).
-          - move: ()
-            apply/(PRJ _ _ _ _ C'l0 lCl0).
-
-          - by move=>q CG CL [/eqP]; rewrite (negPf pF).
-          - move=>q s CG CL L2 qs pq ps E1 E2.
-            move: E1 E2 qs pq ps=>[->->->] _ FT PF PT {q s CG L2}.
-            move=> NE _ DOM ALL MRG; split=>//.
-            move=> l0 Ty0 G0 Cl1.
-            move: (dom DOM Cl1)=>[L'] CLl'; move: (MRG _ _ _ CLl')=>EQ.
-            by apply/(EqL_Project EQ)/(ALL _ _ _ _ Cl1).
+          - by split=>//.
         }
+        move=> QPRJ DEQ.
+        move: (qProject_None_inv QPRJ)=>[EMPTY] {}QPRJ.
         set C'' :=
           fun l =>
             match optionP (C' l) with
-            | oSome (Ty, G) P => Some (Ty, sval (Ih _ _ _ P (PRJ _ _ _ P)))
+            | oSome (Ty, G) P =>
+              Some (Ty, sval (Ih _ _ _ P Q (PRJ _ _ _ P) DEQ (QPRJ _ _ _ P)))
             | oNone _ => None
             end.
-        exists (ig_msg None F T' C''); move: NE=>[l' NE].
-        have {}NE: exists Ty' G', (fun lbl : lbl =>
-                                     match C' lbl with
-                                     | Some (t, G0) => Some (t, ig_end G0)
-                                     | None => None
-                                     end) l' = Some (Ty', G')
-            by move: NE=>[Ty' [G' C'l']]; rewrite C'l'; exists Ty', (ig_end G').
-        apply/st_unr/(st_amsg1 _ _ NE)=>//=.
+        exists (ig_msg None F' T' C''); move: NE=>[l'] NE.
+        apply/(st_amsg1 _ _ NE)=>//=.
         * rewrite /C'' /==> l0 Ty0; case: optionP=>[[Ty1 G1] E|->]//; rewrite E.
-          split=>[][G2][<-] _; last by exists (ig_end G1).
-          by exists (sval (Ih l0 Ty1 G1 E (PRJ l0 Ty1 G1 E))).
+          split=>[][G2][<-] _; last by exists G1.
+          set G'' := sval _; by exists G''.
         * move=> l0 Ty0 G0 G1; rewrite /C''; case: optionP=>//.
           move=> [Ty1 G2] E; rewrite E=>[][<-<-] [<-].
-          by move: (Ih l0 Ty1 G2 E (PRJ l0 Ty1 G2 E))=>[IG ST]/=.
+          by apply/(proj2_sig (Ih _ _ _ _ _ _ _ _)).
       }
   Qed.
 
+  Theorem Project_step G P : forall A G',
+    step A G G' ->
+    Projection G P ->
+    exists P', Projection G' P' /\ lstep A P P'.
+  Proof.
+  move=> A G' ST Prj; exists (run_step A P); split.
+  - apply/(runstep_proj ST Prj).
+  - apply/run_step_sound/(local_runnable ST Prj).
+  Qed.
 
   Theorem Project_lstep G P A P' :
     lstep A P P' ->
