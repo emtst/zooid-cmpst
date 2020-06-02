@@ -165,11 +165,29 @@ Definition empty A : (lbl /-> mty * A) := fun=> None.
 Definition extend A (L : lbl) (X : A) f :=
   fun L' => if L == L' then Some X else f L'.
 
+Fixpoint find_cont A (c : seq (lbl * (mty * A)))
+  : lbl /-> mty * A
+  := match c with
+     | [::] => empty A
+     | (k, v) :: c => extend k v (find_cont c)
+     end.
+
+Lemma find_member A (c : seq (lbl * (mty * A))) l Ty G :
+  find_cont c l = Some (Ty, G) -> member (l, (Ty, G)) c.
+Proof.
+  elim: c=>//= [[k v]] ks Ih; rewrite /extend/=.
+  case: ifP=>[/eqP->[->]|]//; first by left.
+  by move=> _ /Ih-H; right.
+Qed.
+
 (*Definition same_dom T (C C' : lbl /-> mty * T) :=
   forall L Ty, (exists G, C L = Some (Ty, G)) <-> (exists G', C' L = Some (Ty, G')).*)
 
 Definition same_dom T T' (C : lbl /-> mty * T) (C' : lbl /-> mty * T') :=
   forall L Ty, (exists G, C L = Some (Ty, G)) <-> (exists G', C' L = Some (Ty, G')).
+
+Lemma same_dom_refl A (C1 : lbl /-> mty * A) : same_dom C1 C1.
+Proof. by []. Qed.
 
 Lemma same_dom_sym A B (C1 : lbl /-> mty * A) (C2 : lbl /-> mty * B) :
   same_dom C1 C2 <-> same_dom C2 C1.
@@ -221,6 +239,17 @@ Proof.
 rewrite /same_dom_const; case: (C L) => //=; move=> a.
 case: a=> Tyy _ [] =>//=.
 Qed.
+
+Lemma dom T T' (C0 : lbl /-> mty * T) (C1 : lbl /-> mty * T')
+      (DOM : same_dom C0 C1)
+  : forall l Ty G, C0 l = Some (Ty, G) -> exists G', C1 l = Some (Ty, G').
+Proof. by move=> l Ty; move: (DOM l Ty)=>[/(_ (ex_intro _ _ _))-H _]. Qed.
+
+Lemma dom' T T' (C0 : lbl /-> mty * T) (C1 : lbl /-> mty * T')
+      (DOM : same_dom C0 C1)
+  : forall l Ty G, C1 l = Some (Ty, G) -> exists G', C0 l = Some (Ty, G').
+Proof. by move=> l Ty; move: (DOM l Ty)=>[_ /(_ (ex_intro _ _ _))-H]. Qed.
+
 
 Definition P_all A (P : A -> Prop) (F : lbl /-> mty * A) :=
   forall l Ty a, F l = Some (Ty, a) -> P a.

@@ -524,10 +524,6 @@ Section Semantics.
            (CONT : lbl /-> mty * ig_ty).
   Set Elimination Schemes.
 
-  (* To do induction on the proof that p is in G, we need to be able to know
-   * whether part_of p G for all G such that C l = Some (_, G)
-   *)
-
   Inductive part_of: role -> rg_ty -> Prop :=
     | pof_from F T C: part_of F (rg_msg F T C)
     | pof_to F T C: part_of T (rg_msg F T C)
@@ -547,6 +543,13 @@ Section Semantics.
     | pallT_cont p F T C :
         (forall l Ty G, C l = Some (Ty, G) -> part_of_allT p G) ->
         part_of_allT p (rg_msg F T C).
+
+  Inductive iPart_of: role -> ig_ty -> Prop :=
+    | ipof_end p cG: part_of p cG -> iPart_of p (ig_end cG)
+    | ipof_from F T C: iPart_of F (ig_msg None F T C)
+    | ipof_to o F T C: iPart_of T (ig_msg o F T C)
+    | ipof_cont p o F T C L G Ty: C L = Some (Ty, G)
+      -> iPart_of p G -> iPart_of p (ig_msg o F T C).
 
   Lemma rgend_part p G : part_of_all p G -> G = rg_end -> False.
   Proof. by move=>[]. Qed.
@@ -595,36 +598,6 @@ Section Semantics.
                     end)
     | rg_end => ig_end rg_end
     end.
-
-  Inductive iPart_of: role -> ig_ty -> Prop :=
-    | ipof_end p cG: part_of p cG -> iPart_of p (ig_end cG)
-    | ipof_from F T C: iPart_of F (ig_msg None F T C)
-    | ipof_to o F T C: iPart_of T (ig_msg o F T C)
-    | ipof_cont p o F T C L G Ty: C L = Some (Ty, G)
-      -> iPart_of p G -> iPart_of p (ig_msg o F T C).
-
-  (* Lemma iPart_of_label_label_aux p o o' F T C GG: *)
-  (*   iPart_of p GG -> GG = ig_msg o F T C -> *)
-  (*       iPart_of p (ig_msg o' F T C). *)
-  (* Proof. *)
-  (* elim. *)
-  (* + by []. *)
-  (* + by move=> F0 T0 C0 [hp1 hp2 hp3 hp4]; rewrite hp2; apply ipof_from. *)
-  (* + by move=> o0 F0 T0 C0 [hp1 hp2 hp3 hp4]; rewrite hp3; apply ipof_to. *)
-  (* + move=> p0 o0 F0 T0 C0 L G Ty contL ipartof ih [eq1 eq2 eq3 eq4]. *)
-  (*   by rewrite -eq4; apply: (ipof_cont o' F T contL ipartof). *)
-  (* Qed. *)
-
-  (* Lemma iPart_of_label_label p o o' F T C: *)
-  (*   iPart_of p (ig_msg o F T C) -> *)
-  (*       iPart_of p (ig_msg o' F T C). *)
-  (* Proof. *)
-  (* by move=> hp; apply: (@iPart_of_label_label_aux p o o' F T C _ hp). *)
-  (* Qed. *)
-
-
-
-
 
   Definition P_option A (P : A -> Type) (C : option A) : Type :=
     match C with
@@ -696,59 +669,49 @@ Section Semantics.
   Qed.
 
   Definition grel := g_ty -> rg_ty -> Prop.
-
   Inductive g_unroll (r : grel) : grel :=
   | gu_end : @g_unroll r g_end rg_end
   | gu_rec IG CG : r (g_open 0 (g_rec IG) IG) CG -> @g_unroll r (g_rec IG) CG
   | gu_msg FROM TO iCONT cCONT :
-      @unroll_all r iCONT cCONT ->
-      @g_unroll r (g_msg FROM TO iCONT) (rg_msg FROM TO cCONT)
-  with unroll_all (r : grel)
-       : rel2 (seq (lbl * (mty * g_ty))) (fun=>lbl /-> mty * rg_ty) :=
-  | gu_nil L T IG CG :
-      r IG CG ->
-      @unroll_all r [:: (L, (T, IG))] (extend L (T, CG) (empty _))
-  | gu_cons L T IG CG iCONT cCONT :
-      r IG CG ->
-      @unroll_all r iCONT cCONT ->
-      @unroll_all r ((L, (T, IG)) :: iCONT) (extend L (T, CG) cCONT).
+      same_dom (find_cont iCONT) cCONT ->
+      R_all r (find_cont iCONT) cCONT ->
+      @g_unroll r (g_msg FROM TO iCONT) (rg_msg FROM TO cCONT).
   Definition GUnroll IG CG : Prop := paco2 g_unroll bot2 IG CG.
 
   Derive Inversion gunr_inv with (forall r G cG, g_unroll r G cG) Sort Prop.
-  Derive Inversion gunrall_inv with (forall r G cG, @unroll_all r G cG) Sort Prop.
-
   Hint Constructors g_unroll.
-  Hint Constructors unroll_all.
 
   Lemma gunroll_monotone : monotone2 g_unroll.
   Proof.
     move=> IG CG r r' U H; move: IG CG U.
     elim=>[|V|G IH|F T C IH] CG;
-      case E:_ _/ =>[|G' CG' R|F' T' C' CC U]//.
+      case E:_ _/ =>[|G' CG' R|F' T' C' CC DOM U]//.
     - by move: E R=>[<-]{G'} /H; constructor.
-    - move: E U=>[<-<-<-]{F' T' C'} U; constructor; move: U IH.
-      elim=>[|L Ty IG CG' iCONT cCONT /H-R U /=IH1 IH2]; constructor=>//.
-      by apply/H.
-      by apply/IH1=> K M; apply/IH2; right.
+    - by constructor=>// l Ty IG {}CG H0 H1; apply/H/(U _ _ _ _ H0 H1).
   Qed.
   Hint Resolve gunroll_monotone.
 
-  Lemma gunroll_unfold iG cG
-    : GUnroll iG cG -> @g_unroll (upaco2 g_unroll bot2) iG cG.
+  Lemma gunroll_unfold r iG cG
+    : paco2 g_unroll r iG cG -> @g_unroll (upaco2 g_unroll r) iG cG.
   Proof. by move/(paco2_unfold gunroll_monotone). Qed.
 
-  Lemma GUnroll_ind n iG cG :
-    GUnroll iG cG <-> GUnroll (n_unroll n iG) cG.
+  Lemma g_unroll_rec (r : grel) n iG cG :
+    (forall n IG CG, r IG CG -> paco2 g_unroll r (n_unroll n IG) CG) ->
+    paco2 g_unroll r iG cG <-> paco2 g_unroll r (n_unroll n iG) cG.
   Proof.
-    split.
+    move=> H; split.
     - elim: n =>// n Ih in iG cG *.
       move=> /gunroll_unfold-[]//=.
       + by apply/paco2_fold.
-      + by move=>IG CG [/Ih|].
-      + by move=>F T IC CC /(gu_msg F T)-H; apply/paco2_fold.
+      + by move=>IG CG  [/Ih//|/H].
+      + by move=>F T IC CC DOM UA; apply/paco2_fold; constructor.
     - elim: n =>// n Ih in iG cG *.
       by case: iG=>//= G H1; apply/paco2_fold; constructor; left; apply/Ih.
   Qed.
+
+  Lemma GUnroll_ind n iG cG :
+    GUnroll iG cG <-> GUnroll (n_unroll n iG) cG.
+  Proof. by apply/g_unroll_rec. Qed.
 
   Lemma gen2 A B (x' : A) (y' : B) Q P :
     (forall x y, Q x y -> x = x' -> y = y' -> P) ->
@@ -770,10 +733,9 @@ Section Semantics.
     - by move=>_; apply: gen2=>iG cG /gunroll_unfold-[].
     - by move=>/(_ G')/eqP.
     - move=>_; apply: gen2=>iG cG /gunroll_unfold-[]//.
-      move=> p'' q'' Ks'' CC GU E; move: E GU=> [->->->]{p'' q'' Ks''} GU.
-      by move=>[->-> _]/=; rewrite !in_cons orbA =>->.
+      move=>F T IC CC DOM ALL E1 E2; move: E1 E2 DOM ALL=>[->->->][->->->].
+      by move=>_ _; rewrite !in_cons orbA=>->.
   Qed.
-
 
   Lemma g_closed_unroll n iG : g_closed iG -> g_closed (n_unroll n iG).
   Proof. by elim: n iG=>[|n Ih]//=; case=>//= iG /gopen_closed/Ih. Qed.
@@ -794,6 +756,94 @@ Section Semantics.
     by apply/H/gopen_closed.
   Qed.
 
+  CoFixpoint unr_aux (g : g_ty) : rg_ty :=
+    match g with
+    | g_msg F T Ks =>
+      rg_msg F T
+             (fun l =>
+                match find_cont Ks l with
+                | Some (Ty, G) => Some (Ty, unr_aux (n_unroll (rec_depth G) G))
+                | None => None
+                end)
+    | _ => rg_end
+    end.
+
+
+  Definition g_expand (g : g_ty) : rg_ty := unr_aux (n_unroll (rec_depth g) g).
+
+  Lemma rgtyU G : G = match G with
+                      | rg_msg F T C => rg_msg F T C
+                      | rg_end => rg_end
+                      end.
+  Proof. by case: G. Qed.
+
+  Fixpoint non_empty_cont G :=
+    match G with
+    | g_msg _ _ Ks => ~~ nilp Ks && all id [seq non_empty_cont K.cnt | K <- Ks]
+    | g_rec G => non_empty_cont G
+    | _ => true
+    end.
+
+  Lemma ne_open n G G' :
+    non_empty_cont G -> non_empty_cont G' -> non_empty_cont (g_open n G' G).
+  Proof.
+    move=> NE1 NE2; move: NE1.
+    elim: G n=>//.
+    - by move=>v n; rewrite /unroll/=; case: ifP=>//.
+    - by move=> G Ih n /=; apply/Ih.
+    - move=> F T C Ih n /=; case: C Ih=>//= K Ks Ih /andP-[NE_K ALL].
+      rewrite (Ih K (or_introl erefl) n NE_K) /= {NE_K}.
+      move: Ih=>/(_ _ (or_intror _) n)=> Ih.
+      move: ALL=>/forallbP/forall_member/member_map-ALL.
+      apply/forallbP/forall_member/member_map/member_map=>/={}K M.
+      by apply/(Ih _ M)/ALL.
+  Qed.
+
+  Lemma ne_unr n G : non_empty_cont G -> non_empty_cont (n_unroll n G).
+  Proof.
+    elim: n G=>[//|n/=] Ih; case=>//= G NE.
+    have: non_empty_cont (g_rec G) by [].
+    by move=>/(ne_open 0 NE); apply/Ih.
+  Qed.
+
+  Lemma g_expand_unr G :
+    guarded 0 G ->
+    g_closed G ->
+    non_empty_cont G ->
+    GUnroll G (g_expand G).
+  Proof.
+    move=>gG cG NE; rewrite /g_expand.
+    move: {-1}(unr_aux _) (erefl (unr_aux (n_unroll (rec_depth G) G)))=>CG ECG.
+    move: G CG {ECG gG cG NE}(conj ECG (conj gG (conj cG NE))).
+    apply/paco2_acc=>r _ /(_ _ _ (conj erefl (conj _ (conj _ _))))-CIH.
+    move=> G CG [<-]{CG} [gG][cG][NE].
+    case: G cG gG NE.
+    - move=>_ _ _ /=; rewrite (rgtyU (unr_aux _))/=.
+      by apply/paco2_fold; constructor.
+    - by move=>V /closed_not_var/(_ V)/eqP/(_ erefl).
+    - move=>G cG gG nE /=;apply/paco2_fold.
+      constructor; right; have gG': guarded 1 G by move: gG.
+      rewrite (guarded_recdepth (m:=0) gG' _ (g_rec G)) //.
+      apply/CIH.
+      by apply/g_guarded_unroll.
+      by apply/gopen_closed.
+      by apply/ne_open.
+    - move=>F T C cG gG NE; rewrite (rgtyU (unr_aux _))/=.
+      apply/paco2_fold; constructor.
+      (* move: cG gG NE; rewrite /g_closed/==>/fsetUs_fset0/member_map-cG. *)
+      (* move=>/forallbP/forall_member-gG H. *)
+      (* have: C != [::] by case: C H {cG gG}. *)
+      (* have: all id [seq non_empty_cont K.cnt | K <- C] by case: C H {cG gG}. *)
+      (* move=>/forallbP/forall_member/member_map-NE {H}. *)
+      (* elim: C cG gG NE=>//= [[l0 [Ty0 G0]]] Ks. *)
+      (* case: (boolP (Ks == [::]))=>[/eqP->//= _ |_ Ih] cG gG NE _. *)
+      (* + rewrite /extend/empty. *)
+      (*   set CC := (extend l0 (Ty0, unr_aux (n_unroll (rec_depth G0) G0)) (empty rg_ty)). *)
+      (*   have: CC = extend l0 (Ty0, unr_aux (n_unroll (rec_depth G0) G0)) (empty rg_ty) by []. *)
+      (*   rewrite /extend. *)
+      (*   Print extend. *)
+      (*   have: CL = extend K0.1 K0.2 (empty g_ty) *)
+  Admitted.
 
   Definition R_only (R : ig_ty -> ig_ty -> Prop)
              L0 (C C' : lbl /-> mty * ig_ty) :=
@@ -883,29 +933,6 @@ Section Semantics.
       by apply Ih.
   + move=> a0 CG G0 s; apply: P_unr =>//=.
   Qed.
-
-(*  Lemma step_send_inv_aux F T C L Ty aa GG:
-    step aa GG (ig_msg (Some L) F T C) ->
-    aa = mk_act l_send F T L Ty -> GG = ig_msg None F T C ->
-    exists G, C L = Some (Ty, G).
-  Proof.
-  elim/step_ind => //=.
-  + move=> L0 F0 T0 C0 Ty0 G eqC => [] [].
-    move=> H0 H1 H2 H3 =>[] []. elim; elim; move=> H4.
-    by exists G; rewrite -H2 -H3 -H4.
-  + move=> a l F0 T0 C0 C1 sub1 sub2 ne samed rall hp eqa => [] [].
-    move=> eq1 eq2 eq3; move: sub1; rewrite eqa eq1 //=.
-    by rewrite -(rwP negP) //=.
-  Qed.
-
-  Lemma step_send_inv F T C L Ty:
-    step (mk_act l_send F T L Ty) (ig_msg None F T C) (ig_msg (Some L) F T C) ->
-    exists G, C L = Some (Ty, G).
-  Proof.
-  by move=> hp; apply: (step_send_inv_aux hp).
-  Qed.*)
-
-
 
   Definition gtrc_rel := trace -> ig_ty -> Prop.
   Inductive g_lts_ (r : gtrc_rel) : gtrc_rel :=

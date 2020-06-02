@@ -518,34 +518,21 @@ Section Semantics.
       r (l_open 0 (l_rec G) G) G' ->
       @l_unroll r (l_rec G) G'
   | lu_msg a p Ks C :
-      l_unroll_all r Ks C ->
+      same_dom (find_cont Ks) C ->
+      R_all r (find_cont Ks) C ->
       @l_unroll r (l_msg a p Ks) (rl_msg a p C)
-  with l_unroll_all (r : lty_rel)
-       : seq (lbl * (mty * l_ty)) ->
-         (lbl /-> mty * rl_ty) ->
-         Prop :=
-  | lu_nil : l_unroll_all r [::] (empty _)
-  | lu_cons l t G G' Ks C' :
-      r G G' ->
-      l_unroll_all r Ks C' ->
-      l_unroll_all r ((l, (t, G)) :: Ks) (extend l (t, G') C')
   .
   Hint Constructors l_unroll.
-  Hint Constructors l_unroll_all.
 
-  Scheme lunroll_ind := Induction for l_unroll Sort Prop
-  with lunrollall_ind := Induction for l_unroll_all Sort Prop.
-
-  Derive Inversion lunr_all_inv with (forall r KsL CL, l_unroll_all r KsL CL) Sort Prop.
+  Scheme lunroll_ind := Induction for l_unroll Sort Prop.
 
   Lemma l_unroll_monotone : monotone2 l_unroll.
   Proof.
     move=>IL CL r r' U H; move: IL CL U.
     elim/lty_ind2=>[|V|L IH|a F Ks IH] CL//=;
-      case E:_ _/ =>[|G G' R|a' F' Ks' C U]//.
+      case E:_ _/ =>[|G G' R|a' F' Ks' C D U]//.
     - by move: E R => [<-] /H; constructor.
-    - constructor; move: E U=>[_ _<-] {a' F' Ks'}.
-      by elim=>[|l t G G' Ks0 C' /H-R U Ih1]; constructor.
+    - by constructor=>// l Ty IL {}CL H0 /(U _ _ _ _ H0)/H.
   Qed.
   Hint Resolve l_unroll_monotone.
 
@@ -790,6 +777,27 @@ Section Semantics.
       by split; [apply (rall12 L Ty)|apply (rall23 L Ty)].
   Qed.
 
+  Lemma LUnroll_EqL L CL CL' : LUnroll L CL -> EqL CL CL' -> LUnroll L CL'.
+  Proof.
+    move=> H1 H2; move: L CL' {H1 H2 CL} (ex_intro (fun=>_) CL (conj H1 H2)).
+    apply/paco2_acc=>r _ /(_ _ _ (ex_intro _ _ (conj _ _)))-CIH.
+    move=> L CL [CL'][LU]EQ.
+    move: LU EQ=>/(paco2_unfold l_unroll_monotone); case.
+    - move=>/(paco2_unfold EqL_monotone); case E: _ _ / =>//.
+      by apply/paco2_fold; constructor.
+    - move=> G G' [/CIH-GU|//] /GU-H.
+      by apply/paco2_fold; constructor; right.
+    - move=> a p Ks C DOM ALL; move=>/(paco2_unfold EqL_monotone).
+      case E: _ _ / =>[|a' p' CL1 CL2 DOM' EQ_ALL]//.
+      move: E DOM' EQ_ALL=>[<-<-<-] DOM' E_ALL {a' p' CL1}.
+      apply/paco2_fold; constructor; first by apply/(same_dom_trans DOM).
+      move=>l Ty G iL Cl CCl; right.
+      move: (dom DOM Cl)=>[LL]Cl'.
+      move: (ALL _ _ _ _ Cl Cl')=>[UG|//].
+      move: (E_ALL _ _ _ _ Cl' CCl)=>[EG|//].
+      by apply/(CIH _ _ _ UG EG).
+  Qed.
+
   Lemma do_act_works : forall Li Lr A, LUnroll Li Lr -> LUnroll (run_act_l_ty Li A) (run_act_lt Lr A).
   Admitted.
 
@@ -897,3 +905,7 @@ End Semantics.
 Hint Constructors EqL_.
 Hint Resolve EqL_monotone.
 Hint Resolve EqL_refl.
+
+Notation renv := {fmap role -> rl_ty}.
+Notation qenv := {fmap role * role -> seq (lbl * mty) }.
+Notation cfg := (renv * qenv)%type.
