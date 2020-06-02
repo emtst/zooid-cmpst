@@ -756,20 +756,17 @@ Section Semantics.
     by apply/H/gopen_closed.
   Qed.
 
-  CoFixpoint unr_aux (g : g_ty) : rg_ty :=
-    match g with
+  CoFixpoint g_expand (g : g_ty) : rg_ty :=
+    match n_unroll (rec_depth g) g with
     | g_msg F T Ks =>
       rg_msg F T
              (fun l =>
                 match find_cont Ks l with
-                | Some (Ty, G) => Some (Ty, unr_aux (n_unroll (rec_depth G) G))
+                | Some (Ty, G) => Some (Ty, g_expand G)
                 | None => None
                 end)
     | _ => rg_end
     end.
-
-
-  Definition g_expand (g : g_ty) : rg_ty := unr_aux (n_unroll (rec_depth g) g).
 
   Lemma rgtyU G : G = match G with
                       | rg_msg F T C => rg_msg F T C
@@ -806,20 +803,34 @@ Section Semantics.
     by move=>/(ne_open 0 NE); apply/Ih.
   Qed.
 
+  Definition g_expand' G :=
+    match G with
+    | g_msg F T Ks =>
+      rg_msg F T (fun l : lbl => match find_cont Ks l with
+                                 | Some (Ty, G0) => Some (Ty, g_expand G0)
+                                 | None => None
+                                 end)
+    | _ => rg_end
+    end.
+
+  Lemma g_expand_once G : g_expand G = g_expand' (n_unroll (rec_depth G) G).
+  Proof.
+    by rewrite (rgtyU (g_expand _)) /g_expand /g_expand'-rgtyU-/g_expand.
+  Qed.
+
   Lemma g_expand_unr G :
     guarded 0 G ->
     g_closed G ->
     non_empty_cont G ->
     GUnroll G (g_expand G).
   Proof.
-    move=>gG cG NE; rewrite /g_expand.
-    move: {-1}(unr_aux _) (erefl (unr_aux (n_unroll (rec_depth G) G)))=>CG ECG.
-    move: G CG {ECG gG cG NE}(conj ECG (conj gG (conj cG NE))).
+    move=>gG cG NE; rewrite g_expand_once.
+    move: {-1}(g_expand' _) (erefl (g_expand' (n_unroll (rec_depth G) G))).
+    move=>CG ECG; move: G CG {ECG gG cG NE}(conj ECG (conj gG (conj cG NE))).
     apply/paco2_acc=>r _ /(_ _ _ (conj erefl (conj _ (conj _ _))))-CIH.
     move=> G CG [<-]{CG} [gG][cG][NE].
     case: G cG gG NE.
-    - move=>_ _ _ /=; rewrite (rgtyU (unr_aux _))/=.
-      by apply/paco2_fold; constructor.
+    - move=>_ _ _ /=; by apply/paco2_fold; constructor.
     - by move=>V /closed_not_var/(_ V)/eqP/(_ erefl).
     - move=>G cG gG nE /=;apply/paco2_fold.
       constructor; right; have gG': guarded 1 G by move: gG.
@@ -828,16 +839,16 @@ Section Semantics.
       by apply/g_guarded_unroll.
       by apply/gopen_closed.
       by apply/ne_open.
-    - move=>F T C cG gG NE; rewrite (rgtyU (unr_aux _))/=.
-      apply/paco2_fold; constructor.
+    - move=>F T C cG gG NE; apply/paco2_fold; constructor.
       + move=>l Ty; case: find_cont=>[[Ty0 L0]|]//; split=>[][G]//[->] _.
-        * by exists (unr_aux (n_unroll (rec_depth L0) L0)).
+        * by exists (g_expand L0).
         * by exists L0.
       + move=> l Ty G CG FND; rewrite FND=>[][<-]; right.
         move: cG; rewrite /g_closed/==>/fsetUs_fset0/member_map-cG.
         move: gG; rewrite /==>/forallbP/forall_member-gG.
         move: NE=>/==>/andP-[NE_C]/forallbP/forall_member/member_map-NE.
         move: (find_member FND)=>MEM.
+        rewrite g_expand_once.
         by apply/(CIH _ (gG _ MEM) (cG _ MEM) (NE _ MEM)).
   Qed.
 
