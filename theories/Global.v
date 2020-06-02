@@ -830,20 +830,16 @@ Section Semantics.
       by apply/ne_open.
     - move=>F T C cG gG NE; rewrite (rgtyU (unr_aux _))/=.
       apply/paco2_fold; constructor.
-      (* move: cG gG NE; rewrite /g_closed/==>/fsetUs_fset0/member_map-cG. *)
-      (* move=>/forallbP/forall_member-gG H. *)
-      (* have: C != [::] by case: C H {cG gG}. *)
-      (* have: all id [seq non_empty_cont K.cnt | K <- C] by case: C H {cG gG}. *)
-      (* move=>/forallbP/forall_member/member_map-NE {H}. *)
-      (* elim: C cG gG NE=>//= [[l0 [Ty0 G0]]] Ks. *)
-      (* case: (boolP (Ks == [::]))=>[/eqP->//= _ |_ Ih] cG gG NE _. *)
-      (* + rewrite /extend/empty. *)
-      (*   set CC := (extend l0 (Ty0, unr_aux (n_unroll (rec_depth G0) G0)) (empty rg_ty)). *)
-      (*   have: CC = extend l0 (Ty0, unr_aux (n_unroll (rec_depth G0) G0)) (empty rg_ty) by []. *)
-      (*   rewrite /extend. *)
-      (*   Print extend. *)
-      (*   have: CL = extend K0.1 K0.2 (empty g_ty) *)
-  Admitted.
+      + move=>l Ty; case: find_cont=>[[Ty0 L0]|]//; split=>[][G]//[->] _.
+        * by exists (unr_aux (n_unroll (rec_depth L0) L0)).
+        * by exists L0.
+      + move=> l Ty G CG FND; rewrite FND=>[][<-]; right.
+        move: cG; rewrite /g_closed/==>/fsetUs_fset0/member_map-cG.
+        move: gG; rewrite /==>/forallbP/forall_member-gG.
+        move: NE=>/==>/andP-[NE_C]/forallbP/forall_member/member_map-NE.
+        move: (find_member FND)=>MEM.
+        by apply/(CIH _ (gG _ MEM) (cG _ MEM) (NE _ MEM)).
+  Qed.
 
   Definition R_only (R : ig_ty -> ig_ty -> Prop)
              L0 (C C' : lbl /-> mty * ig_ty) :=
