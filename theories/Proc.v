@@ -26,6 +26,9 @@ Fixpoint unfold l :=
     | l_rec l => l_open 0 (l_rec l) (unfold l)
   end.
 
+
+
+
 Inductive Proc : l_ty -> Type :=
 | Finish : Proc l_end
 
@@ -363,10 +366,18 @@ Section OperationalSemantics.
 
   Section OneProc.
 
+
     Definition run_rt_act L (P : Proc L) (A : rt_act) : (Proc (run_act_l_ty L (erase_act A))).
-
-
       refine (let: (mk_rt_act a p q l T t) := A in _)=>//=.
+
+      (* case P; try by rewrite/run_act_l_ty/do_act_l_ty. *)
+      (* constructor. *)
+      (* constructor. *)
+
+      (* rewrite/run_act_l_ty=>//=. *)
+      (* admit. *)
+
+      (* admit. *)
 
       move: P l.
       case L ; try by rewrite/run_act_l_ty/do_act_l_ty.
@@ -379,13 +390,30 @@ Section OperationalSemantics.
       move=>r ; case (q == r)=>//=.
 
       {
-        move=> Ks P l ; case (lookup_l_ty_cont Ks l)=>//=. (* forgets the lookup is in Ks *)
-        case.
-        move=> a0; case (T == a0).
+        move=> Ks P l.
+        destruct (lookup_l_ty_cont Ks l) eqn: Lu.
+        destruct p0.
 
-        admit.
+        case (T == m).
 
-        by [].
+
+        (* inversion P => l' Lu'. *)
+
+
+
+
+        admit. (* ? *)
+
+        easy.
+
+        (* move=> Ks P l ; case (lookup_l_ty_cont Ks l)=>//=. (* forgets the lookup is in Ks *) *)
+        (* case. *)
+        (* move=> a0; case (T == a0). *)
+
+        (* admit. *)
+
+        (* by []. *)
+        easy.
       }
 
       (* other cases where the process does not step *)
