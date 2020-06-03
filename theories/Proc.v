@@ -80,9 +80,9 @@ Module MP.
 
   Parameter loop : forall T1, nat -> t T1 -> t T1.
   Parameter set_current: nat -> t unit.
-
-  Parameter rec : forall T1, nat -> t T1.
 End MP.
+
+
 
 (* Module MP'. *)
 (*   Parameter t : l_ty -> Type. *)
@@ -364,6 +364,36 @@ Section OperationalSemantics.
   Section OneProc.
 
     Definition run_rt_act L (P : Proc L) (A : rt_act) : (Proc (run_act_l_ty L (erase_act A))).
+
+
+      refine (let: (mk_rt_act a p q l T t) := A in _)=>//=.
+
+      move: P l.
+      case L ; try by rewrite/run_act_l_ty/do_act_l_ty.
+
+      case. (* casing on the act *)
+
+      (* send action *)
+      rewrite/run_act_l_ty/do_act_l_ty.
+      case a=>//=.
+      move=>r ; case (q == r)=>//=.
+
+      {
+        move=> Ks P l ; case (lookup_l_ty_cont Ks l)=>//=. (* forgets the lookup is in Ks *)
+        case.
+        move=> a0; case (T == a0).
+
+        admit.
+
+        by [].
+      }
+
+      (* other cases where the process does not step *)
+      by move=>Ks P l ; case (lookup_l_ty_cont Ks l)=>//= ; case.
+      by move=>r Ks P l ; case (lookup_l_ty_cont Ks l)=>//= ; case.
+
+      (* receive case *)
+
     Abort.
 
   End OneProc.
