@@ -587,6 +587,103 @@ Section Semantics.
     - case: Lr E=>//= L [/Ih-E]; apply/E.
   Qed.
 
+  CoFixpoint l_expand (l : l_ty) : rl_ty :=
+    match lunroll (lrec_depth l) l with
+    | l_msg a T Ks =>
+      rl_msg a T
+             (fun l =>
+                match find_cont Ks l with
+                | Some (Ty, L) => Some (Ty, l_expand L)
+                | None => None
+                end)
+    | _ => rl_end
+    end.
+
+  Lemma rltyU G : G = match G with
+                      | rl_msg a T C => rl_msg a T C
+                      | rl_end => rl_end
+                      end.
+  Proof. by case: G. Qed.
+
+  Fixpoint l_non_empty_cont G :=
+    match G with
+    | l_msg _ _ Ks => ~~ nilp Ks && all id [seq l_non_empty_cont K.cnt | K <- Ks]
+    | l_rec G => l_non_empty_cont G
+    | _ => true
+    end.
+
+  Lemma lne_open n G G' :
+    l_non_empty_cont G -> l_non_empty_cont G' -> l_non_empty_cont (l_open n G' G).
+  Proof.
+    move=> NE1 NE2; move: NE1.
+    elim/lty_ind2: G n=>//.
+    - by move=>v n; rewrite /=; case: ifP=>//.
+    - by move=> G Ih n /=; apply/Ih.
+    - move=> a T C Ih n /=; case: C Ih=>//= K Ks Ih /andP-[NE_K ALL].
+      have K_in: K \in K :: Ks by rewrite in_cons !eq_refl.
+      rewrite (Ih K K_in n NE_K) /= {NE_K}.
+      move: ALL=>/forallbP/forall_member/member_map-ALL.
+      apply/forallbP/forall_member/member_map/member_map=>/=K' M.
+      move: M (ALL _ M)=>/memberP-M {}ALL.
+      have K'_in : K' \in K :: Ks by rewrite in_cons M orbT.
+      by apply/(Ih _ K'_in n)/ALL.
+  Qed.
+
+  Lemma ne_unr n G : l_non_empty_cont G -> l_non_empty_cont (lunroll n G).
+  Proof.
+    elim: n G=>[//|n/=] Ih; case=>//= G NE.
+    have: l_non_empty_cont (l_rec G) by [].
+    by move=>/(lne_open 0 NE); apply/Ih.
+  Qed.
+
+  Definition l_expand' L :=
+    match L with
+    | l_msg a T Ks =>
+      rl_msg a T (fun l : lbl => match find_cont Ks l with
+                                 | Some (Ty, L0) => Some (Ty, l_expand L0)
+                                 | None => None
+                                 end)
+    | _ => rl_end
+    end.
+
+  Lemma l_expand_once L : l_expand L = l_expand' (lunroll (lrec_depth L) L).
+  Proof.
+    by rewrite (rltyU (l_expand _)) /l_expand /l_expand'-rltyU-/l_expand.
+  Qed.
+
+  Lemma l_expand_unr L :
+    lguarded 0 L ->
+    l_closed L ->
+    l_non_empty_cont L ->
+    LUnroll L (l_expand L).
+  Proof.
+    move=>gG cG NE; rewrite l_expand_once.
+    move: {-1}(l_expand' _) (erefl (l_expand' (lunroll (lrec_depth L) L))).
+    move=>CG ECG; move: L CG {ECG gG cG NE}(conj ECG (conj gG (conj cG NE))).
+    apply/paco2_acc=>r _ /(_ _ _ (conj erefl (conj _ (conj _ _))))-CIH.
+    move=> G CG [<-]{CG} [gG][cG][NE].
+    case: G cG gG NE.
+    - move=>_ _ _ /=; by apply/paco2_fold; constructor.
+    - by move=>V /lclosed_not_var/(_ V)/eqP/(_ erefl).
+    - move=>G cG gG nE /=;apply/paco2_fold.
+      constructor; right; have gG': lguarded 1 G by move: gG.
+      rewrite (lguarded_recdepth (m:=0) gG' _ (l_rec G)) //.
+      apply/CIH.
+      by apply/l_guarded_unroll.
+      by apply/lopen_closed.
+      by apply/lne_open.
+    - move=>F T C cG gG NE; apply/paco2_fold; constructor.
+      + move=>l Ty; case: find_cont=>[[Ty0 L0]|]//; split=>[][G]//[->] _.
+        * by exists (l_expand L0).
+        * by exists L0.
+      + move=> l Ty G CG FND; rewrite FND=>[][<-]; right.
+        move: cG; rewrite /l_closed/==>/fsetUs_fset0/member_map-cG.
+        move: gG; rewrite /==>/forallbP/forall_member-gG.
+        move: NE=>/==>/andP-[NE_C]/forallbP/forall_member/member_map-NE.
+        move: (find_member FND)=>MEM.
+        rewrite l_expand_once.
+        by apply/(CIH _ (gG _ MEM) (cG _ MEM) (NE _ MEM)).
+  Qed.
 
   Notation renv := {fmap role -> rl_ty}.
   Notation qenv := {fmap role * role -> seq (lbl * mty) }.
