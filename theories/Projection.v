@@ -1661,20 +1661,6 @@ Section CProject.
         by move=>[K]M; apply/(Ih _ M _ (NE _ M) (PRJ _ M)).
   Qed.
 
-  (** Main projection result: the projection of the expansion of G is
-   * the expansion of the projection of G
-   *)
-  Theorem coind_proj r G L :
-    g_precond G ->
-    project G r == Some L ->
-    Project r (g_expand G) (l_expand L).
-  Proof.
-    rewrite/g_precond=>/andP-[/andP-[cG gG] NE] P.
-    move: (proj_lclosed cG P) (project_guarded P) (proj_lne NE P)=>cL gL NEl.
-    move: (g_expand_unr gG cG NE) (l_expand_unr gL cL NEl)=>{cL gL NEl}.
-    by apply/ic_proj.
-  Qed.
-
   Inductive IProj (p : role) : ig_ty -> rl_ty -> Prop :=
   | iprj_end CG CL :
       Project p CG CL ->
@@ -1876,6 +1862,50 @@ Section CProject.
     * move=> Ln Tn lTn sdc; move: (same_dom_const_some sdc) =>-> //=.
   Qed.
 
+  (** Main projection result: the projection of the expansion of G is
+   * the expansion of the projection of G
+   *)
+  Theorem coind_proj r G L :
+    g_precond G ->
+    project G r == Some L ->
+    Project r (g_expand G) (l_expand L).
+  Proof.
+    rewrite/g_precond=>/andP-[/andP-[cG gG] NE] P.
+    move: (proj_lclosed cG P) (project_guarded P) (proj_lne NE P)=>cL gL NEl.
+    move: (g_expand_unr gG cG NE) (l_expand_unr gL cL NEl)=>{cL gL NEl}.
+    by apply/ic_proj.
+  Qed.
+
+  Fixpoint project_all (parts : seq role) (g : g_ty)
+    : option {fmap role -> l_ty}
+    := match parts with
+       | [::] => Some [fmap]
+       | p :: parts =>
+         match project g p, project_all parts g with
+         | Some l, Some e => Some e.[p <- l]
+         | _, _ => None
+         end
+       end%fmap.
+
+  Definition eproject (g : g_ty) : option {fmap role -> l_ty} :=
+    if g_precond g
+    then project_all (participants g) g
+    else None.
+
+  Lemma eproject_part (g : g_ty) (e : {fmap role -> l_ty}) :
+    eproject g == Some e -> forall p, project g p = look e p.
+
+  Definition expand_env (e : {fmap role -> l_ty}) : {fmap role -> rl_ty}
+    := [fmap x : domf e => l_expand e.[fsvalP x]]%fmap.
+
+  Definition eProject (G: ig_ty) (E : {fmap role -> rl_ty}) : Prop :=
+    forall p, IProj p G (look E p).
+
+  Theorem expand_eProject (g : g_ty) (e : {fmap role -> l_ty})
+    : eproject g = Some e ->
+      eProject (ig_end (g_expand g)) (expand_env e).
+  Proof.
+  Qed.
 
 
 End CProject.

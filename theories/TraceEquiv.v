@@ -24,9 +24,6 @@ Section TraceEquiv.
   Open Scope fset.
   Open Scope fmap.
 
-  Definition eProject (G: ig_ty) (E : {fmap role -> rl_ty}) : Prop :=
-    forall p, IProj p G (look E p).
-
   Definition Projection G P := eProject G P.1 /\ qProject G P.2.
 
   Lemma doact_other p E A L :
