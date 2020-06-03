@@ -236,85 +236,6 @@ Section Syntax.
   - by rewrite /==>/Ih-{Ih}Ih s Lsd; apply/Ih.
   Qed.
 
-
-  (* Inductive LGuarded : nat -> l_ty -> Prop := *)
-  (* | L_end d : *)
-  (*     LGuarded d l_end *)
-  (* | L_var d v : *)
-  (*     LGuarded d (l_var v) *)
-  (* | L_rec_var d v : *)
-  (*     v > d -> *)
-  (*     LGuarded d (l_rec (l_var v)) *)
-  (* | L_rec d L : *)
-  (*     (forall v, L != l_var v) -> *)
-  (*     LGuarded d.+1 L -> *)
-  (*     LGuarded d (l_rec L) *)
-  (* | L_msg d a p Ks : *)
-  (*     LAllGuarded Ks -> *)
-  (*     LGuarded d (l_msg a p Ks) *)
-  (* with LAllGuarded : seq (lbl * (mty * l_ty)) -> Prop := *)
-  (* | L_nil : *)
-  (*     LAllGuarded [::] *)
-  (* | L_cons K Ks : *)
-  (*     LGuarded 0 K.cnt -> *)
-  (*     LAllGuarded Ks -> *)
-  (*     LAllGuarded (K :: Ks) *)
-  (* . *)
-
-  (* Lemma lrec_not_guarded d G' : *)
-  (*   ~ LGuarded d.+1 G' -> *)
-  (*   (forall v : nat, G' != l_var v) -> *)
-  (*   ~ LGuarded d (l_rec G'). *)
-  (* Proof. *)
-  (*   move=> N_GG' Ne; move: {-1}d (eq_refl d) {-1}(l_rec G') (eq_refl (l_rec G')). *)
-  (*   move=> d' d_d' G Eq_G H; case: H d_d' Eq_G=>//. *)
-  (*   + by move=> d0 v _ _; move: Ne; rewrite !eqE/==>/(_ v)-N E;move:E N=>->. *)
-  (*   + move=> d0 G0 _ GG' /eqP-E1; rewrite !eqE/==>/eqP-E2. *)
-  (*     by move: E1 E2 GG'=><-<-/N_GG'. *)
-  (* Qed. *)
-
-  (* Lemma lalt_eq a1 p1 Ks1 a2 p2 Ks2 : *)
-  (*   ((l_msg a1 p1 Ks1) == (l_msg a2 p2 Ks2)) = *)
-  (*   (a1 == a2) && (p1 == p2) && (Ks1 == Ks2). *)
-  (* Proof. *)
-  (*   rewrite eqE/=; do 2 case: eqP=>//=; move=> _ _ {p1 a1 p2 a2}. *)
-  (*   elim: Ks1=>[|K1 Ks1 Ih] in Ks2 *; case: Ks2=>[|K2 Ks2]//=. *)
-  (*   by rewrite Ih; do ! rewrite !eqE/=; rewrite -!eqE !andbA. *)
-  (* Qed. *)
-
-  (* Lemma guardedP d G : reflect (LGuarded d G) (lguarded d G). *)
-  (* Proof. *)
-  (*   move: G d; fix Ih 1; case=> [|v|G|p q Ks] d/=; try do ! constructor. *)
-  (*   - move: {-1} G (eq_refl G) => G' Eq. *)
-  (*     case: G' Eq=>[|n|G'|p q Ks]; try do ! constructor. *)
-  (*     * case: (boolP (d < n))=>[d_lt_n|d_ge_n]; do ! constructor =>//. *)
-  (*       move: {-1}d (eq_refl d) {-1}(l_rec (l_var n)) (eq_refl (l_rec (l_var n))). *)
-  (*       move=> d' d_d' G' Eq_G H; case: H d_d' Eq_G=>//. *)
-  (*       + move=> d0 v d_lt_n /eqP-H; move: H d_lt_n=><-{d0} d_lt_n H. *)
-  (*         by move: H d_lt_n d_ge_n; do 2 rewrite !eqE/=; move=>/eqP<-->. *)
-  (*       + move=> {d'} d' G'' Neq _ _; rewrite !eqE/=. *)
-  (*         by case: G'' Neq=>// v /(_ v)/eqP. *)
-  (*     * move=> GG'; have: (forall v, G != l_var v) by move: GG'=>/eqP->. *)
-  (*       move: GG'=>/eqP<-; case: (Ih G d.+1)=>[GG'|N_GG']; do ! constructor=>//. *)
-  (*       by apply/lrec_not_guarded. *)
-  (*     * move=> GG'; have: (forall v, G != l_var v) by move: GG'=>/eqP->. *)
-  (*       move: GG'=>/eqP<-; case: (Ih G d.+1)=>[GG'|N_GG']; do ! constructor=>//. *)
-  (*       by apply/lrec_not_guarded. *)
-  (*   - elim: Ks=>[|K Ks]/=; try do ! constructor=>//. *)
-  (*     case: (Ih K.cnt 0)=>[GK [GG|N_GG]|N_GK]/=; try do ! constructor=>//. *)
-  (*     * case Eq: (l_msg p q Ks) / GG=>// [d' p' q' Ks' GKs]. *)
-  (*       move: Eq=>/eqP; rewrite lalt_eq =>/andP-[_ Eq]. *)
-  (*       by move: Eq GKs=>/eqP<-. *)
-  (*     * move=> NGG; case Eq: (l_msg _ _ _) / NGG=>// [d' p' q' Ks' GKs]. *)
-  (*       move: Eq=>/eqP; rewrite lalt_eq =>/andP-[_ Eq]. *)
-  (*       move: Eq GKs=>/eqP<- H; case Eq: (K::Ks) / H =>// [K' Ks'' _ GKs]. *)
-  (*       by move: Eq GKs=>[_ <-] /(L_msg d p q)/N_GG. *)
-  (*     * move=> NGG; case Eq: (l_msg _ _ _) / NGG=>// [d' p' q' Ks' GKs]. *)
-  (*       move: Eq=>/eqP; rewrite lalt_eq =>/andP-[_ Eq]. *)
-  (*       move: Eq GKs=>/eqP<-H'; case Eq: (K::Ks) / H' =>// [K' Ks'' GK0 _]. *)
-  (*       by move: Eq GK0=>[<- _] /N_GK. *)
-  (* Qed. *)
-
   Fixpoint lrec_depth L :=
     match L with
     | l_rec G => (lrec_depth G).+1
@@ -612,6 +533,9 @@ Section Semantics.
     | _ => true
     end.
 
+  Definition l_precond L :=
+    l_closed L && lguarded 0 L && l_non_empty_cont L.
+
   Lemma lne_open n G G' :
     l_non_empty_cont G -> l_non_empty_cont G' -> l_non_empty_cont (l_open n G' G).
   Proof.
@@ -629,7 +553,7 @@ Section Semantics.
       by apply/(Ih _ K'_in n)/ALL.
   Qed.
 
-  Lemma ne_unr n G : l_non_empty_cont G -> l_non_empty_cont (lunroll n G).
+  Lemma lne_unr n G : l_non_empty_cont G -> l_non_empty_cont (lunroll n G).
   Proof.
     elim: n G=>[//|n/=] Ih; case=>//= G NE.
     have: l_non_empty_cont (l_rec G) by [].

@@ -1612,6 +1612,69 @@ Section CProject.
     by apply/(project_nonrec CIH cuiG guiG NE nrG proj).
   Qed.
 
+  Lemma proj_lclosed G p L : g_closed G -> project G p == Some L -> l_closed L.
+  Proof.
+    rewrite /g_closed/l_closed; move: 0.
+    elim: G => [| v | {}G Ih | F T C Ih]/= in L *; rewrite -/prj_all.
+    - by move=>n _ /eqP-[<-].
+    - by move=>n H /eqP-[<-]/=.
+    - move=>n /Ih-{}Ih; case PRJ: project=>[L'|//].
+      case: ifP;[move=>_/eqP-[<-]//|move=>_ /eqP-[<-]/=].
+      by apply/Ih/eqP.
+    - move=>n /fsetUs_fset0/member_map-cG.
+      case ALL: prj_all=>[CL|//]; move: ALL=>/eqP-ALL; do ! case: ifP=>// _.
+      + move=>/eqP-[<-]/=; apply/fsetUs_fset0/member_map=> K M.
+        move: (prjall_some2 ALL M)=>[G][MG]/eqP-PRJ.
+        by apply/(Ih _ MG _ _ (cG _ MG) PRJ).
+      + move=>/eqP-[<-]/=; apply/fsetUs_fset0/member_map=> K M.
+        move: (prjall_some2 ALL M)=>[G][MG]/eqP-PRJ.
+        by apply/(Ih _ MG _ _ (cG _ MG) PRJ).
+      + move=>MRG; move: (prjall_merge ALL MRG)=>PRJ.
+        move: ALL MRG=>/eqP-ALL /eqP-MRG; move: (prjall_merge_cons ALL MRG).
+        by move=>[K]M; apply/(Ih _ M _ _ (cG _ M) (PRJ _ M)).
+  Qed.
+
+  Lemma proj_lne G p L :
+    non_empty_cont G -> project G p == Some L -> l_non_empty_cont L.
+  Proof.
+    rewrite /g_closed/l_closed.
+    elim: G => [| v | {}G Ih | F T C Ih]/= in L *; rewrite -/prj_all.
+    - by move=>_ /eqP-[<-].
+    - by move=>H /eqP-[<-]/=.
+    - move=>/Ih-{}Ih; case PRJ: project=>[L'|//].
+      case: ifP;[move=>_/eqP-[<-]//|move=>_ /eqP-[<-]/=].
+      by apply/Ih/eqP.
+    - move=>/andP-[NE]; case ALL: prj_all=>[CL|//]; move: (prjall_dom ALL).
+      move=>/samedom_nilp/contra/(_ NE)=>nilCL; move: ALL=>/eqP-ALL.
+      move=>/forallbP/forall_member/member_map=>{}NE.
+      do ! case: ifP=>// _.
+      + move=>/eqP-[<-]/=; rewrite nilCL/=.
+        apply/forallbP/forall_member/member_map=> K M.
+        move: (prjall_some2 ALL M)=>[G][MG]/eqP-PRJ.
+        by apply (Ih _ MG _ (NE _ MG) PRJ).
+      + move=>/eqP-[<-]/=; rewrite nilCL/=.
+        apply/forallbP/forall_member/member_map=> K M.
+        move: (prjall_some2 ALL M)=>[G][MG]/eqP-PRJ.
+        by apply (Ih _ MG _ (NE _ MG) PRJ).
+      + move=>MRG; move: (prjall_merge ALL MRG)=>PRJ.
+        move: ALL MRG=>/eqP-ALL /eqP-MRG; move: (prjall_merge_cons ALL MRG).
+        by move=>[K]M; apply/(Ih _ M _ (NE _ M) (PRJ _ M)).
+  Qed.
+
+  (** Main projection result: the projection of the expansion of G is
+   * the expansion of the projection of G
+   *)
+  Theorem coind_proj r G L :
+    g_precond G ->
+    project G r == Some L ->
+    Project r (g_expand G) (l_expand L).
+  Proof.
+    rewrite/g_precond=>/andP-[/andP-[cG gG] NE] P.
+    move: (proj_lclosed cG P) (project_guarded P) (proj_lne NE P)=>cL gL NEl.
+    move: (g_expand_unr gG cG NE) (l_expand_unr gL cL NEl)=>{cL gL NEl}.
+    by apply/ic_proj.
+  Qed.
+
   Inductive IProj (p : role) : ig_ty -> rl_ty -> Prop :=
   | iprj_end CG CL :
       Project p CG CL ->

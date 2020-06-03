@@ -250,6 +250,13 @@ Lemma dom' T T' (C0 : lbl /-> mty * T) (C1 : lbl /-> mty * T')
   : forall l Ty G, C1 l = Some (Ty, G) -> exists G', C0 l = Some (Ty, G').
 Proof. by move=> l Ty; move: (DOM l Ty)=>[_ /(_ (ex_intro _ _ _))-H]. Qed.
 
+Lemma samedom_nilp T T'
+      (C0 : seq (lbl * (mty * T))) (C1 : seq (lbl * (mty * T')))
+  : same_dom (find_cont C0) (find_cont C1) -> nilp C1 -> nilp C0.
+Proof.
+  case: C0=>// [][l [Ty G]] C0; case: C1=>// /(_ l Ty)-[/(_ (ex_intro _ G _))].
+  by move=>/=; rewrite /extend eq_refl=>/(_ erefl)=>[][]//.
+Qed.
 
 Definition P_all A (P : A -> Prop) (F : lbl /-> mty * A) :=
   forall l Ty a, F l = Some (Ty, a) -> P a.

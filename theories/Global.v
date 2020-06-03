@@ -781,6 +781,9 @@ Section Semantics.
     | _ => true
     end.
 
+  Definition g_precond G :=
+    g_closed G && guarded 0 G && non_empty_cont G.
+
   Lemma ne_open n G G' :
     non_empty_cont G -> non_empty_cont G' -> non_empty_cont (g_open n G' G).
   Proof.
