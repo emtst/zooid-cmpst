@@ -16,6 +16,7 @@ Require Import MPST.Actions.
 Require Import MPST.Projection.
 Require Import MPST.WellFormed.
 Require Import MPST.QProjection.
+Require Import MPST.Projection.
 
 Section TraceEquiv.
 

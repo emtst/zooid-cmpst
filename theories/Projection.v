@@ -1893,18 +1893,142 @@ Section CProject.
     else None.
 
   Lemma eproject_part (g : g_ty) (e : {fmap role -> l_ty}) :
-    eproject g == Some e -> forall p, project g p = look e p.
+    eproject g == Some e ->
+    forall p,
+      p \in participants g -> project g p = Some (odflt l_end e.[? p])%fmap.
+  Proof.
+    rewrite /eproject; case: ifP=>//WF; move: (participants g)=>p; elim:p e=>//.
+    move=> p ps Ih E/=;case PRJp: project=>[L|]//;case ALL: project_all=>[E'|]//.
+    move=>/eqP-[<-] q; case: (boolP (p == q))=>[EQ|NEQ].
+    + by move: EQ=>/eqP-<-{q} _; rewrite fnd_set eq_refl/=.
+    + rewrite in_cons eq_sym (negPf NEQ) fnd_set eq_sym (negPf NEQ)/=.
+      by apply/Ih/eqP.
+  Qed.
 
   Definition expand_env (e : {fmap role -> l_ty}) : {fmap role -> rl_ty}
     := [fmap x : domf e => l_expand e.[fsvalP x]]%fmap.
 
+  Lemma in_expanded_env (e : {fmap role -> l_ty}) p :
+    (omap l_expand e.[? p] = (expand_env e).[? p])%fmap.
+  Proof.
+    apply/esym; case: fndP=>/=[kf|].
+    - by rewrite (in_fnd kf)/= !ffunE/=.
+    - by move=>/not_fnd->.
+  Qed.
+
   Definition eProject (G: ig_ty) (E : {fmap role -> rl_ty}) : Prop :=
     forall p, IProj p G (look E p).
+
+  Fixpoint is_end g :=
+    match g with
+    | g_rec g => is_end g
+    | g_end => true
+    | _ => false
+    end.
+
+  Lemma prj_isend g
+    : is_end g ->
+      forall p, exists l, project g p = Some l /\ l_isend l.
+  Proof.
+    elim: g=>//.
+    - by move=> _ p; exists l_end; split.
+    - move=> G Ih /Ih-{}Ih p /=.
+      move: (Ih p)=>[L][PRJ] END; rewrite PRJ/=.
+      case: ifP=>//_; try by exists l_end.
+      by exists (l_rec L); split.
+  Qed.
+
+  Lemma recdepth_unroll g :
+    is_end g -> rec_depth g = rec_depth (unroll g).
+  Proof.
+    move=>END; have: (is_end (g_rec g)) by [].
+    rewrite /unroll; move: (g_rec g)=>g' END'.
+    by elim: g 0 END=>// g Ih n /=/(Ih n.+1)->.
+  Qed.
+
+  Lemma isend_unroll g :
+    is_end g -> is_end (unroll g).
+  Proof.
+    move=>END; have: (is_end (g_rec g)) by [].
+    rewrite /unroll; move: (g_rec g)=>g' END'.
+    by elim: g 0 END=>// g Ih n /=/(Ih n.+1)->.
+  Qed.
+
+  Lemma expand_g_end g
+        : is_end g -> g_expand g = rg_end.
+  Proof.
+    rewrite (rgtyU (g_expand _))/=.
+    suff: is_end g -> n_unroll (rec_depth g) g = g_end by move=>E /E->.
+    move: {-1}(rec_depth g) (erefl (rec_depth g))=> n.
+    elim: n g; first by case=>//.
+    move=>n Ih; case=>//= g [] RD END; move: (recdepth_unroll END) RD=>->{}RD.
+    by move: END=>/isend_unroll; apply/Ih.
+  Qed.
+
+  Lemma precond_parts g :
+    g_precond g -> ~~ nilp (participants g) \/ is_end g.
+  Proof.
+    move=>/andP-[/andP-[CG GG]  _]; move: CG GG; rewrite /g_closed.
+    elim: g 0.
+    - by move=> n _ _; right.
+    - by move=>v n /= H E; move: E H=>->; rewrite -cardfs_eq0 cardfs1.
+    - by move=> G Ih n /=; apply/Ih.
+    - by move=> p q Ks _ n  _ _; left.
+  Qed.
+
+  Lemma eproject_some g e :
+    eproject g = Some e ->
+    ~~ nilp (participants g) ->
+    exists p l, project g p = Some l.
+  Proof.
+    rewrite /eproject; case:ifP=>// _; case: (participants g)=>//= p ps.
+    by case PRJ: project=>[L|]// _ _; exists p, L.
+  Qed.
+
+  Lemma fnd_not_part g e p :
+    eproject g = Some e -> p \notin participants g -> (e.[? p] = None)%fmap.
+  Proof.
+    rewrite /eproject; case:ifP=>// _ PRJ PARTS.
+    elim: (participants g) PARTS e PRJ =>//=.
+    - by move=> _ e [<-]; rewrite fnd_fmap0.
+    - move => q l Ih.
+      rewrite in_cons negb_or=>/andP-[pq] /Ih-{}Ih e.
+      case PRJ: project=>[L|]//.
+      case ALL: project_all=>[E|]//.
+      by move=>[<-]; rewrite fnd_set (negPf pq); apply/Ih.
+  Qed.
 
   Theorem expand_eProject (g : g_ty) (e : {fmap role -> l_ty})
     : eproject g = Some e ->
       eProject (ig_end (g_expand g)) (expand_env e).
   Proof.
+    move=>EPRJ p; constructor.
+    have PRE: g_precond g by move: EPRJ;rewrite/eproject;case:ifP.
+    move: (precond_parts PRE); case: (boolP (nilp (participants g))).
+    + move=> NOPARTS [//|END]; move: EPRJ; rewrite /eproject PRE.
+      move: (participants g) NOPARTS=>[]//= _ [<-].
+      rewrite /look -in_expanded_env fnd_fmap0/= (expand_g_end END).
+      apply/paco2_fold/prj_end; first by case E: _ / =>//.
+      by apply/paco1_fold; constructor.
+    + move=>NE _.
+      have cG: g_closed g by move: PRE=>/andP-[/andP-[cG gG] CNE].
+      have gG: guarded 0 g by move: PRE=>/andP-[/andP-[_ gG] CNE].
+      have CNE: non_empty_cont g by move: PRE=>/andP-[_ CNE].
+      have GU: GUnroll g (g_expand g) by apply/(g_expand_unr gG cG CNE).
+      move: (eproject_some EPRJ NE)=>[q [L] /eqP-PRJ'].
+      have gWF: WF (g_expand g) by apply/(project_wf cG gG CNE PRJ' GU).
+      move=>{PRJ' L q}.
+      case: (boolP (p \in participants g)).
+      - move=>PS; move: EPRJ=>/eqP/eproject_part/(_ _ PS)-PRJ.
+        rewrite /look -in_expanded_env.
+        have ->: (odflt rl_end (omap l_expand (e.[? p])%fmap))
+                  = l_expand (odflt l_end (e.[? p])%fmap)
+          by move: e.[? p]%fmap=>[Ep|]//=; rewrite (rltyU (l_expand _)) /=.
+         by apply/coind_proj=>//; apply/eqP.
+      - move=>PARTS; have NP: ~ part_of p (g_expand g)
+          by move=> P_of; move: PARTS; rewrite (partof_unroll cG gG GU).
+        rewrite /look -in_expanded_env (fnd_not_part EPRJ PARTS)/=.
+        by apply/paco2_fold/prj_end.
   Qed.
 
 

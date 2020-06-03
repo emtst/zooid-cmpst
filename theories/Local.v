@@ -629,11 +629,7 @@ Section Semantics.
     | None => None
     end%fmap.
 
-  Definition look (E : {fmap role -> rl_ty}) p :=
-    match E.[? p] with
-    | Some L => L
-    | None => rl_end
-    end%fmap.
+  Definition look (E : {fmap role -> rl_ty}) p := odflt rl_end E.[? p]%fmap.
 
     Definition do_act_lt (L : rl_ty) A :=
     let: (mk_act a p q l t) := A in
