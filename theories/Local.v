@@ -402,7 +402,7 @@ Section Syntax.
 
   Definition do_act_l_ty (L: l_ty) (A : act) : option l_ty :=
     let: (mk_act a p q l t) := A in
-    match L with
+    match lunroll (lrec_depth L) L with
     | l_msg a' q' Ks =>
       match lookup_l_ty_cont Ks l with
       | Some (t', Lp) =>
