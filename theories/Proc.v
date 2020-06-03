@@ -29,7 +29,7 @@ Fixpoint unfold l :=
 Inductive Proc : l_ty -> Type :=
 | Finish : Proc l_end
 
-| Rec : forall (v : nat), Proc (l_var v)
+| Jump : forall (v : nat), Proc (l_var v)
 | Loop L: Proc L -> Proc (l_rec L)
 
 | Recv a (p : role) : Alts a -> Proc (l_msg l_recv p a)
@@ -80,9 +80,9 @@ Module MP.
 
   Parameter loop : forall T1, nat -> t T1 -> t T1.
   Parameter set_current: nat -> t unit.
-
-  Parameter rec : forall T1, nat -> t T1.
 End MP.
+
+
 
 (* Module MP'. *)
 (*   Parameter t : l_ty -> Type. *)
@@ -119,7 +119,7 @@ Fixpoint gen_proc T (n:nat) (p : Proc T): MP.t unit
     | Loop _ p =>
       MP.loop n (gen_proc (n+1) p)
 
-    | Rec x => MP.set_current (n - x - 1)
+    | Jump x => MP.set_current (n - x - 1)
      end
 with gen_alts (a :seq (lbl * (mty * l_ty)))
               (n:nat) (r : role) (alts : Alts a)
@@ -168,13 +168,13 @@ Definition ep2 := Eval compute in gen_proc 0 p2.
 
 (* recursive process that receives or stops *)
 Definition p3 :=
-  Loop(Recv C (@A_cons T_nat _ _ lbl_A (fun=> Finish) (@A_sing T_nat  _ lbl_B (fun=> Rec 0)))).
+  Loop(Recv C (@A_cons T_nat _ _ lbl_A (fun=> Finish) (@A_sing T_nat  _ lbl_B (fun=> Jump 0)))).
 Definition ep3 := Eval compute in gen_proc 0 p3.
 (* Extraction ep3. *)
 
 (* nested recursion *)
 Definition p4 :=
-  Loop(Loop(Recv C (@A_cons T_nat _ _ lbl_A (fun=> Finish) (@A_cons T_nat _ _ lbl_B (fun=> Rec 0) (@A_sing T_nat _ lbl_C (fun=> Rec 1)))))).
+  Loop(Loop(Recv C (@A_cons T_nat _ _ lbl_A (fun=> Finish) (@A_cons T_nat _ _ lbl_B (fun=> Jump 0) (@A_sing T_nat _ lbl_C (fun=> Jump 1)))))).
 Definition ep4 := Eval compute in gen_proc 0 p4.
 (* Extraction ep4. *)
 
@@ -202,7 +202,7 @@ Definition PingPongServer : Proc PP_S.
   (*alts*)
   refine (@A_cons T_unit _ _ Bye (fun=> Finish)
                   (@A_sing T_nat  _ Ping (fun d=> _))).
-  refine (@Send C _ _ T_nat Pong d (Rec 0) _).
+  refine (@Send C _ _ T_nat Pong d (Jump 0) _).
   apply mem_head.
 Defined.
 
@@ -216,7 +216,7 @@ Qed.
 Definition PingPongClient1 : Proc PP_C.
   refine (Loop (@Send S _ _ T_nat Ping 7 (@Recv _ S _) _)).
   (* alts *)
-  refine (@A_sing T_nat  _ Pong (fun=> Rec 0)).
+  refine (@A_sing T_nat  _ Pong (fun=> Jump 0)).
   (* proof that we used the labels under the right type *)
   apply (@mem_drop 1)=>//=.
   apply mem_head.
@@ -265,7 +265,7 @@ Definition PingPongClient3 : Proc PP_C_unrolled.
 
   refine (@Send S _ _ T_nat Ping 7 (@Recv _ S _) _).
   refine (@A_sing T_nat _ Pong (fun=> _)).
-  refine (Rec 0).
+  refine (Jump 0).
 
   apply (@mem_drop 1)=>/=.
   rewrite drop0.
@@ -364,6 +364,36 @@ Section OperationalSemantics.
   Section OneProc.
 
     Definition run_rt_act L (P : Proc L) (A : rt_act) : (Proc (run_act_l_ty L (erase_act A))).
+
+
+      refine (let: (mk_rt_act a p q l T t) := A in _)=>//=.
+
+      move: P l.
+      case L ; try by rewrite/run_act_l_ty/do_act_l_ty.
+
+      case. (* casing on the act *)
+
+      (* send action *)
+      rewrite/run_act_l_ty/do_act_l_ty.
+      case a=>//=.
+      move=>r ; case (q == r)=>//=.
+
+      {
+        move=> Ks P l ; case (lookup_l_ty_cont Ks l)=>//=. (* forgets the lookup is in Ks *)
+        case.
+        move=> a0; case (T == a0).
+
+        admit.
+
+        by [].
+      }
+
+      (* other cases where the process does not step *)
+      by move=>Ks P l ; case (lookup_l_ty_cont Ks l)=>//= ; case.
+      by move=>r Ks P l ; case (lookup_l_ty_cont Ks l)=>//= ; case.
+
+      (* receive case *)
+
     Abort.
 
   End OneProc.
