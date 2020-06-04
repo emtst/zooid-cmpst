@@ -10,21 +10,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Fixpoint unfold l :=
-  match l with
-    | l_end => l_end
-    | l_var v => l_var v
-    | l_msg a r Ks =>
-      l_msg a r
-            (map
-               (fun en =>
-                  let:
-                       (lbl, (pl, l)) := en
-                  in
-                  (lbl, (pl,  unfold l)))
-               Ks)
-    | l_rec l => l_open 0 (l_rec l) (unfold l)
-  end.
 
 Inductive Proc :=
 | Finish
@@ -273,15 +258,7 @@ End OperationalSemantics.
 
 
 
-Section CaseStudies.
-
-(* convenience definition for conditional processes *)
-Definition IFP L (n : bool) (p : Proc L) (p' : Proc L) :=
-  if n then p else p'.
-
-(* Fixpoint proc_lty :
- *)
-
+Section CodeExtraction.
 From Coq Require Extraction.
 Module MP.
   Parameter t : Type -> Type.
@@ -357,6 +334,33 @@ with gen_alts (a :seq (lbl * (mty * l_ty)))
        | A_cons T _ a l dproc alts =>
          gen_alts n r alts (new_f _ T dproc l)
        end.
+
+End CodeExtraction.
+
+Section CaseStudies.
+(* replace by lunroll *)
+Fixpoint unfold l :=
+  match l with
+    | l_end => l_end
+    | l_var v => l_var v
+    | l_msg a r Ks =>
+      l_msg a r
+            (map
+               (fun en =>
+                  let:
+                       (lbl, (pl, l)) := en
+                  in
+                  (lbl, (pl,  unfold l)))
+               Ks)
+    | l_rec l => l_open 0 (l_rec l) (unfold l)
+  end.
+
+(* convenience definition for conditional processes *)
+Definition IFP L (n : bool) (p : Proc L) (p' : Proc L) :=
+  if n then p else p'.
+
+(* Fixpoint proc_lty :
+ *)
 
 (* Some examples *)
 
