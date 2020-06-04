@@ -1200,3 +1200,25 @@ Section TraceEquiv.
   Qed.
 
 End TraceEquiv.
+
+Section InductiveTrace.
+  Definition gty_accepts TRACE g := g_lts TRACE (ig_end (g_expand g)).
+  Definition lty_accepts TRACE e := l_lts TRACE (expand_env e, [fmap]%fmap).
+
+  Definition well_formed g : bool := eproject g.
+
+  Definition project_env g : well_formed g -> {fmap role -> l_ty}%fmap
+    := match eproject g as eg return isSome eg -> {fmap role -> l_ty} with
+       | Some e => fun=>e
+       | None => fun pf => False_rect _ (not_false_is_true pf)
+       end.
+
+  Theorem IndTraceEquiv g (WF : well_formed g) :
+    forall trace, gty_accepts trace g <-> lty_accepts trace (project_env WF).
+  Proof.
+    apply/TraceEquivalence; split;[|by constructor].
+    apply/expand_eProject; rewrite /project_env.
+    by move: WF; rewrite /well_formed; case: eproject.
+  Qed.
+
+End InductiveTrace.
