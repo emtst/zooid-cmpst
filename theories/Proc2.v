@@ -36,8 +36,7 @@ Inductive of_lt : Proc -> l_ty -> Type :=
     of_lt (Recv p alts) (l_msg l_recv p a)
 
 | t_Send (p : role) L a T (l : lbl)
-  (payload : coq_ty T)
-  (K : Proc) :
+  (payload : coq_ty T) (K : Proc) :
     of_lt K L ->
     (l, (T, L)) \in a ->
     of_lt (Send p l payload K) (l_msg l_send p a)
@@ -57,15 +56,6 @@ with of_lt_alts : Alts -> seq (lbl * (mty * l_ty)) -> Type :=
 
 (* CONTINUE HERE *)
 
-Fixpoint lookup_alt_cont T (a : seq (lbl * (mty * l_ty)))
-          (* the existential is silly, it should be what a says *)
-          (l : lbl) (alts : Alts a): option (sigT (fun x => (coq_ty T -> Proc x))) :=
-  match alts with
-  (* | A_sing _ _ l' dproc => *)
-  (*   if l == l' then Some dproc else None *)
-  |_ => None
-  end.
-
 Section OperationalSemantics.
 
   (* runtime action *)
@@ -75,184 +65,68 @@ Section OperationalSemantics.
   Definition erase_act a :=
   let: mk_rt_act a p q l T _ := a in mk_act a p q l T.
 
+  Definition process_alt
+             (T' : mty) (l' : lbl) (dproc : coq_ty T' -> Proc) (A : rt_act) : option Proc.
+    refine(let: mk_rt_act a p q l T t := A in _).
+    refine (if (l == l') (* && (T == T')*) then
+              _
+            else None).
+    destruct (T == T') eqn:HTT'.
+    refine (Some (dproc _ )).
+    move: HTT' t=>/eqP=>HTT'.
+    by rewrite HTT'.
+    exact None.
+  Defined.
 
+  Fixpoint do_step_alts (alts : Alts) (A : rt_act) : option Proc :=
+  match alts with
+  | A_sing _ l' dproc => process_alt l' dproc A
+  | A_cons _ l' dproc alts' =>
+    match process_alt l' dproc A with
+    | Some K => Some K
+    | None => do_step_alts alts' A
+    end
+  end.
 
-(*   SearchAbout rl_ty. *)
-
-  Notation penv := {fmap role -> {T: l_ty & Proc T}}.
-
-  (* Definition eq_penv (P P' : penv) := *)
-  (*   match P, P' with *)
-  (*   |  _, _ => false *)
-  (*   end. *)
-
-  (* Lemma penv_eqP : Equality.axiom eq_penv. *)
-  (* (* Proof. by rewrite /Equality.axiom => [[] []/=]; constructor. Qed. *) *)
-  (* Admitted. *)
-
-  (* Definition penv_eqMixin := EqMixin penv_eqP. *)
-  (* Canonical penv_eqType := Eval hnf in EqType penv penv_eqMixin. *)
-
-  (* Definition pqenv := {fmap role * role -> seq (lbl * {T: mty & coq_ty T}) }. *)
-
-  (* Definition eq_pqenv (Q Q' : pqenv) := *)
-  (*   match Q, Q' with *)
-  (*   |  _, _ => false *)
-  (*   end. *)
-
-  (* Lemma pqenv_eqP : Equality.axiom eq_pqenv. *)
-  (* (* Proof. by rewrite /Equality.axiom => [[] []/=]; constructor. Qed. *) *)
-  (* Admitted. *)
-
-  (* Definition pqenv_eqMixin := EqMixin pqenv_eqP. *)
-  (* Canonical pqenv_eqType := Eval hnf in EqType pqenv pqenv_eqMixin. *)
-
-  (* Definition penq (qs : pqenv) k v := *)
-  (*   match qs.[? k] with *)
-  (*   | Some vs => qs.[ k <- app vs [:: v] ] *)
-  (*   | None => qs.[ k <- [:: v]] *)
-  (*   end%fmap. *)
-
-  (* Definition pdeq (qs : pqenv) k := *)
-  (*   match qs.[? k] with *)
-  (*   | Some vs => *)
-  (*     match vs with *)
-  (*     | [:: v] => Some (v, qs.[~ k]) *)
-  (*     | v :: vs => Some (v, qs.[k <- vs]) *)
-  (*       (* if vs == [::] then Some (v, qs.[~ k]) *) *)
-  (*       (* else Some (v, qs.[k <- vs]) *) *)
-  (*     | [::] => None *)
-  (*     end *)
-  (*   | None => None *)
-  (*   end%fmap. *)
-
-  Definition process_admits_act
-             T (P : Proc T) (a : l_act) (p q : role) (l : lbl) (t : mty) :
-    option l_ty.
-  Abort.
-
-  (* Inductive pstep : act -> penv * pqenv -> penv * pqenv -> Prop := *)
-  (* | ls_send (T : mty) (t : coq_ty T) p q lb (P P' : penv) (Q Q' : pqenv) : *)
-  (*     Q' == penq Q (p, q) (lb, (existT _ T t)) -> *)
-  (*     (* do_act P l_send p q lb t = Some P' -> *) *)
-  (*     pstep (a_send p q lb T) (P, Q) (P', Q') *) (* a_send ceased to exist *)
-  (* | ls_recv t p q lb (P P' : penv) (Q Q' : pqenv) : *)
-  (*     (* deq Q (p, q) == Some ((lb, t), Q') -> *) *)
-  (*     (* do_act P l_recv q p lb t = Some P' -> *) *)
-  (*     pstep (a_recv p q lb t) (P, Q) (P', Q') *)
-  (* . *)
-
-
-  Definition look_proc (E : penv) p :=
-    match E.[? p] with
-    | Some L => L
-    | None => existT _ l_end Finish
-    end%fmap.
-
-  Section OneProc.
-
-
-    Definition run_rt_act L (P : Proc L) (A : rt_act) : (Proc (run_act_l_ty L (erase_act A))).
-      refine (let: (mk_rt_act a p q l T t) := A in _)=>//=.
-
-      (* case P; try by rewrite/run_act_l_ty/do_act_l_ty. *)
-      (* constructor. *)
-      (* constructor. *)
-
-      (* rewrite/run_act_l_ty=>//=. *)
-      (* admit. *)
-
-      (* admit. *)
-
-      move: P l.
-      case L ; try by rewrite/run_act_l_ty/do_act_l_ty.
-
-      case. (* casing on the act *)
-
-      (* send action *)
-      rewrite/run_act_l_ty/do_act_l_ty.
-      case a=>//=.
-      move=>r ; case (q == r)=>//=.
-
-      {
-        move=> Ks P l.
-        destruct (lookup_l_ty_cont Ks l) eqn: Lu.
-        destruct p0.
-
-        case (T == m).
-
-
-        (* inversion P => l' Lu'. *)
-
-
-
-
-        admit. (* ? *)
-
-        easy.
-
-        (* move=> Ks P l ; case (lookup_l_ty_cont Ks l)=>//=. (* forgets the lookup is in Ks *) *)
-        (* case. *)
-        (* move=> a0; case (T == a0). *)
-
-        (* admit. *)
-
-        (* by []. *)
-        easy.
-      }
-
-      (* other cases where the process does not step *)
-      by move=>Ks P l ; case (lookup_l_ty_cont Ks l)=>//= ; case.
-      by move=>r Ks P l ; case (lookup_l_ty_cont Ks l)=>//= ; case.
-
-      (* receive case *)
-
-    Abort.
-
-  End OneProc.
-
-  Definition do_rt_act (P : penv) (A : rt_act) : option penv :=
-    let: (mk_rt_act a p q l t data) := A in
-    match a, look_proc P p with
-    | l_send, existT  _ (Send q' L _ t' l' T' P' _) =>
-      if (q == q') && (l == l') && (t == t') then (* && (T == T') then *) (* <- we may need to say this *)
-        Some P.[p <- existT _ L P']
+  Definition do_step_proc (P : Proc) (A : rt_act) : option Proc :=
+    let: (mk_rt_act a p q l T t) := A in
+    match P with
+    | Send q' T' l' t' K =>
+      if (a == l_send) && (q == q') && (T == T') && (l == l') (* && (t == t') *)
+      then Some K
       else None
-    | l_recv, existT _ (Recv _ q' alts) =>
-      if q == q' then
-        match lookup_alt_cont t l alts with
-          | Some (existT L f) => Some P.[p <- (existT _ L (f data))]
-          | None => None
-        end
-      else None
-    | _, _ => None
-    end%fmap.
-
-  Definition run_rt_step (P : penv) (A : rt_act) : penv :=
-    match do_rt_act P A with
-    | Some P => P
-    | None => P
-    end.
-
-  Inductive pstep : rt_act -> penv -> penv -> Prop :=
-  | ls_rel (Ti : mty) (t : coq_ty Ti)  (sact :rt_act) (P P' : penv) :
-      pstep sact P (run_rt_step P sact)
+    | Recv q' alts =>
+      if  (a == l_recv) && (q == q') then
+        do_step_alts alts A
+      else
+        None
+    | Loop P => None (* here either the process was unfolded or we did it before local type style *)
+    | Jump _ => None (* open process, this is a failure *)
+    | Finish => None
+    end
   .
 
- Definition related (rP : penv) (P : {fmap role -> rl_ty}) : Prop :=
-   forall p, LUnroll (projT1 (look_proc rP p)) (look P p).
+  Definition run_step_proc P A : Proc := odflt P (do_step_proc P A).
 
-  Lemma process_behave
-        (a : rt_act)
-        (PQ  PQ' : {fmap role -> rl_ty} * {fmap role * role -> seq (lbl * mty)})
-        (rP rP' : penv)
-    :
-      related rP PQ.1 ->
-      rP' = run_rt_step rP a ->
-      PQ' = run_step (erase_act a) PQ ->
+(*   Inductive pstep : rt_act -> penv -> penv -> Prop := *)
+(*   | ls_rel (Ti : mty) (t : coq_ty Ti)  (sact :rt_act) (P P' : penv) : *)
+(*       pstep sact P (run_rt_step P sact) *)
+(*   . *)
 
-      pstep a rP rP' -> lstep (erase_act a) PQ PQ'.
-Abort.
+(*  Definition related (rP : penv) (P : {fmap role -> rl_ty}) : Prop := *)
+(*    forall p, LUnroll (projT1 (look_proc rP p)) (look P p). *)
+
+(*   Lemma process_behave *)
+(*         (a : rt_act) *)
+(*         (PQ  PQ' : {fmap role -> rl_ty} * {fmap role * role -> seq (lbl * mty)}) *)
+(*         (rP rP' : penv) *)
+(*     : *)
+(*       related rP PQ.1 -> *)
+(*       rP' = run_rt_step rP a -> *)
+(*       PQ' = run_step (erase_act a) PQ -> *)
+
+(*       pstep a rP rP' -> lstep (erase_act a) PQ PQ'. *)
+(* Abort. *)
 
 End OperationalSemantics.
 
