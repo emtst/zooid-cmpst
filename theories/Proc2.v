@@ -131,8 +131,8 @@ Section OperationalSemantics.
 End OperationalSemantics.
 
 
+(* Code Extraction *)
 
-Section CodeExtraction.
 From Coq Require Extraction.
 Module MP.
   Parameter t : Type -> Type.
@@ -175,6 +175,8 @@ End MP.
 
 (*   (* Parameter rec : forall T1, nat -> t T1. *) *)
 (* End MP'. *)
+
+(*
 
 Fixpoint gen_proc T (n:nat) (p : Proc T): MP.t unit
   := match p with
@@ -373,4 +375,4 @@ Defined.
 
 Definition ppc3 := Eval compute in gen_proc 0 PingPongClient3.
 (* Extraction ppc3. *)
-End CaseStudies.
+*)
