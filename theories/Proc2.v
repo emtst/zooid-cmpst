@@ -88,12 +88,29 @@ Section OperationalSemantics.
     end
   end.
 
+  Definition eq_coq_ty {T} (m : coq_ty T) (n : coq_ty T) : bool := false.
+
+  Lemma coq_ty_eqP {T} : Equality.axiom (@eq_coq_ty T).
+  Admitted.
+
+  Definition coq_ty_eqMixin {T} := EqMixin (@coq_ty_eqP T).
+  Canonical coq_ty_eqType {T} := Eval hnf in EqType (coq_ty T) coq_ty_eqMixin.
+
+
   Definition do_step_proc (P : Proc) (A : rt_act) : option Proc :=
     let: (mk_rt_act a p q l T t) := A in
     match P with
     | Send q' T' l' t' K =>
-      if (a == l_send) && (q == q') && (T == T') && (l == l') (* && (t == t') *)
-      then Some K
+      if (a == l_send) && (q == q') && (l == l') (* && (t == t') this requires work below *)
+      then match @eqP _ T T' with
+           | ReflectT HTT' => (* if the types are equal *)
+             match esym HTT' with
+             | erefl =>
+               (* we refine T = T' and compare the payloads *)
+               fun t=> if t == t' then Some K else None
+             end t
+           | ReflectF _ => None
+           end
       else None
     | Recv q' alts =>
       if  (a == l_recv) && (q == q') then
