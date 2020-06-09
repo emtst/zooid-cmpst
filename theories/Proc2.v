@@ -54,8 +54,6 @@ with of_lt_alts : Alts -> seq (lbl * (mty * l_ty)) -> Type :=
 
 (* Unset Printing Notations. *)
 
-(* CONTINUE HERE *)
-
 Section OperationalSemantics.
 
   (* runtime action *)
@@ -65,18 +63,20 @@ Section OperationalSemantics.
   Definition erase_act a :=
   let: mk_rt_act a p q l T _ := a in mk_act a p q l T.
 
+
   Definition process_alt
-             (T' : mty) (l' : lbl) (dproc : coq_ty T' -> Proc) (A : rt_act) : option Proc.
-    refine(let: mk_rt_act a p q l T t := A in _).
-    refine (if (l == l') (* && (T == T')*) then
-              _
-            else None).
-    destruct (T == T') eqn:HTT'.
-    refine (Some (dproc _ )).
-    move: HTT' t=>/eqP=>HTT'.
-    by rewrite HTT'.
-    exact None.
-  Defined.
+             (T' : mty) (l' : lbl) (dproc : coq_ty T' -> Proc) (A : rt_act) : option Proc:=
+    let: mk_rt_act a p q l T t := A in
+    if (l == l') then
+      match @eqP _ T T' with
+      | ReflectT HTT' =>
+        match esym HTT' with
+        | erefl => fun t => Some (dproc t)
+        end t
+      | ReflectF _ => None
+      end
+    else None
+  .
 
   Fixpoint do_step_alts (alts : Alts) (A : rt_act) : option Proc :=
   match alts with
@@ -151,30 +151,6 @@ Module MP.
   Parameter set_current: nat -> t unit.
 End MP.
 
-
-
-(* Module MP'. *)
-(*   Parameter t : l_ty -> Type. *)
-
-(*   (* Parameter bind : forall T1 T2, t T1 -> (T1 -> t T2) -> t T2. *) *)
-(*   Parameter pure : t l_end. *)
-
-(*   Parameter send : forall (p : role) L a T (l : lbl), *)
-(*       coq_ty T -> (l, (T, L)) \in a -> *)
-(*       t (l_msg l_send p a). *)
-(*   (* Extract Constant send => "ocaml_send". *) *)
-
-(*   Print l_lts_. *)
-
-(*   (* Parameter recv : (lbl -> t unit) -> t unit. *) *)
-(*   (* Parameter recv_one : forall T, role -> t T. *) *)
-
-
-(*   (* Parameter loop : forall T1, nat -> t T1 -> t T1. *) *)
-(*   (* Parameter set_current: nat -> t unit. *) *)
-
-(*   (* Parameter rec : forall T1, nat -> t T1. *) *)
-(* End MP'. *)
 
 (*
 
