@@ -154,10 +154,6 @@ Section OperationalSemantics.
 
   Definition run_step_proc P A : Proc := odflt P (do_step_proc P A).
 
-
-  (* Definition punr P := punroll (prec_depth P) P. *)
-  (* Definition lunr L := lunroll (lrec_depth L) L. *)
-
   Lemma toto P L n:
     of_lt P L -> of_lt (punroll n P) (lunroll n L).
   Admitted.
@@ -166,7 +162,7 @@ Section OperationalSemantics.
     of_lt P L -> prec_depth P = lrec_depth L.
   Admitted.
 
-  Lemma preservation P Ps A L:
+  Theorem preservation P Ps A L:
     of_lt P L ->
     do_step_proc P A = Some Ps ->
     of_lt Ps (run_act_l_ty L (erase_act A)).
