@@ -25,6 +25,46 @@ with Alts :=
 | A_cons {T} (l : lbl) : (coq_ty T -> Proc) -> Alts -> Alts
 .
 
+(* open variable d, with process P2 in process P1 *)
+Fixpoint p_open (d : nat) (P2 P1 : Proc) : Proc :=
+  match P1 with
+  | Finish => Finish
+  | Jump v => if v == d then P2 else P1
+  | Loop P => Loop (p_open d.+1 P2 P)
+  | Recv p alts => Recv p (alt_open d P2 alts)
+  | Send p _ l t P => Send p l t (p_open d P2 P)
+  end
+with alt_open (d : nat) (P2 : Proc) (alts : Alts) : Alts :=
+       match alts with
+       | A_sing _ l dproc =>
+         A_sing l (fun t => p_open d P2 (dproc t))
+       | A_cons _ l dproc alts' =>
+         A_cons l (fun t => p_open d P2 (dproc t)) (alt_open d P2 alts')
+       end
+  .
+
+
+(* counts the top level nestedness of recursion in a process. To count
+   how many unrolls to expose a top level action *)
+Fixpoint prec_depth P :=
+  match P with
+  | Loop P => (prec_depth P).+1
+  | _ => 0
+  end.
+
+(* Unroll d times the toplevel recursion *)
+Fixpoint punroll d P :=
+  match d with
+  | 0 => P
+  | d.+1 =>
+    match P with
+    | Loop P' => punroll d (p_open 0 P P')
+    | _ => P
+    end
+  end.
+(* the correctness conditions is that punroll (prec_depth P) P is
+   either Finish or Send or Recv *)
+
 Inductive of_lt : Proc -> l_ty -> Type :=
 | t_Finish : of_lt Finish l_end
 
@@ -88,20 +128,12 @@ Section OperationalSemantics.
     end
   end.
 
-  Definition eq_coq_ty {T} (m : coq_ty T) (n : coq_ty T) : bool := false.
-
-  Lemma coq_ty_eqP {T} : Equality.axiom (@eq_coq_ty T).
-  Admitted.
-
-  Definition coq_ty_eqMixin {T} := EqMixin (@coq_ty_eqP T).
-  Canonical coq_ty_eqType {T} := Eval hnf in EqType (coq_ty T) coq_ty_eqMixin.
-
-
   Definition do_step_proc (P : Proc) (A : rt_act) : option Proc :=
     let: (mk_rt_act a p q l T t) := A in
-    match P with
+    (* we unroll the process to expose actions *)
+    match punroll (prec_depth P) P with
     | Send q' T' l' t' K =>
-      if (a == l_send) && (q == q') && (l == l') (* && (t == t') this requires work below *)
+      if (a == l_send) && (q == q') && (l == l') (* && (t == t') this requires the work below *)
       then match @eqP _ T T' with
            | ReflectT HTT' => (* if the types are equal *)
              match esym HTT' with
@@ -117,33 +149,18 @@ Section OperationalSemantics.
         do_step_alts alts A
       else
         None
-    | Loop P => None (* here either the process was unfolded or we did it before local type style *)
-    | Jump _ => None (* open process, this is a failure *)
+    | Loop P => None (* this cannot happen as we unrolled the process *)
+    | Jump _ => None (* open process, it can't step *)
     | Finish => None
     end
   .
 
   Definition run_step_proc P A : Proc := odflt P (do_step_proc P A).
 
-(*   Inductive pstep : rt_act -> penv -> penv -> Prop := *)
-(*   | ls_rel (Ti : mty) (t : coq_ty Ti)  (sact :rt_act) (P P' : penv) : *)
-(*       pstep sact P (run_rt_step P sact) *)
-(*   . *)
 
-(*  Definition related (rP : penv) (P : {fmap role -> rl_ty}) : Prop := *)
-(*    forall p, LUnroll (projT1 (look_proc rP p)) (look P p). *)
-
-(*   Lemma process_behave *)
-(*         (a : rt_act) *)
-(*         (PQ  PQ' : {fmap role -> rl_ty} * {fmap role * role -> seq (lbl * mty)}) *)
-(*         (rP rP' : penv) *)
-(*     : *)
-(*       related rP PQ.1 -> *)
-(*       rP' = run_rt_step rP a -> *)
-(*       PQ' = run_step (erase_act a) PQ -> *)
-
-(*       pstep a rP rP' -> lstep (erase_act a) PQ PQ'. *)
-(* Abort. *)
+  Lemma preservation P A L:
+        of_lt P L -> of_lt (run_step_proc P A) (run_act_l_ty L (erase_act A)).
+  Abort.
 
 End OperationalSemantics.
 
