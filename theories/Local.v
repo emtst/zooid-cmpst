@@ -392,19 +392,11 @@ Section Syntax.
   + by [].
   Qed.
 
-  Fixpoint lookup_l_ty_cont (Ks : seq (lbl * (mty * l_ty))) (l :lbl) : option (mty * l_ty) :=
-    match Ks with
-    | [::] => None
-    | (l', (t, L)) :: Ks' =>
-      if l == l' then Some (t, L)
-      else lookup_l_ty_cont Ks' l
-    end.
-
   Definition do_act_l_ty (L: l_ty) (A : act) : option l_ty :=
     let: (mk_act a p q l t) := A in
     match lunroll (lrec_depth L) L with
     | l_msg a' q' Ks =>
-      match lookup_l_ty_cont Ks l with
+      match find_cont Ks l with
       | Some (t', Lp) =>
         if (a == a') && (q == q') && (t == t')
         then Some Lp
@@ -414,11 +406,7 @@ Section Syntax.
     | _ => None
     end.
 
-  Definition run_act_l_ty (L: l_ty) (A : act) : l_ty :=
-    match do_act_l_ty L A with
-    | Some L' => L'
-    | None => L
-    end.
+  Definition run_act_l_ty (L: l_ty) (A : act) : l_ty := odflt L (do_act_l_ty L A).
 
 End Syntax.
 

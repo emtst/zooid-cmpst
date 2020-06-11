@@ -69,7 +69,7 @@ Inductive of_lt : Proc -> l_ty -> Type :=
 | t_Finish : of_lt Finish l_end
 
 | t_Jump (v : nat) : of_lt (Jump v) (l_var v)
-| t_Loop L P : of_lt P L -> of_lt P (l_rec L)
+| t_Loop L P : of_lt P L -> of_lt (Loop P) (l_rec L)
 
 | t_Recv a (p : role) (alts : Alts) :
     of_lt_alts alts a ->
@@ -78,7 +78,7 @@ Inductive of_lt : Proc -> l_ty -> Type :=
 | t_Send (p : role) L a T (l : lbl)
   (payload : coq_ty T) (K : Proc) :
     of_lt K L ->
-    (l, (T, L)) \in a ->
+    find_cont a l == Some (T, L) ->
     of_lt (Send p l payload K) (l_msg l_send p a)
 
 with of_lt_alts : Alts -> seq (lbl * (mty * l_ty)) -> Type :=
@@ -105,7 +105,7 @@ Section OperationalSemantics.
 
 
   Definition process_alt
-             (T' : mty) (l' : lbl) (dproc : coq_ty T' -> Proc) (A : rt_act) : option Proc:=
+             (T' : mty) (l' : lbl) (dproc : coq_ty T' -> Proc) (A : rt_act) (f: rt_act -> option Proc) : option Proc:=
     let: mk_rt_act a p q l T t := A in
     if (l == l') then
       match @eqP _ T T' with
@@ -115,17 +115,14 @@ Section OperationalSemantics.
         end t
       | ReflectF _ => None
       end
-    else None
+    else f A
   .
 
   Fixpoint do_step_alts (alts : Alts) (A : rt_act) : option Proc :=
   match alts with
-  | A_sing _ l' dproc => process_alt l' dproc A
+  | A_sing _ l' dproc => process_alt l' dproc A (fun=> None)
   | A_cons _ l' dproc alts' =>
-    match process_alt l' dproc A with
-    | Some K => Some K
-    | None => do_step_alts alts' A
-    end
+    process_alt l' dproc A (do_step_alts alts')
   end.
 
   Definition do_step_proc (P : Proc) (A : rt_act) : option Proc :=
@@ -158,9 +155,79 @@ Section OperationalSemantics.
   Definition run_step_proc P A : Proc := odflt P (do_step_proc P A).
 
 
-  Lemma preservation P A L:
-        of_lt P L -> of_lt (run_step_proc P A) (run_act_l_ty L (erase_act A)).
-  Abort.
+  (* Definition punr P := punroll (prec_depth P) P. *)
+  (* Definition lunr L := lunroll (lrec_depth L) L. *)
+
+  Lemma toto P L n:
+    of_lt P L -> of_lt (punroll n P) (lunroll n L).
+  Admitted.
+
+  Lemma tato P L:
+    of_lt P L -> prec_depth P = lrec_depth L.
+  Admitted.
+
+  Lemma preservation P Ps A L:
+    of_lt P L ->
+    do_step_proc P A = Some Ps ->
+    of_lt Ps (run_act_l_ty L (erase_act A)).
+  Proof.
+
+    rewrite/run_step_proc/run_act_l_ty/do_step_proc/do_act_l_ty.
+    case A => a p q l T t.
+    move=> Hp.
+    rewrite (tato Hp).
+    move:(toto (lrec_depth L) Hp).
+
+    move:(punroll _ _) (lunroll _ _)=> P' L'//=.
+
+    case=>//.
+    {
+      move=>a0 p0 alts.
+      case:ifP; last by case: (find_cont a0 l)=>[[t' Lp] | ].
+      move=>/andP[/eqP->_{p0}].
+      elim.
+      {
+        move=> T0 L0 l0 rK H//=.
+        rewrite/extend/empty eq_sym.
+        case:ifP=>//=.
+
+        case:(boolP (T==T0)) ; last by case:eqP.
+        move=>Heq; move:Heq t=>/eqP->{T} t.
+        case:eqP=>p0//.
+        move:{p0}(esym p0)=>Hesym.
+        rewrite (eq_irrelevance Hesym erefl)=>//=.
+        move=>_ []<-//.
+      }
+      {
+        move=> T0 L0 a1 l0 rK alts0 H Halts//= IH.
+        rewrite/extend eq_sym.
+        case:ifP=>//.
+
+        case:(boolP (T==T0)) ; last by case:eqP.
+        move=>Heq{IH}; move:Heq t=>/eqP->{T} t.
+        case:eqP=>p0//.
+        move:{p0}(esym p0)=>Hesym.
+        rewrite (eq_irrelevance Hesym erefl)=>//=.
+        move=>_ []<-//.
+      }
+    }
+
+    {
+      move=>p0 L0 a0 T0 l0 t0 K Hk Hfind.
+      case:ifP ; last by case Hfind':(find_cont a0 l)=>[[T1 L1]|].
+
+      move=>/andP[/andP[/eqP-> /eqP->] /eqP->].
+      move:Hfind=>/eqP->.
+      rewrite!eq_refl/=.
+      case:ifP; last by case:eqP.
+      move=>Heq; move:Heq t=>/eqP->{T} t.
+      case:eqP=>p0'//.
+      move:{p0'}(esym p0')=>Hesym.
+      rewrite (eq_irrelevance Hesym erefl)=>//=.
+      case:ifP=>//.
+      move=>_ []<-//.
+    }
+  Qed.
 
 End OperationalSemantics.
 
