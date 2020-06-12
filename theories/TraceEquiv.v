@@ -961,13 +961,10 @@ Section TraceEquiv.
                                      | None => None
                                      end)).
       by move: (dom' DOM Cl)=>[G'] Cl'; apply/st_unr/st_send; rewrite Cl'.
-    - move=> F' T' C' PRJ.
-      have: False.
-      { move: PRJ; elim/Project_inv=>// .
-        + by move=> q CG CL [->->->]; rewrite eq_refl.
-        + by move=> q s CG CL L2 qs T'q /eqP-T's [_ /esym/T's].
-      }
-      by [].
+    - move=> F' T' C' PRJ; exfalso.
+      move: PRJ; elim/Project_inv=>// .
+      + by move=> q CG CL [->->->]; rewrite eq_refl.
+      + by move=> q s CG CL L2 qs T'q /eqP-T's [_ /esym/T's].
     - move=> p {}F T' C' H0 Ih.
       case: (boolP (p == F))=>[/eqP->|].
       + move=> PRJ; have [<- DOM]: T = T'/\ same_dom C' C.

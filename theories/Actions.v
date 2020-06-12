@@ -166,7 +166,7 @@ Definition extend A (L : lbl) (X : A) f :=
   fun L' => if L == L' then Some X else f L'.
 
 Fixpoint find_cont A (c : seq (lbl * (mty * A)))
-  : lbl /-> mty * A
+  : lbl -> option (mty * A)
   := match c with
      | [::] => empty A
      | (k, v) :: c => extend k v (find_cont c)

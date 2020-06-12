@@ -670,12 +670,15 @@ Section Semantics.
 
   Definition grel := g_ty -> rg_ty -> Prop.
   Inductive g_unroll (r : grel) : grel :=
-  | gu_end : @g_unroll r g_end rg_end
-  | gu_rec IG CG : r (g_open 0 (g_rec IG) IG) CG -> @g_unroll r (g_rec IG) CG
+  | gu_end :
+      g_unroll r g_end rg_end
+  | gu_rec IG CG :
+      r (g_open 0 (g_rec IG) IG) CG ->
+      g_unroll r (g_rec IG) CG
   | gu_msg FROM TO iCONT cCONT :
       same_dom (find_cont iCONT) cCONT ->
       R_all r (find_cont iCONT) cCONT ->
-      @g_unroll r (g_msg FROM TO iCONT) (rg_msg FROM TO cCONT).
+      g_unroll r (g_msg FROM TO iCONT) (rg_msg FROM TO cCONT).
   Definition GUnroll IG CG : Prop := paco2 g_unroll bot2 IG CG.
 
   Derive Inversion gunr_inv with (forall r G cG, g_unroll r G cG) Sort Prop.
