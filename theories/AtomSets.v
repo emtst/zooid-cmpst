@@ -25,7 +25,7 @@ Inductive mty : Type :=
 | T_unit : mty
 | T_sum : mty -> mty -> mty
 | T_prod : mty -> mty -> mty
-| T_seq : mty -> mty
+(* | T_seq : mty -> mty *)
 .
 
 Fixpoint mty_eq (m1 m2 : mty) : bool :=
@@ -35,23 +35,24 @@ Fixpoint mty_eq (m1 m2 : mty) : bool :=
   | T_unit, T_unit => true
   | T_sum l1 r1, T_sum l2 r2 => mty_eq l1 l2 && mty_eq r1 r2
   | T_prod l1 r1, T_prod l2 r2 => mty_eq l1 l2 && mty_eq r1 r2
-  | T_seq t1, T_seq t2 => mty_eq t1 t2
+  (* | T_seq t1, T_seq t2 => mty_eq t1 t2 *)
   | _, _ => false
   end.
 
 Lemma mty_eqP t1 t2 : reflect (t1 = t2) (mty_eq t1 t2).
 Proof.
-  elim: t1 t2 => [|||l1 Ihl r1 Ihr|l1 Ihl r1 Ihr|t1 Ih]
-                   [|||l2 r2|l2 r2| t2]/=; try by constructor.
-  - case: Ihl=>[<-|E]/=; last by constructor=>[[/E]].
-    case: Ihr=>[<-|E]/=; last by constructor=>[[/E]].
-    by constructor.
-  - case: Ihl=>[<-|E]/=; last by constructor=>[[/E]].
-    case: Ihr=>[<-|E]/=; last by constructor=>[[/E]].
-    by constructor.
-  - case: Ih =>[<-|E]/=; last by constructor=>[[/E]].
-    by constructor.
-Qed.
+(*   elim: t1 t2 => [|||l1 Ihl r1 Ihr|l1 Ihl r1 Ihr|t1 Ih] *)
+(*                    [|||l2 r2|l2 r2| t2]/=; try by constructor. *)
+(*   - case: Ihl=>[<-|E]/=; last by constructor=>[[/E]]. *)
+(*     case: Ihr=>[<-|E]/=; last by constructor=>[[/E]]. *)
+(*     by constructor. *)
+(*   - case: Ihl=>[<-|E]/=; last by constructor=>[[/E]]. *)
+(*     case: Ihr=>[<-|E]/=; last by constructor=>[[/E]]. *)
+(*     by constructor. *)
+(*   - case: Ih =>[<-|E]/=; last by constructor=>[[/E]]. *)
+(*     by constructor. *)
+(* Qed. *)
+Admitted.
 
 Definition mty_eqMixin := EqMixin mty_eqP.
 Canonical mty_eqType := Eval hnf in EqType mty mty_eqMixin.
@@ -63,8 +64,65 @@ Fixpoint coq_ty m :=
   | T_unit => unit
   | T_sum l r => coq_ty l + coq_ty r
   | T_prod l r => coq_ty l * coq_ty r
-  | T_seq l => seq (coq_ty l)
+  (* | T_seq l => seq (coq_ty l) *)
   end%type.
+
+Definition eq_coq_ty {T} (m : coq_ty T) (n : coq_ty T) : bool.
+  move: m n.
+  elim: T ; try( move=>m n ;refine (m==n)).
+
+  {
+    move=> Tl Eql Tr Eqr m n.
+
+    elim m ; elim n.
+
+    apply Eql.
+
+    move=> _ _. apply false.
+    move=> _ _. apply false.
+
+    apply Eqr.
+  }
+
+  {
+    move=> Tl Eql Tr Eqr m n.
+
+    case m=>ml mr.
+    case n=>nl nr.
+    refine (_ && _).
+
+    apply: Eql.
+    apply: ml.
+    apply: nl.
+
+    apply: Eqr.
+    apply: mr.
+    apply: nr.
+  }
+
+Defined.
+
+  (* := *)
+  (* match T with *)
+  (* | T_nat => fun m n => m == n *)
+  (* (* | T_bool => fun m n => m == n *) *)
+  (* (* | T_unit => fun m n => m == n *) *)
+  (* (* | T_sum l r => _ *) *)
+  (* (* | T_prod l r => _ *) *)
+  (* (* | T_seq l => _ *) *)
+
+  (* end m n. *)
+
+
+Lemma coq_ty_eqP {T} : Equality.axiom (@eq_coq_ty T).
+Proof.
+  move=>x. move: x.
+  elim T=>//= ; try (intros ; apply eqP).
+  (* these two cases turn horrendous because of the tactic based function definition *)
+Admitted.
+
+Definition coq_ty_eqMixin {T} := EqMixin (@coq_ty_eqP T).
+Canonical coq_ty_eqType {T} := Eval hnf in EqType (coq_ty T) coq_ty_eqMixin.
 
 Definition g_prefix := ((role * role) * mty)%type.
 
