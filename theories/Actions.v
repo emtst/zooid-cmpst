@@ -250,6 +250,18 @@ Lemma dom' T T' (C0 : lbl /-> mty * T) (C1 : lbl /-> mty * T')
   : forall l Ty G, C1 l = Some (Ty, G) -> exists G', C0 l = Some (Ty, G').
 Proof. by move=> l Ty; move: (DOM l Ty)=>[_ /(_ (ex_intro _ _ _))-H]. Qed.
 
+
+Lemma dom_none A B (C0 : lbl /-> mty * A) (C1 : lbl /-> mty * B)
+  : same_dom C0 C1 -> forall l, C0 l = None -> C1 l = None.
+Proof.
+  move=>DOM l Cl; case C1l: (C1 l)=>[[Ty] b|]//.
+    by move: (dom' DOM C1l)=>[G0]; rewrite Cl.
+Qed.
+
+Lemma dom_none' A B (C0 : lbl /-> mty * A) (C1 : lbl /-> mty * B)
+  : same_dom C0 C1 -> forall l, C1 l = None -> C0 l = None.
+Proof. by rewrite same_dom_sym; apply/dom_none. Qed.
+
 Lemma samedom_nilp T T'
       (C0 : seq (lbl * (mty * T))) (C1 : seq (lbl * (mty * T')))
   : same_dom (find_cont C0) (find_cont C1) -> nilp C1 -> nilp C0.

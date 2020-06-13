@@ -602,17 +602,6 @@ Section TraceEquiv.
       + by rewrite fnd_set xpair_eqE andbC eq_sym (negPf pT).
   Qed.
 
-  Lemma dom_none A B (C0 : lbl /-> mty * A) (C1 : lbl /-> mty * B)
-    : same_dom C0 C1 -> forall l, C0 l = None -> C1 l = None.
-  Proof.
-    move=>DOM l Cl; case C1l: (C1 l)=>[[Ty] b|]//.
-    by move: (dom' DOM C1l)=>[G0]; rewrite Cl.
-  Qed.
-
-  Lemma dom_none' A B (C0 : lbl /-> mty * A) (C1 : lbl /-> mty * B)
-    : same_dom C0 C1 -> forall l, C1 l = None -> C0 l = None.
-  Proof. by rewrite same_dom_sym; apply/dom_none. Qed.
-
   Definition buildC (C : lbl /-> mty * ig_ty) E p :=
     fun l => match C l with
              | Some (Ty, _) => Some (Ty, look E p)
