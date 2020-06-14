@@ -836,25 +836,11 @@ Section Semantics.
     by rewrite -/(n_open 0 n.+1 _); rewrite Ih addnS.
   Qed.
 
-  Lemma nopen_end d : n_open 0 d l_end = l_end.
-  Proof. by elim: d 0 =>[|d Ih] n //=; rewrite Ih/=. Qed.
-
-  Lemma nopen_var m n L v : n_open m n L = l_var v -> L = l_var v.
+  Lemma nopen_var' m n L v : n_open m n L = l_var v -> L = l_var v.
   Proof.
     elim: n m=>//= n Ih m.
     case EQ: n_open=>[|v'||]//=; case: ifP=>// _ [EV].
     by move: EV EQ=>->{v'}/Ih.
-  Qed.
-
-  Lemma nopen_msg m n L a p C :
-    n_open m n L = l_msg a p C ->
-    exists C', L = l_msg a p C'.
-  Proof.
-    elim: n =>[| n Ih]//= in m C *;
-      first by move=>->; exists C; congr l_msg; elim: C=>//= [][l][Ty] G Ks<-.
-    case EQ: n_open=>[|v||a' p' C']//=; first by case: ifP.
-    move=> [EQa EQp EQc]; move: EQa EQp EQc EQ=>->-> EQc EQ{a' p'}.
-    by move: (Ih _ _ EQ).
   Qed.
 
   Lemma getnr_nonrec L : match get_nr L with
@@ -870,7 +856,7 @@ Section Semantics.
     elim: n =>[|n Ih] //= in d L' *;
       first by move=> H; move: H (getnr_nonrec L)=>->.
     case EQ: (n_open d.+1 n (get_nr L)) => [|v|Lr|]//=.
-    - case: ifP=>///eqP-EV; rewrite (nopen_var EQ)/=EV =>{}EQ.
+    - case: ifP=>///eqP-EV; rewrite (nopen_var' EQ)/=EV =>{}EQ.
       exists d; rewrite eq_refl; split=>//.
       rewrite addnS; by apply/leq_addr.
     - move: (Ih _ _ EQ)=>[m][BND] LE _.
@@ -887,56 +873,39 @@ Section Semantics.
     - by rewrite addnS -!addSn Ih.
   Qed.
 
-  Lemma nopen_var_rec d n m :
-    n_open d n (l_var m) = if (m < d) || (m >= d + n)
-                           then l_var m else n_rec m.+1 (l_var m).
+  Lemma nrec_lrecdepthI L : L = n_rec (lrec_depth L) (get_nr L).
+  Proof. by elim: L=>//= L<-. Qed.
+
+  Lemma nrec_twice n m L : n_rec n (n_rec m L) = n_rec (n + m) L.
+  Proof. by elim n=>//= {}n->. Qed.
+
+  Lemma lopen_bound d n m L :
+    m < d + n ->
+    l_open d L (n_rec n (l_var m)) = n_rec n (l_var m).
   Proof.
-    elim: n=>[|n Ih]/= in d *.
-    - by rewrite addn0 leqNgt orNb.
-    - rewrite Ih; case: (ifP ((m < d) || _ ))=>[/orP-[]|]H.
-      + move: H (leqW H); rewrite ltn_neqAle=>/andP-[/negPf-NE _]->/=.
-        by rewrite NE.
-      + move: H; rewrite addnS addSn => H; rewrite H orbC/=.
-        move: (leq_ltn_trans (leq_addr n d) H).
-        by rewrite ltn_neqAle eq_sym=>/andP-[/negPf-> _]/=.
-      + move: H=>/(rwP negPf); rewrite negb_or addnS addSn andbC=>/andP-[H1].
-        rewrite (negPf H1) orbF ltn_neqAle negb_and negbK=>/orP-[]H2.
-        * by move: H2 H1=>/eqP-<-{d} _; rewrite leqnn /= eq_refl.
-        * rewrite /leq/subn/=-/subn-/(leq m d) (negPf H2)/=; congr l_rec.
-          by rewrite lopen_nrec.
+    elim: n=>[|n Ih]//= in d *; last by rewrite addnS -addSn=>/Ih->.
+    by rewrite addn0 ltn_neqAle=>/andP-[/negPf->].
   Qed.
-
-  Lemma getnr_nrec m v : get_nr (n_rec m (l_var v)) = l_var v.
-  Proof. by elim m. Qed.
-
-  Lemma lrecdepth_nrec m v : lrec_depth (n_rec m (l_var v)) = m.
-  Proof. by elim m=>//= n ->. Qed.
 
   Lemma lunroll_inf Li Lr Li' :
     lunroll (lrec_depth Li) Li = l_rec Li' ->
     LUnroll Li Lr.
   Proof.
     rewrite lunroll_nopen=>/nopen_rec-[m]; rewrite add0n=>[][BND].
-    rewrite -(@add0n (lrec_depth _)) -{2}/(n_open 0 0 Li).
-    move: {-2}0=>n; move EQ: (n_open 0 n Li) => L mn.
-    move: {EQ BND mn} (conj EQ (conj BND mn))=> H.
-    move: (ex_intro (fun=>_) m H)=>{m}H.
-    move: (ex_intro (fun=>_) n H)=>{n}H.
-    move: (ex_intro (fun=>_) Li H)=>{Li Li'}H.
-    move: L Lr H; apply/paco2_acc=>r _.
-    move=>/(_ _ _ (ex_intro _ _ (ex_intro _ _ (ex_intro _ _ (conj erefl (conj _ _))))))-CIH.
-    move=> L Lr [Li][n][m][<-]{L}[BND][REC].
-    move: BND REC; case: Li=>//=.
-    - move=> v /eqP->; rewrite addn0=>mn/=.
-      rewrite nopen_var_rec ltn0 leqNgt mn /negb/orb=>{mn n v}.
-      move=>/=; apply/paco2_fold; constructor; right.
-      rewrite -/(n_open _ 1 _); apply/(CIH 1 _ _ m);
-        first by rewrite getnr_nrec/= eq_refl.
-      by rewrite lrecdepth_nrec.
-    - move=> L; rewrite nopen_rec_comm.
-      move=>BND LE; apply/paco2_fold; constructor.
-      rewrite -/(n_open _ n.+1 _); right; apply/(CIH _ _ _ _ BND).
-      by move: LE; rewrite addnS.
+    rewrite {2}(nrec_lrecdepthI Li).
+    move: (getnr_nonrec Li) BND; case: (get_nr Li)=>//= v _ /eqP->.
+    move: (lrec_depth Li)=>d {v Li Li'}.
+    move EQ: (n_rec d (l_var m))=>Li LT; move: {EQ LT}(conj EQ LT)=>H.
+    move: (ex_intro (fun=>_) m (ex_intro (fun=>_) d H))=>{m d}H.
+    move: Li Lr H; apply/paco2_acc=> r _.
+    move=>/(_ _ _ (ex_intro _ _ (ex_intro _ _ (conj erefl _ ))))-CIH Li Lr.
+    move=>[m][n][<-]{Li}; case: n=>//= n LE.
+    apply/paco2_fold; constructor; move: LE; case: (boolP (n == m)).
+    - move=>/eqP-> _; rewrite lopen_nrec eq_refl nrec_comm nrec_twice addSn.
+      by right; apply/CIH; apply: leq_addr.
+    - move=> H0 H1; move: {H0 H1} (conj H0 H1)=>/andP.
+      rewrite eq_sym -ltn_neqAle => LE; rewrite lopen_bound //.
+      by right; apply/CIH.
   Qed.
 
   Lemma do_act_works Li Lr A :
