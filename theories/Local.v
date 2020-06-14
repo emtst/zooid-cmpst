@@ -1031,6 +1031,38 @@ Section Semantics.
   Definition l_lts t L := paco2 l_lts_ bot2 t L.
   Derive Inversion llts_inv with (forall tr G, l_lts tr G) Sort Prop.
 
+  Definition rty_trc := rl_ty -> trace -> Prop.
+  Inductive l_trc_ (p : role) (r : rty_trc) : rty_trc :=
+  | l_trc_end : l_trc_ p r rl_end tr_end
+  | l_trc_msg A TR L L' :
+      subject A == p -> do_act_lt L A = Some L' ->
+      r L' TR ->
+      l_trc_ p r L (tr_next A TR)
+  .
+  Lemma l_trc_monotone p : monotone2 (l_trc_ p).
+  Admitted.
+  Definition l_trc p t L := paco2 (l_trc_ p) bot2 t L.
+
+  Definition trc_rel := trace -> trace -> Prop.
+  Inductive sub_trc_ (p : role) (r : trc_rel) : trc_rel :=
+  | sub_trc_end : sub_trc_ p r tr_end tr_end
+  | sub_trc_skip A TRp TR :
+      subject A != p ->
+      r TRp TR ->
+      sub_trc_ p r TRp (tr_next A TR)
+  | sub_trc_msg A TRp TR :
+      subject A == p ->
+      r TRp TR ->
+      sub_trc_ p r (tr_next A TRp) (tr_next A TR)
+  .
+  Lemma sub_trc_monotone p : monotone2 (sub_trc_ p).
+  Admitted.
+  Definition sub_trc p T0 T1 := paco2 (sub_trc_ p) bot2 T0 T1.
+
+  Lemma ltrc_sound p E Tp T
+    : l_trc p (look E.1 p) Tp -> l_lts T E -> sub_trc p Tp T.
+  Admitted.
+
 End Semantics.
 
 Hint Constructors EqL_.
