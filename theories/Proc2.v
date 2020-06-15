@@ -154,12 +154,29 @@ Section OperationalSemantics.
 
   Definition run_step_proc P A : Proc := odflt P (do_step_proc P A).
 
-  Lemma toto P L n:
-    of_lt P L -> of_lt (punroll n P) (lunroll n L).
-  Admitted.
-
-  Lemma tato P L:
+  Lemma same_red_depth P L:
     of_lt P L -> prec_depth P = lrec_depth L.
+  Proof.
+    elim=>// L0 P0 H0 Eq.
+    rewrite/prec_depth/lrec_depth=>//=.
+    by rewrite-/prec_depth-/lrec_depth Eq.
+  Qed.
+
+  Lemma unroll_preserves_type P L n:
+    of_lt P L -> of_lt (punroll n P) (lunroll n L).
+  Proof.
+    elim ; try (elim n=>//= ; constructor)=>//=.
+    { (* interesting case *)
+      admit.
+    }
+    { (* case for t_Send (unncecesarily annoying) *)
+      elim n=>p L0 a T l payload K HL0 HL0' Hfind ;
+        first by move:(@t_Send p L0 a T l payload K HL0 Hfind).
+      move:Hfind ; case: HL0' ; case: T=>//= ; try easy ;
+        try (intros; by move:(@t_Send a _ l payload _ HL0 _ X i)).
+      move=>L1 p0 Hp0 Hunroll HFind.
+      by move:(@t_Send a _ l payload K HL0 _ Hp0 HFind).
+    }
   Admitted.
 
   Theorem preservation P Ps A L:
@@ -171,8 +188,8 @@ Section OperationalSemantics.
     rewrite/run_step_proc/run_act_l_ty/do_step_proc/do_act_l_ty.
     case A => a p q l T t.
     move=> Hp.
-    rewrite (tato Hp).
-    move:(toto (lrec_depth L) Hp).
+    rewrite (same_red_depth Hp).
+    move:(unroll_preserves_type (lrec_depth L) Hp).
 
     move:(punroll _ _) (lunroll _ _)=> P' L'//=.
 
