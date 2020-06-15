@@ -13,4 +13,4 @@ theories/Projection.v
 theories/WellFormed.v
 theories/QProjection.v
 theories/TraceEquiv.v
-theories/Proc2.v
+theories/Proc.v

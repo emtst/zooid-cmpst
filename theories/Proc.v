@@ -10,62 +10,277 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Fixpoint unfold l :=
-  match l with
-    | l_end => l_end
-    | l_var v => l_var v
-    | l_msg a r Ks =>
-      l_msg a r
-            (map
-               (fun en =>
-                  let:
-                       (lbl, (pl, l)) := en
-                  in
-                  (lbl, (pl,  unfold l)))
-               Ks)
-    | l_rec l => l_open 0 (l_rec l) (unfold l)
+
+Inductive Proc :=
+| Finish
+
+| Jump (v : nat)
+| Loop of Proc
+
+| Recv (p : role) of Alts
+| Send (p : role) T (l : lbl) : coq_ty T -> Proc -> Proc
+
+with Alts :=
+| A_sing {T} (l : lbl) : (coq_ty T -> Proc) -> Alts
+| A_cons {T} (l : lbl) : (coq_ty T -> Proc) -> Alts -> Alts
+.
+
+(* open variable d, with process P2 in process P1 *)
+Fixpoint p_open (d : nat) (P2 P1 : Proc) : Proc :=
+  match P1 with
+  | Finish => Finish
+  | Jump v => if v == d then P2 else P1
+  | Loop P => Loop (p_open d.+1 P2 P)
+  | Recv p alts => Recv p (alt_open d P2 alts)
+  | Send p _ l t P => Send p l t (p_open d P2 P)
+  end
+with alt_open (d : nat) (P2 : Proc) (alts : Alts) : Alts :=
+       match alts with
+       | A_sing _ l dproc =>
+         A_sing l (fun t => p_open d P2 (dproc t))
+       | A_cons _ l dproc alts' =>
+         A_cons l (fun t => p_open d P2 (dproc t)) (alt_open d P2 alts')
+       end
+  .
+
+
+(* counts the top level nestedness of recursion in a process. To count
+   how many unrolls to expose a top level action *)
+Fixpoint prec_depth P :=
+  match P with
+  | Loop P => (prec_depth P).+1
+  | _ => 0
   end.
 
+(* Unroll d times the toplevel recursion *)
+Fixpoint punroll d P :=
+  match d with
+  | 0 => P
+  | d.+1 =>
+    match P with
+    | Loop P' => punroll d (p_open 0 P P')
+    | _ => P
+    end
+  end.
+(* the correctness conditions is that punroll (prec_depth P) P is
+   either Finish or Send or Recv *)
+
+(* (* alternative definition with the order swapped *) *)
+(* Fixpoint punroll' d P := *)
+(*     match P with *)
+(*     | Loop P' => *)
+(*       match d with *)
+(*       | 0 => P *)
+(*       | d.+1 => punroll' d (p_open 0 P P') *)
+(*       end *)
+(*     | _ => P *)
+(*     end. *)
+
+(*   Fixpoint lunroll' d G := *)
+(*       match G with *)
+(*       | l_rec G' => *)
+(*         match d with *)
+(*         | 0 => G *)
+(*         | d.+1 => lunroll d (l_open 0 G G') *)
+(*         end *)
+(*       | _ => G *)
+(*     end. *)
 
 
+Inductive of_lt : Proc -> l_ty -> Type :=
+| t_Finish : of_lt Finish l_end
 
-Inductive Proc : l_ty -> Type :=
-| Finish : Proc l_end
+| t_Jump (v : nat) : of_lt (Jump v) (l_var v)
+| t_Loop L P : of_lt P L -> of_lt (Loop P) (l_rec L)
 
-| Jump : forall (v : nat), Proc (l_var v)
-| Loop L: Proc L -> Proc (l_rec L)
+| t_Recv a (p : role) (alts : Alts) :
+    of_lt_alts alts a ->
+    of_lt (Recv p alts) (l_msg l_recv p a)
 
-| Recv a (p : role) : Alts a -> Proc (l_msg l_recv p a)
-| Send (p : role) L a T (l : lbl) :
-  coq_ty T ->
-  Proc L ->
-  (l, (T, L)) \in a ->
-  Proc (l_msg l_send p a)
+| t_Send (p : role) L a T (l : lbl)
+  (payload : coq_ty T) (K : Proc) :
+    of_lt K L ->
+    find_cont a l == Some (T, L) ->
+    of_lt (Send p l payload K) (l_msg l_send p a)
 
-with Alts : seq (lbl * (mty * l_ty)) -> Type :=
-| A_sing T L l : (coq_ty T -> Proc L) -> Alts [:: (l, (T, L))]
-| A_cons T L a l : (coq_ty T -> Proc L) ->
-                   Alts a ->
-                   Alts ((l, (T, L)) :: a)
+with of_lt_alts : Alts -> seq (lbl * (mty * l_ty)) -> Type :=
+| t_A_sing T L l (rK : (coq_ty T -> Proc)) :
+    (forall payload: coq_ty T, of_lt (rK payload) L) ->
+    of_lt_alts (A_sing l rK) [:: (l, (T, L))]
+
+| t_A_cons T L a l (rK : (coq_ty T -> Proc)) (alts : Alts):
+    (forall payload: coq_ty T, of_lt (rK payload) L) ->
+    of_lt_alts alts a ->
+    of_lt_alts (A_cons l rK alts) ((l, (T, L)) :: a)
 .
 
 (* Unset Printing Notations. *)
 
-Fixpoint lookup_alt_cont T (a : seq (lbl * (mty * l_ty)))
-          (* the existential is silly, it should be what a says *)
-          (l : lbl) (alts : Alts a): option (sigT (fun x => (coq_ty T -> Proc x))) :=
+Section OperationalSemantics.
+
+  (* runtime action *)
+  Inductive rt_act :=
+  | mk_rt_act (a : l_act) (p : role) (q : role) (l : lbl) (T : mty) (t :  coq_ty T).
+
+  Definition erase_act a :=
+  let: mk_rt_act a p q l T _ := a in mk_act a p q l T.
+
+
+  Definition process_alt
+             (T' : mty) (l' : lbl) (dproc : coq_ty T' -> Proc) (A : rt_act) (f: rt_act -> option Proc) : option Proc:=
+    let: mk_rt_act a p q l T t := A in
+    if (l == l') then
+      match @eqP _ T T' with
+      | ReflectT HTT' =>
+        match esym HTT' with
+        | erefl => fun t => Some (dproc t)
+        end t
+      | ReflectF _ => None
+      end
+    else f A
+  .
+
+  Fixpoint do_step_alts (alts : Alts) (A : rt_act) : option Proc :=
   match alts with
-  (* | A_sing _ _ l' dproc => *)
-  (*   if l == l' then Some dproc else None *)
-  |_ => None
+  | A_sing _ l' dproc => process_alt l' dproc A (fun=> None)
+  | A_cons _ l' dproc alts' =>
+    process_alt l' dproc A (do_step_alts alts')
   end.
 
-(* convenience definition for conditional processes *)
-Definition IFP L (n : bool) (p : Proc L) (p' : Proc L) :=
-  if n then p else p'.
+  Definition do_step_proc (P : Proc) (A : rt_act) : option Proc :=
+    let: (mk_rt_act a p q l T t) := A in
+    (* we unroll the process to expose actions *)
+    match punroll (prec_depth P) P with
+    | Send q' T' l' t' K =>
+      if (a == l_send) && (q == q') && (l == l') (* && (t == t') this requires the work below *)
+      then match @eqP _ T T' with
+           | ReflectT HTT' => (* if the types are equal *)
+             match esym HTT' with
+             | erefl =>
+               (* we refine T = T' and compare the payloads *)
+               fun t=> if t == t' then Some K else None
+             end t
+           | ReflectF _ => None
+           end
+      else None
+    | Recv q' alts =>
+      if  (a == l_recv) && (q == q') then
+        do_step_alts alts A
+      else
+        None
+    | Loop P => None (* this cannot happen as we unrolled the process *)
+    | Jump _ => None (* open process, it can't step *)
+    | Finish => None
+    end
+  .
 
-(* Fixpoint proc_lty :
- *)
+  Definition run_step_proc P A : Proc := odflt P (do_step_proc P A).
+
+  Lemma same_red_depth P L:
+    of_lt P L -> prec_depth P = lrec_depth L.
+  Proof.
+    elim=>// L0 P0 H0 Eq.
+    rewrite/prec_depth/lrec_depth=>//=.
+    by rewrite-/prec_depth-/lrec_depth Eq.
+  Qed.
+
+  Lemma unroll_preserves_type P L n:
+    of_lt P L -> of_lt (punroll n P) (lunroll n L).
+  Proof.
+    elim ; try (elim n=>//= ; constructor)=>//=.
+    { (* interesting case *)
+      elim: n ; first by constructor.
+      move=>{L P} n IH L P HP0 Hpu.
+      (* move=>{L P} L P HP0 Hpu. *)
+      admit.
+    }
+    { (* case for t_Send (unncecesarily annoying) *)
+      elim n=>p L0 a T l payload K HL0 HL0' Hfind ;
+        first by move:(@t_Send p L0 a T l payload K HL0 Hfind).
+      move:Hfind ; case: HL0' ; case: T=>//= ; try easy ;
+        try (intros; by move:(@t_Send a _ l payload _ HL0 _ X i)).
+      move=>L1 p0 Hp0 Hunroll HFind.
+      by move:(@t_Send a _ l payload K HL0 _ Hp0 HFind).
+    }
+  Admitted.
+
+  Theorem preservation P Ps A L:
+    of_lt P L ->
+    do_step_proc P A = Some Ps ->
+    of_lt Ps (run_act_l_ty L (erase_act A)).
+  Proof.
+
+    rewrite/run_step_proc/run_act_l_ty/do_step_proc/do_act_l_ty.
+    case A => a p q l T t.
+    move=> Hp.
+    rewrite (same_red_depth Hp).
+    move:(unroll_preserves_type (lrec_depth L) Hp).
+
+    move:(punroll _ _) (lunroll _ _)=> P' L'//=.
+
+    case=>//.
+    {
+      move=>a0 p0 alts.
+      case:ifP; last by case: (find_cont a0 l)=>[[t' Lp] | ].
+      move=>/andP[/eqP->_{p0}].
+      elim.
+      {
+        move=> T0 L0 l0 rK H//=.
+        rewrite/extend/empty eq_sym.
+        case:ifP=>//=.
+
+        case:(boolP (T==T0)) ; last by case:eqP.
+        move=>Heq; move:Heq t=>/eqP->{T} t.
+        case:eqP=>p0//.
+        move:{p0}(esym p0)=>Hesym.
+        rewrite (eq_irrelevance Hesym erefl)=>//=.
+        move=>_ []<-//.
+      }
+      {
+        move=> T0 L0 a1 l0 rK alts0 H Halts//= IH.
+        rewrite/extend eq_sym.
+        case:ifP=>//.
+
+        case:(boolP (T==T0)) ; last by case:eqP.
+        move=>Heq{IH}; move:Heq t=>/eqP->{T} t.
+        case:eqP=>p0//.
+        move:{p0}(esym p0)=>Hesym.
+        rewrite (eq_irrelevance Hesym erefl)=>//=.
+        move=>_ []<-//.
+      }
+    }
+
+    {
+      move=>p0 L0 a0 T0 l0 t0 K Hk Hfind.
+      case:ifP ; last by case Hfind':(find_cont a0 l)=>[[T1 L1]|].
+
+      move=>/andP[/andP[/eqP-> /eqP->] /eqP->].
+      move:Hfind=>/eqP->.
+      rewrite!eq_refl/=.
+      case:ifP; last by case:eqP.
+      move=>Heq; move:Heq t=>/eqP->{T} t.
+      case:eqP=>p0'//.
+      move:{p0'}(esym p0')=>Hesym.
+      rewrite (eq_irrelevance Hesym erefl)=>//=.
+      case:ifP=>//.
+      move=>_ []<-//.
+    }
+  Qed.
+
+End OperationalSemantics.
+
+Section TraceEquivalence.
+  (*
+    project G p == Some L ->
+    of_lt P L ->
+    p_accepts p Tp         P ->
+    g_accepts   T          G ->
+    subtrace  p (erase Tp) T.
+   *)
+End TraceEquivalence.
+
+
+(* Code Extraction *)
 
 From Coq Require Extraction.
 Module MP.
@@ -86,29 +301,7 @@ Module MP.
 End MP.
 
 
-
-(* Module MP'. *)
-(*   Parameter t : l_ty -> Type. *)
-
-(*   (* Parameter bind : forall T1 T2, t T1 -> (T1 -> t T2) -> t T2. *) *)
-(*   Parameter pure : t l_end. *)
-
-(*   Parameter send : forall (p : role) L a T (l : lbl), *)
-(*       coq_ty T -> (l, (T, L)) \in a -> *)
-(*       t (l_msg l_send p a). *)
-(*   (* Extract Constant send => "ocaml_send". *) *)
-
-(*   Print l_lts_. *)
-
-(*   (* Parameter recv : (lbl -> t unit) -> t unit. *) *)
-(*   (* Parameter recv_one : forall T, role -> t T. *) *)
-
-
-(*   (* Parameter loop : forall T1, nat -> t T1 -> t T1. *) *)
-(*   (* Parameter set_current: nat -> t unit. *) *)
-
-(*   (* Parameter rec : forall T1, nat -> t T1. *) *)
-(* End MP'. *)
+(*
 
 Fixpoint gen_proc T (n:nat) (p : Proc T): MP.t unit
   := match p with
@@ -142,6 +335,33 @@ with gen_alts (a :seq (lbl * (mty * l_ty)))
        | A_cons T _ a l dproc alts =>
          gen_alts n r alts (new_f _ T dproc l)
        end.
+
+End CodeExtraction.
+
+Section CaseStudies.
+(* replace by lunroll *)
+Fixpoint unfold l :=
+  match l with
+    | l_end => l_end
+    | l_var v => l_var v
+    | l_msg a r Ks =>
+      l_msg a r
+            (map
+               (fun en =>
+                  let:
+                       (lbl, (pl, l)) := en
+                  in
+                  (lbl, (pl,  unfold l)))
+               Ks)
+    | l_rec l => l_open 0 (l_rec l) (unfold l)
+  end.
+
+(* convenience definition for conditional processes *)
+Definition IFP L (n : bool) (p : Proc L) (p' : Proc L) :=
+  if n then p else p'.
+
+(* Fixpoint proc_lty :
+ *)
 
 (* Some examples *)
 
@@ -280,193 +500,4 @@ Defined.
 
 Definition ppc3 := Eval compute in gen_proc 0 PingPongClient3.
 (* Extraction ppc3. *)
-
-Section OperationalSemantics.
-
-  (* runtime action *)
-  Inductive rt_act :=
-  | mk_rt_act (a : l_act) (p : role) (q : role) (l : lbl) (T : mty) (t :  coq_ty T).
-
-  Definition erase_act a :=
-  let: mk_rt_act a p q l T _ := a in mk_act a p q l T.
-
-
-
-(*   SearchAbout rl_ty. *)
-
-  Notation penv := {fmap role -> {T: l_ty & Proc T}}.
-
-  (* Definition eq_penv (P P' : penv) := *)
-  (*   match P, P' with *)
-  (*   |  _, _ => false *)
-  (*   end. *)
-
-  (* Lemma penv_eqP : Equality.axiom eq_penv. *)
-  (* (* Proof. by rewrite /Equality.axiom => [[] []/=]; constructor. Qed. *) *)
-  (* Admitted. *)
-
-  (* Definition penv_eqMixin := EqMixin penv_eqP. *)
-  (* Canonical penv_eqType := Eval hnf in EqType penv penv_eqMixin. *)
-
-  (* Definition pqenv := {fmap role * role -> seq (lbl * {T: mty & coq_ty T}) }. *)
-
-  (* Definition eq_pqenv (Q Q' : pqenv) := *)
-  (*   match Q, Q' with *)
-  (*   |  _, _ => false *)
-  (*   end. *)
-
-  (* Lemma pqenv_eqP : Equality.axiom eq_pqenv. *)
-  (* (* Proof. by rewrite /Equality.axiom => [[] []/=]; constructor. Qed. *) *)
-  (* Admitted. *)
-
-  (* Definition pqenv_eqMixin := EqMixin pqenv_eqP. *)
-  (* Canonical pqenv_eqType := Eval hnf in EqType pqenv pqenv_eqMixin. *)
-
-  (* Definition penq (qs : pqenv) k v := *)
-  (*   match qs.[? k] with *)
-  (*   | Some vs => qs.[ k <- app vs [:: v] ] *)
-  (*   | None => qs.[ k <- [:: v]] *)
-  (*   end%fmap. *)
-
-  (* Definition pdeq (qs : pqenv) k := *)
-  (*   match qs.[? k] with *)
-  (*   | Some vs => *)
-  (*     match vs with *)
-  (*     | [:: v] => Some (v, qs.[~ k]) *)
-  (*     | v :: vs => Some (v, qs.[k <- vs]) *)
-  (*       (* if vs == [::] then Some (v, qs.[~ k]) *) *)
-  (*       (* else Some (v, qs.[k <- vs]) *) *)
-  (*     | [::] => None *)
-  (*     end *)
-  (*   | None => None *)
-  (*   end%fmap. *)
-
-  Definition process_admits_act
-             T (P : Proc T) (a : l_act) (p q : role) (l : lbl) (t : mty) :
-    option l_ty.
-  Abort.
-
-  (* Inductive pstep : act -> penv * pqenv -> penv * pqenv -> Prop := *)
-  (* | ls_send (T : mty) (t : coq_ty T) p q lb (P P' : penv) (Q Q' : pqenv) : *)
-  (*     Q' == penq Q (p, q) (lb, (existT _ T t)) -> *)
-  (*     (* do_act P l_send p q lb t = Some P' -> *) *)
-  (*     pstep (a_send p q lb T) (P, Q) (P', Q') *) (* a_send ceased to exist *)
-  (* | ls_recv t p q lb (P P' : penv) (Q Q' : pqenv) : *)
-  (*     (* deq Q (p, q) == Some ((lb, t), Q') -> *) *)
-  (*     (* do_act P l_recv q p lb t = Some P' -> *) *)
-  (*     pstep (a_recv p q lb t) (P, Q) (P', Q') *)
-  (* . *)
-
-
-  Definition look_proc (E : penv) p :=
-    match E.[? p] with
-    | Some L => L
-    | None => existT _ l_end Finish
-    end%fmap.
-
-  Section OneProc.
-
-
-    Definition run_rt_act L (P : Proc L) (A : rt_act) : (Proc (run_act_l_ty L (erase_act A))).
-      refine (let: (mk_rt_act a p q l T t) := A in _)=>//=.
-
-      (* case P; try by rewrite/run_act_l_ty/do_act_l_ty. *)
-      (* constructor. *)
-      (* constructor. *)
-
-      (* rewrite/run_act_l_ty=>//=. *)
-      (* admit. *)
-
-      (* admit. *)
-
-      move: P l.
-      case L ; try by rewrite/run_act_l_ty/do_act_l_ty.
-
-      case. (* casing on the act *)
-
-      (* send action *)
-      rewrite/run_act_l_ty/do_act_l_ty.
-      case a=>//=.
-      move=>r ; case (q == r)=>//=.
-
-      {
-        move=> Ks P l.
-        destruct (lookup_l_ty_cont Ks l) eqn: Lu.
-        destruct p0.
-
-        case (T == m).
-
-
-        (* inversion P => l' Lu'. *)
-
-
-
-
-        admit. (* ? *)
-
-        easy.
-
-        (* move=> Ks P l ; case (lookup_l_ty_cont Ks l)=>//=. (* forgets the lookup is in Ks *) *)
-        (* case. *)
-        (* move=> a0; case (T == a0). *)
-
-        (* admit. *)
-
-        (* by []. *)
-        easy.
-      }
-
-      (* other cases where the process does not step *)
-      by move=>Ks P l ; case (lookup_l_ty_cont Ks l)=>//= ; case.
-      by move=>r Ks P l ; case (lookup_l_ty_cont Ks l)=>//= ; case.
-
-      (* receive case *)
-
-    Abort.
-
-  End OneProc.
-
-  Definition do_rt_act (P : penv) (A : rt_act) : option penv :=
-    let: (mk_rt_act a p q l t data) := A in
-    match a, look_proc P p with
-    | l_send, existT  _ (Send q' L _ t' l' T' P' _) =>
-      if (q == q') && (l == l') && (t == t') then (* && (T == T') then *) (* <- we may need to say this *)
-        Some P.[p <- existT _ L P']
-      else None
-    | l_recv, existT _ (Recv _ q' alts) =>
-      if q == q' then
-        match lookup_alt_cont t l alts with
-          | Some (existT L f) => Some P.[p <- (existT _ L (f data))]
-          | None => None
-        end
-      else None
-    | _, _ => None
-    end%fmap.
-
-  Definition run_rt_step (P : penv) (A : rt_act) : penv :=
-    match do_rt_act P A with
-    | Some P => P
-    | None => P
-    end.
-
-  Inductive pstep : rt_act -> penv -> penv -> Prop :=
-  | ls_rel (Ti : mty) (t : coq_ty Ti)  (sact :rt_act) (P P' : penv) :
-      pstep sact P (run_rt_step P sact)
-  .
-
- Definition related (rP : penv) (P : {fmap role -> rl_ty}) : Prop :=
-   forall p, LUnroll (projT1 (look_proc rP p)) (look P p).
-
-  Lemma process_behave
-        (a : rt_act)
-        (PQ  PQ' : {fmap role -> rl_ty} * {fmap role * role -> seq (lbl * mty)})
-        (rP rP' : penv)
-    :
-      related rP PQ.1 ->
-      rP' = run_rt_step rP a ->
-      PQ' = run_step (erase_act a) PQ ->
-
-      pstep a rP rP' -> lstep (erase_act a) PQ PQ'.
-Abort.
-
-End OperationalSemantics.
+*)
