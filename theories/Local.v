@@ -748,9 +748,6 @@ Section Semantics.
   by move=> hp; apply: (EqL_l_msg_inv_aux hp).
   Qed.
 
-
-
-
   Lemma EqL_trans lT1 lT2 lT3:
     EqL lT1 lT2 -> EqL lT2 lT3 -> EqL lT1 lT3.
   Proof.
@@ -849,6 +846,7 @@ Section Semantics.
                          end.
   Proof. by elim: L. Qed.
 
+  (* lbinds m (get_nr L) is the same as get_nr L = l_var m *)
   Lemma nopen_rec d n L L' :
     n_open d n (get_nr L) = l_rec L' ->
     exists m, l_binds m (get_nr L) /\ m < d + n.
@@ -863,6 +861,7 @@ Section Semantics.
       by exists m; split=>//; rewrite addnS.
   Qed.
 
+  (* l_open d L (n_rec m L') = n_rec m (l_open (d - m) L L') ? *)
   Lemma lopen_nrec d m L
     : l_open d L (n_rec m (l_var m)) = n_rec m (if d == 0 then L else l_var m).
   Proof.
@@ -914,12 +913,7 @@ Section Semantics.
     rewrite /run_act_l_ty/run_act_lt/do_act_l_ty/do_act_lt/==>LU.
     case: A=> a _ q l t; move: ((LUnroll_ind (lrec_depth Li) Li Lr).1 LU)=>LU'.
     move: LU' LU.
-    case EQ: (lunroll (lrec_depth Li) Li)=>
-    [
-    | v
-    | Li'
-    | a' p C
-    ].
+    case EQ: (lunroll (lrec_depth Li) Li)=> [| v | Li' | a' p C].
     - by move=> /lunroll_end->.
     - by move=>/(paco2_unfold l_unroll_monotone); case F: _ _ /.
     - by move=>/= _ _; apply/(lunroll_inf _ EQ).
@@ -1031,16 +1025,17 @@ Section Semantics.
   Definition l_lts t L := paco2 l_lts_ bot2 t L.
   Derive Inversion llts_inv with (forall tr G, l_lts tr G) Sort Prop.
 
-  Definition rty_trc := rl_ty -> trace -> Prop.
+  Definition rty_trc := trace -> rl_ty -> Prop.
   Inductive l_trc_ (p : role) (r : rty_trc) : rty_trc :=
-  | l_trc_end : l_trc_ p r rl_end tr_end
+  | l_trc_end : l_trc_ p r tr_end rl_end
   | l_trc_msg A TR L L' :
       subject A == p -> do_act_lt L A = Some L' ->
-      r L' TR ->
-      l_trc_ p r L (tr_next A TR)
+      r TR L' ->
+      l_trc_ p r (tr_next A TR) L
   .
   Lemma l_trc_monotone p : monotone2 (l_trc_ p).
   Admitted.
+
   Definition l_trc p t L := paco2 (l_trc_ p) bot2 t L.
 
   Definition trc_rel := trace -> trace -> Prop.
@@ -1060,7 +1055,7 @@ Section Semantics.
   Definition sub_trc p T0 T1 := paco2 (sub_trc_ p) bot2 T0 T1.
 
   Lemma ltrc_sound p E Tp T
-    : l_trc p (look E.1 p) Tp -> l_lts T E -> sub_trc p Tp T.
+    : l_trc p Tp (look E.1 p) -> l_lts T E -> sub_trc p Tp T.
   Admitted.
 
 End Semantics.
