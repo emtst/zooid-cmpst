@@ -227,6 +227,16 @@ Section OperationalSemantics.
 
 End OperationalSemantics.
 
+Section TraceEquivalence.
+  (*
+    project G p == Some L ->
+    of_lt P L ->
+    p_accepts p Tp         P ->
+    g_accepts   T          G ->
+    subtrace  p (erase Tp) T.
+   *)
+End TraceEquivalence.
+
 
 (* Code Extraction *)
 

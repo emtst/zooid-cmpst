@@ -1039,24 +1039,39 @@ Section Semantics.
   Definition l_trc p t L := paco2 (l_trc_ p) bot2 t L.
 
   Definition trc_rel := trace -> trace -> Prop.
-  Inductive sub_trc_ (p : role) (r : trc_rel) : trc_rel :=
-  | sub_trc_end : sub_trc_ p r tr_end tr_end
-  | sub_trc_skip A TRp TR :
+  Inductive subtrace_ (p : role) (r : trc_rel) : trc_rel :=
+  | subtrace_end : subtrace_ p r tr_end tr_end
+  | subtrace_skip A TRp TR :
       subject A != p ->
       r TRp TR ->
-      sub_trc_ p r TRp (tr_next A TR)
-  | sub_trc_msg A TRp TR :
+      subtrace_ p r TRp (tr_next A TR)
+  | subtrace_msg A TRp TR :
       subject A == p ->
       r TRp TR ->
-      sub_trc_ p r (tr_next A TRp) (tr_next A TR)
+      subtrace_ p r (tr_next A TRp) (tr_next A TR)
   .
-  Lemma sub_trc_monotone p : monotone2 (sub_trc_ p).
+  Lemma subtrace_monotone p : monotone2 (subtrace_ p).
   Admitted.
-  Definition sub_trc p T0 T1 := paco2 (sub_trc_ p) bot2 T0 T1.
+  Definition subtrace p T0 T1 := paco2 (subtrace_ p) bot2 T0 T1.
 
   Lemma ltrc_sound p E Tp T
-    : l_trc p Tp (look E.1 p) -> l_lts T E -> sub_trc p Tp T.
+    : l_trc p Tp (look E.1 p) -> l_lts T E -> subtrace p Tp T.
   Admitted.
+
+  (*
+    project G p == Some L ->
+    il_trc p Tp L ->
+    g_accepts T G ->
+    subtrace p Tp T.
+   *)
+
+  (*
+    project G p == Some L ->
+    of_lt P L ->
+    p_accepts p Tp         P ->
+    g_accepts   T          G ->
+    subtrace  p (erase Tp) T.
+   *)
 
 End Semantics.
 
