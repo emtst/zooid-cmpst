@@ -65,6 +65,28 @@ Fixpoint punroll d P :=
 (* the correctness conditions is that punroll (prec_depth P) P is
    either Finish or Send or Recv *)
 
+(* (* alternative definition with the order swapped *) *)
+(* Fixpoint punroll' d P := *)
+(*     match P with *)
+(*     | Loop P' => *)
+(*       match d with *)
+(*       | 0 => P *)
+(*       | d.+1 => punroll' d (p_open 0 P P') *)
+(*       end *)
+(*     | _ => P *)
+(*     end. *)
+
+(*   Fixpoint lunroll' d G := *)
+(*       match G with *)
+(*       | l_rec G' => *)
+(*         match d with *)
+(*         | 0 => G *)
+(*         | d.+1 => lunroll d (l_open 0 G G') *)
+(*         end *)
+(*       | _ => G *)
+(*     end. *)
+
+
 Inductive of_lt : Proc -> l_ty -> Type :=
 | t_Finish : of_lt Finish l_end
 
@@ -167,6 +189,9 @@ Section OperationalSemantics.
   Proof.
     elim ; try (elim n=>//= ; constructor)=>//=.
     { (* interesting case *)
+      elim: n ; first by constructor.
+      move=>{L P} n IH L P HP0 Hpu.
+      (* move=>{L P} L P HP0 Hpu. *)
       admit.
     }
     { (* case for t_Send (unncecesarily annoying) *)
