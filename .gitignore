@@ -48,3 +48,6 @@ Makefile.conf
 
 *.dot
 *.dpd
+
+# Macos files
+.DS_Store
