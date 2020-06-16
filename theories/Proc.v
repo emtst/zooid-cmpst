@@ -25,6 +25,26 @@ with Alts :=
 | A_cons {T} (l : lbl) : (coq_ty T -> Proc) -> Alts -> Alts
 .
 
+Fixpoint in_alts l T (alt : coq_ty T -> Proc) (alts : Alts) : Prop
+  := match alts with
+     | A_sing T' l' alt' =>
+       match @eqP _ T T' with
+       | ReflectT EQ =>
+         match EQ with
+         | erefl => fun alt' => l = l' /\ alt = alt'
+         end alt'
+       | ReflectF _ => False
+       end
+     | A_cons T' l' alt' alts =>
+       match @eqP _ T T' with
+       | ReflectT EQ =>
+         match EQ with
+         | erefl => fun alt' => l = l' /\ alt = alt' \/ in_alts l alt alts
+         end alt'
+       | ReflectF _ => in_alts l alt alts
+       end
+     end.
+
 (* open variable d, with process P2 in process P1 *)
 Fixpoint p_open (d : nat) (P2 P1 : Proc) : Proc :=
   match P1 with
@@ -86,15 +106,35 @@ Fixpoint punroll d P :=
 (*       | _ => G *)
 (*     end. *)
 
+Fixpoint find_alt alts l :=
+  match alts with
+  | A_sing T l' rK
+    => if l == l' then Some (existT (fun=>_) T rK) else None
+  | A_cons T l' rK alts
+    => if l == l' then Some (existT (fun=>_) T rK)
+       else find_alt alts l
+  end.
 
-Inductive of_lt : Proc -> l_ty -> Type :=
+
+Definition find_alt_ty alts l
+  := match find_alt alts l with
+     | Some K => Some (projT1 K, tt)
+     | None => None
+     end.
+
+Inductive of_lt : Proc -> l_ty -> Prop :=
 | t_Finish : of_lt Finish l_end
 
 | t_Jump (v : nat) : of_lt (Jump v) (l_var v)
 | t_Loop L P : of_lt P L -> of_lt (Loop P) (l_rec L)
 
 | t_Recv a (p : role) (alts : Alts) :
-    of_lt_alts alts a ->
+    same_dom (find_alt_ty alts) (find_cont a) ->
+    (forall l Ty rK L,
+        find_alt alts l = Some (existT _ Ty rK) ->
+        find_cont a l = Some (Ty, L) ->
+        forall pl,
+          of_lt (rK pl) L) ->
     of_lt (Recv p alts) (l_msg l_recv p a)
 
 | t_Send (p : role) L a T (l : lbl)
@@ -102,16 +142,6 @@ Inductive of_lt : Proc -> l_ty -> Type :=
     of_lt K L ->
     find_cont a l == Some (T, L) ->
     of_lt (Send p l payload K) (l_msg l_send p a)
-
-with of_lt_alts : Alts -> seq (lbl * (mty * l_ty)) -> Type :=
-| t_A_sing T L l (rK : (coq_ty T -> Proc)) :
-    (forall payload: coq_ty T, of_lt (rK payload) L) ->
-    of_lt_alts (A_sing l rK) [:: (l, (T, L))]
-
-| t_A_cons T L a l (rK : (coq_ty T -> Proc)) (alts : Alts):
-    (forall payload: coq_ty T, of_lt (rK payload) L) ->
-    of_lt_alts alts a ->
-    of_lt_alts (A_cons l rK alts) ((l, (T, L)) :: a)
 .
 
 (* Unset Printing Notations. *)
@@ -140,13 +170,6 @@ Section OperationalSemantics.
     else f A
   .
 
-  Fixpoint do_step_alts (alts : Alts) (A : rt_act) : option Proc :=
-  match alts with
-  | A_sing _ l' dproc => process_alt l' dproc A (fun=> None)
-  | A_cons _ l' dproc alts' =>
-    process_alt l' dproc A (do_step_alts alts')
-  end.
-
   Definition do_step_proc (P : Proc) (A : rt_act) : option Proc :=
     let: (mk_rt_act a p q l T t) := A in
     (* we unroll the process to expose actions *)
@@ -164,8 +187,18 @@ Section OperationalSemantics.
            end
       else None
     | Recv q' alts =>
-      if  (a == l_recv) && (q == q') then
-        do_step_alts alts A
+      if (a == l_recv) && (q == q') then
+        match find_alt alts l with
+        | None => None
+        | Some (existT T' rK) =>
+          match @eqP _ T T' with
+          | ReflectT HTT' =>
+            match esym HTT' with
+            | erefl => fun t => Some (rK t)
+            end t
+          | ReflectF _ => None
+          end
+        end
       else
         None
     | Loop P => None (* this cannot happen as we unrolled the process *)
@@ -184,29 +217,83 @@ Section OperationalSemantics.
     by rewrite-/prec_depth-/lrec_depth Eq.
   Qed.
 
+  Lemma find_alt_ty_open n P alts
+    : same_dom (find_alt_ty (alt_open n P alts)) (find_alt_ty alts).
+  Proof.
+    move=> l Ty; split=>[][][] H; exists tt; move: H; rewrite /find_alt_ty.
+    - by elim: alts=>[T l0 rK|T l0 rK a]//=; case: ifP.
+    - by elim: alts=>[T l0 rK|T l0 rK a]//=; case: ifP.
+  Qed.
+
+  Lemma same_dom_map T T' (f : T -> T') (Ks : seq (lbl * (mty * T)))
+    : same_dom (find_cont Ks) (find_cont [seq (K.1, (K.2.1, f K.2.2)) | K <- Ks]).
+  Proof.
+    elim: Ks=>[|[l [Ty t]] Ks Ih]//=; rewrite /extend; first by split=>[][]x//=.
+    move=>l' Ty'; split=>[][]x; case: ifP=>// _ [EQ];
+      try rewrite EQ; try (by exists t); try (by exists (f t)).
+    - by move: (dom Ih EQ).
+    - by move: (dom' Ih EQ).
+  Qed.
+
+  Lemma find_alt_open n P alts l Ty rK
+    : find_alt (alt_open n P alts) l = Some (existT (fun=>_) Ty rK) ->
+      exists rK',
+        find_alt alts l = Some (existT (fun=>_) Ty rK') /\
+        rK = (fun l => p_open n P (rK' l)).
+  Proof.
+    elim: alts=>[T l0 rK''|T l0 rK'' alts Ih]/=; case:ifP=>// _.
+    - move=> [H]; move: H rK''=>-> rK'' H.
+      rewrite -(Eqdep_dec.inj_pair2_eq_dec _ _ _ _ _ _ H);
+        last by move=>x y; apply/(decP eqP).
+      by exists rK''; split.
+    - move=> [H]; move: H rK''=>-> rK'' H.
+      rewrite -(Eqdep_dec.inj_pair2_eq_dec _ _ _ _ _ _ H);
+        last by move=>x y; apply/(decP eqP).
+      by exists rK''; split.
+  Qed.
+
+  Lemma find_cont_open n L L' Ks Ty l :
+    find_cont [seq (K.1, (K.2.1, l_open n L' K.2.2)) | K <- Ks] l = Some (Ty, L) ->
+    exists L0,
+      find_cont Ks l = Some (Ty, L0) /\ L = l_open n L' L0.
+  Proof.
+    elim: Ks=>//= [][l'][Ty'] L0 Ks Ih.
+    by rewrite /extend/=; case:ifP=>// _ [-><-]; exists L0.
+  Qed.
+
+  Lemma open_preserves_type P P' L L' :
+    of_lt P' L' -> of_lt P L -> of_lt (p_open 0 P' P) (l_open 0 L' L).
+  Proof.
+    move: 0 => n H H'; elim: H' n =>
+    [
+    | v
+    | {}L {}P Ih
+    | K p alts DOM _ Ih
+    | p {}L K Ty l payload {}P H0 Ih fnd
+    ]/= n; try by (constructor).
+    - by case: ifP=>//; constructor.
+    - apply/t_Recv;
+        first by apply/(same_dom_trans _ (same_dom_map _ _))/(same_dom_trans _ DOM)/find_alt_ty_open.
+      move=> l Ty rK L0 /find_alt_open-[rK'] [EQ0->] /find_cont_open-[L1][EQ1->] .
+      by move=> pl; apply/(Ih _ _ _ _ EQ0 EQ1).
+    - apply/t_Send; first by apply/Ih.
+      elim: K fnd=>//= [][k v] t {}Ih; rewrite /extend/=.
+      by case: ifP=>// _ /eqP-[->]/=.
+  Qed.
+
   Lemma unroll_preserves_type P L n:
     of_lt P L -> of_lt (punroll n P) (lunroll n L).
   Proof.
-    elim ; try (elim n=>//= ; constructor)=>//=.
-    { (* interesting case *)
-      elim: n ; first by constructor.
-      move=>{L P} n IH L P HP0 Hpu.
-
-      rewrite /punroll/lunroll=>//=.
-      rewrite-/punroll-/lunroll.
-      (* very stuck with the open function *)
-
-      admit.
+    elim: n P L=>// n Ih P L; case=>//=; try by constructor.
+    {
+      move=>{}L {}P HP; apply: Ih.
+      have HP' : of_lt (Loop P) (l_rec L) by constructor.
+      by apply: open_preserves_type.
     }
-    { (* case for t_Send (unncecesarily annoying) *)
-      elim n=>p L0 a T l payload K HL0 HL0' Hfind ;
-        first by move:(@t_Send p L0 a T l payload K HL0 Hfind).
-      move:Hfind ; case: HL0' ; case: T=>//= ; try easy ;
-        try (intros; by move:(@t_Send a _ l payload _ HL0 _ X i)).
-      move=>L1 p0 Hp0 Hunroll HFind.
-      by move:(@t_Send a _ l payload K HL0 _ Hp0 HFind).
+    {
+      by move=>p {}L a T l payload K HL Hfind ; apply: (t_Send _ _ HL).
     }
-  Admitted.
+  Qed.
 
   Theorem preservation P Ps A L:
     of_lt P L ->
@@ -226,32 +313,16 @@ Section OperationalSemantics.
     {
       move=>a0 p0 alts.
       case:ifP; last by case: (find_cont a0 l)=>[[t' Lp] | ].
-      move=>/andP[/eqP->_{p0}].
-      elim.
-      {
-        move=> T0 L0 l0 rK H//=.
-        rewrite/extend/empty eq_sym.
-        case:ifP=>//=.
-
-        case:(boolP (T==T0)) ; last by case:eqP.
-        move=>Heq; move:Heq t=>/eqP->{T} t.
-        case:eqP=>p0//.
-        move:{p0}(esym p0)=>Hesym.
-        rewrite (eq_irrelevance Hesym erefl)=>//=.
-        move=>_ []<-//.
-      }
-      {
-        move=> T0 L0 a1 l0 rK alts0 H Halts//= IH.
-        rewrite/extend eq_sym.
-        case:ifP=>//.
-
-        case:(boolP (T==T0)) ; last by case:eqP.
-        move=>Heq{IH}; move:Heq t=>/eqP->{T} t.
-        case:eqP=>p0//.
-        move:{p0}(esym p0)=>Hesym.
-        rewrite (eq_irrelevance Hesym erefl)=>//=.
-        move=>_ []<-//.
-      }
+      move=>_ {a p0} DOM OFT.
+      case EQ: (find_cont a0 l)=>[[T' Lp]|];
+        last by move: (dom_none' DOM EQ); rewrite/find_alt_ty; case: find_alt.
+      move: (dom' DOM EQ); rewrite /find_alt_ty.
+      case EQ': find_alt=>[[T'' rK]|]//= H.
+      have Tt': T'' = T' by move: H=>[][][].
+      move: Tt' rK EQ EQ' =>-> {T'' H}.
+      case: eqP=>//; case: (boolP (T == T'))=>[/eqP<-|/eqP//] EQ {T'}.
+      rewrite (eq_irrelevance EQ erefl)/= => rK EQ0 EQ1 [<-]{EQ Ps}.
+      by apply/OFT; first by apply/EQ1.
     }
 
     {
