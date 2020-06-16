@@ -191,7 +191,11 @@ Section OperationalSemantics.
     { (* interesting case *)
       elim: n ; first by constructor.
       move=>{L P} n IH L P HP0 Hpu.
-      (* move=>{L P} L P HP0 Hpu. *)
+
+      rewrite /punroll/lunroll=>//=.
+      rewrite-/punroll-/lunroll.
+      (* very stuck with the open function *)
+
       admit.
     }
     { (* case for t_Send (unncecesarily annoying) *)
