@@ -1,10 +1,14 @@
 From mathcomp Require Import all_ssreflect seq.
 From mathcomp Require Import finmap.
 
+From Paco Require Import paco paco2.
+
 Require Import MPST.Actions.
 Require Import MPST.AtomSets.
 Require Import MPST.Global.
+Require Import MPST.Projection.
 Require Import MPST.Local.
+Require Import MPST.TraceEquiv.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -345,13 +349,38 @@ Section OperationalSemantics.
 End OperationalSemantics.
 
 Section TraceEquivalence.
-  (*
+
+  Definition rel_proc_trc := trace rt_act -> Proc -> Prop.
+
+  Inductive p_lts_ (r : rel_proc_trc) : rel_proc_trc :=
+  | pt_end :
+      p_lts_ r (tr_end _) Finish
+  | pt_next A P P' TR :
+      do_step_proc P A = Some P' ->
+      r TR P' ->
+      p_lts_ r (tr_next A TR) P
+  .
+
+  Lemma p_lts_monotone P : monotone2 (l_trc_ P).
+  Proof. pmonauto. Admitted.
+
+  Definition p_lts TR P := paco2 (p_lts_) bot2 TR P.
+
+
+  Definition p_accepts PTRACE P := p_lts PTRACE P.
+
+  Definition erase : trace rt_act -> trace act := trace_map erase_act.
+
+  Theorem process_traces_are_global_types G p L P PTRACE TRACE:
     project G p == Some L ->
     of_lt P L ->
-    p_accepts p Tp         P ->
-    g_accepts   T          G ->
-    subtrace  p (erase Tp) T.
-   *)
+    p_accepts PTRACE P ->
+    gty_accepts TRACE G ->
+    subtrace p (erase PTRACE) TRACE.
+  Proof.
+
+  Abort.
+
 End TraceEquivalence.
 
 
