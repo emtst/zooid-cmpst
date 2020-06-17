@@ -29,6 +29,7 @@ Qed.
 
 Module Type Atom.
   Parameter t : choiceType.
+  Parameter mk_atom : nat -> t.
   Parameter fresh : {fset t} -> t.
   Parameter freshK : forall s, fresh s \notin s.
   Lemma is_fresh s1 s2 : fsubset s1 s2 -> fresh s2 \notin s1.
@@ -40,6 +41,7 @@ End Atom.
 
 Module def_atom : Atom.
   Definition t := nat_choiceType.
+  Definition mk_atom (x : nat) : t := x.
   Definition fresh (s : {fset t}) : t := (maximum s).+1.
 
   Lemma freshK s : fresh s \notin s.
@@ -55,6 +57,7 @@ End def_atom.
 (* Generative atom interface to create new kinds of atoms *)
 Module NewAtom (m : Atom) : Atom.
   Definition t := m.t.
+  Definition mk_atom := m.mk_atom.
   Definition fresh := m.fresh.
   Definition is_fresh := m.is_fresh.
   Definition freshK := m.freshK.

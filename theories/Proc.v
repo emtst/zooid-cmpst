@@ -144,6 +144,150 @@ Inductive of_lt : Proc -> l_ty -> Prop :=
     of_lt (Send p l payload K) (l_msg l_send p a)
 .
 
+Definition wt_proc L
+  := { P : Proc  | of_lt P L }.
+
+
+(* Destructors *)
+Definition get_proc L (P : wt_proc L) : Proc := (proj1_sig P).
+Definition of_wt_proc L (P : wt_proc L) : of_lt (get_proc P) L := proj2_sig P.
+
+(* Constructors *)
+Definition wt_end : wt_proc l_end :=  exist _ _ t_Finish.
+Definition wt_jump v : wt_proc (l_var v) :=  exist _ _ (t_Jump v).
+Definition wt_loop L (P : wt_proc L) : wt_proc (l_rec L)
+  := exist _ _ (t_Loop (of_wt_proc P)).
+
+(* Smart constructor and helpers for recv *)
+Definition wt_alt : Type := lbl * {T & {L & coq_ty T -> wt_proc L}}.
+
+Fixpoint to_proc_alts (alts : seq wt_alt) (a0 : wt_alt) : Alts
+  := match alts with
+     | [::] =>
+       A_sing a0.1
+              (fun x => get_proc (projT2 (projT2 a0.2) x))
+     | a1 :: alts =>
+       A_cons a1.1
+              (fun x => get_proc (projT2 (projT2 a1.2) x))
+              (to_proc_alts alts a0)
+     end.
+
+Fixpoint to_lt_alts (alts : seq wt_alt) (a0 : wt_alt) : seq (lbl * (mty * l_ty))
+  := match alts with
+     | [::] => [:: (a0.1, (projT1 a0.2, projT1 (projT2 a0.2)))]
+     | a1 :: alts =>
+       (a1.1, (projT1 a1.2, projT1 (projT2 a1.2))) :: to_lt_alts alts a0
+     end.
+
+Lemma same_dom_alts (a : seq wt_alt) (a0 : wt_alt)
+  : same_dom (find_alt_ty (to_proc_alts a a0)) (find_cont (to_lt_alts a a0)).
+Proof.
+  elim: a=>[|a1 alts Ih]/=; [case: a0| case: a1]; move=>l [Ty [L P]] l' Ty'/=;
+    split=>[][x]/=; rewrite /extend/find_alt_ty/=; case: ifP=>[/eqP->|]//=;
+    rewrite ?eq_refl/=; try rewrite eq_sym=>->; try move=>[-> _];
+    try (by exists L); try (by exists tt).
+  - case EQ: find_alt=>[[Ty0 x0]|]//= [<- _].
+    have: find_alt_ty (to_proc_alts alts a0) l' = Some (Ty0, tt)
+      by rewrite /find_alt_ty EQ/=.
+    by move=>/(dom Ih).
+  - move=>/(dom' Ih)-[][]; rewrite /find_alt_ty; case: find_alt=>//[][Ty0]/=_[<-].
+    by exists tt.
+Qed.
+
+Lemma to_alts_wt (a : seq wt_alt) (a0 : wt_alt)
+  : forall l Ty rK L,
+    find_alt (to_proc_alts a a0) l = Some (existT _ Ty rK) ->
+    find_cont (to_lt_alts a a0) l = Some (Ty, L) ->
+    forall pl, of_lt (rK pl) L.
+Proof.
+  elim: a=>[|a1 alts Ih]; [case: a0|case: a1];
+    move=>l0 [Ty0] [L0] P0 l Ty rK L/=; rewrite /extend eq_sym;
+    case: ifP=>[_ {l0 l}|NE]//.
+  - move=>[EQ]; move: EQ P0=>-> P0 H {Ty0}.
+    rewrite -(Eqdep_dec.inj_pair2_eq_dec _ _ _ _ _ _ H) => {H};
+      last by move=>x y; apply/(decP eqP).
+    by move=>[<-] pl; apply: (of_wt_proc (P0 pl)).
+  - move=>[EQ]; move: EQ P0=>-> P0 H {Ty0}.
+    rewrite -(Eqdep_dec.inj_pair2_eq_dec _ _ _ _ _ _ H) => {H};
+      last by move=>x y; apply/(decP eqP).
+    by move=>[<-] pl; apply: (of_wt_proc (P0 pl)).
+  - by move=> H1 H2; apply: Ih; [apply: H1 | apply: H2].
+Qed.
+Arguments to_alts_wt : clear implicits.
+
+Definition wt_alts := (seq wt_alt * wt_alt)%type.
+
+(* Well-typed recv *)
+Definition wt_recv (p : role) (a : wt_alts)
+  : wt_proc (l_msg l_recv p (to_lt_alts a.1 a.2))
+  := exist _ _ (t_Recv p (same_dom_alts a.1 a.2) (to_alts_wt a.1 a.2)).
+
+Definition sing_alt a : wt_alts := ([::], a).
+Definition cons_alt a alts : wt_alts := (a :: alts.1, alts.2).
+
+Definition P_alt_lty T := fun L => coq_ty T -> wt_proc L.
+Definition P_alt_pl_ty := fun T => {L & P_alt_lty T L}.
+
+Declare Scope proc_scope.
+Notation " l1 [ x ':' T1 '];' p1"
+  := (l1,
+      existT (fun T => {L & coq_ty T -> wt_proc L}) T1
+             (existT (fun L => coq_ty T1 -> wt_proc L)
+                     _ (fun x => p1)))
+       (at level 0, x ident) : proc_scope.
+
+(* Notation "'branch' p { a1 | .. | a2 | an }" *)
+(*   := (wt_recv p (cons_alt a1 .. (cons_alt a2 (sing_alt an)) .. )) *)
+(*        (at level 0, a1 at level 99, a2 at level 99, an at level 99) : proc_scope. *)
+
+Notation recv p a := (wt_recv p (sing_alt a)).
+
+Open Scope proc_scope.
+Eval compute in get_proc (recv (roleid.mk_atom 0) 0 [ x : T_bool ]; if x then wt_end else wt_end).
+(* TODO: 'if' is a problem, and does not reduce, maybe a 'proc_if' *)
+
+Lemma find_cont_sing l T (L : l_ty)
+  : find_cont [:: (l, (T, L))] l == Some (T, L).
+Proof. by rewrite /find_cont/extend eq_refl. Qed.
+
+Definition wt_send p l T (pl : coq_ty T) P : wt_proc :=
+  exist _ (_, _) (t_Send p pl (of_wt_proc P) (find_cont_sing l T (get_ty P))).
+
+Definition wt_alt : Type
+  := lbl * {T & {L & { f : coq_ty T -> Proc | forall pl, of_lt (f pl) L}}}.
+Definition to_proc_alt a :=
+  (a.1, )
+Definition wt_cont :=
+  seq .
+Fixpoint get_proc_alts (t : wt_cont) :=
+  match t with
+  | [::] => [::]
+  | h :: t =>
+Definition wt_recv p (alts : )
+
+Fixpoint wt_select T (f : coq_ty T -> lbl) (alts : seq wt_proc) : coq_ty T -> wt_proc.
+
+Notation "'SELECT' e 'WITH' p1 '=>' c1 '|' .. '|' pn '=>' cn 'END'"
+  := (if e is p1 then c1 else (.. (if e is pn then cn else any _) ..)) (at level 0, p1 pattern, pn pattern).
+
+Require Extraction.
+Inductive test := C1 of nat | C2 of bool | C3.
+Definition is_one :=
+  (fun n =>
+    match n with
+    | C1 _ => true
+    | _ => match n with
+           | C2 b => b
+           | _ => true
+           end
+    end).
+Set Extraction Flag 2047.
+Extraction is_one.
+.
+
+
+Check (select true with true => false | false => true | _ => false end).
+
 (* Unset Printing Notations. *)
 
 Section OperationalSemantics.
