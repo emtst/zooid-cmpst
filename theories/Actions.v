@@ -44,6 +44,13 @@ CoInductive trace (act : Type) :=
 | tr_end : trace act
 | tr_next : act -> trace act -> trace act.
 
+CoFixpoint trace_map {A B : Type} (f : A -> B) (trc : trace A) : trace B :=
+  match trc with
+  | tr_end => tr_end _
+  | tr_next a trc => tr_next (f a) (trace_map f trc)
+  end
+.
+
 Definition subject A := let: mk_act a p q _ _ := A in p.
 Definition object A := let: mk_act a p q _ _ := A in q.
 Definition act_ty A := let: mk_act a _ _ _ _ := A in a.
