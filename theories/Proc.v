@@ -240,11 +240,15 @@ Notation " l1 [ x ':' T1 '];' p1"
                      _ (fun x => p1)))
        (at level 0, x ident) : proc_scope.
 
-Notation "'branch' p { a1 | .. | a2 | an }"
-  := (wt_recv p (cons_alt a1 .. (cons_alt a2 (sing_alt an)) .. ))
+Notation "'[alt' a1 ']'"
+  := (sing_alt a1) (at level 0) : proc_scope.
+
+Notation "'[alts' a1 | .. | a2 | an ']'"
+  := (cons_alt a1 .. (cons_alt a2 (sing_alt an)) .. )
        (at level 0, a1 at level 99, a2 at level 99, an at level 99) : proc_scope.
 
-Notation recv p a := (wt_recv p (sing_alt a)).
+Notation branch p a := (wt_recv p a).
+(* Notation recv p a := (wt_recv p (sing_alt a)). *)
 
 Lemma if_proc_wt {L} (b : bool) (p1 p2 : wt_proc L) :
   of_lt (if b then proj1_sig p1 else proj1_sig p2) L.
@@ -261,10 +265,13 @@ Notation "'[proc' p ']'" := (existT (fun L => wt_proc L) _ p) (at level 200) : p
 Open Scope proc_scope.
 Definition test : typed_proc
   := [proc
-        recv (roleid.mk_atom 0) 0 [ x : T_bool ]; if x then wt_end else wt_end
+        branch (roleid.mk_atom 0)
+        [alts
+          0 [ x : T_bool ]; if x then wt_end else wt_end
+        | 1 [ x : T_nat  ]; wt_end
+        ]
      ].
 Eval compute in projT1 test.
-Eval compute in get_proc (projT2 test).
 (* TODO: 'if' is a problem, and does not reduce, maybe a 'proc_if' *)
 
 Lemma find_cont_sing l T (L : l_ty)
