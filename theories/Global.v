@@ -947,9 +947,9 @@ Section Semantics.
   + move=> a0 CG G0 s; apply: P_unr =>//=.
   Qed.
 
-  Definition gtrc_rel := trace -> ig_ty -> Prop.
+  Definition gtrc_rel := trace act -> ig_ty -> Prop.
   Inductive g_lts_ (r : gtrc_rel) : gtrc_rel :=
-  | eg_end : @g_lts_ r tr_end (ig_end rg_end)
+  | eg_end : @g_lts_ r (tr_end act) (ig_end rg_end)
   | eg_trans a t G G' :
       step a G G' ->
       r t G' ->

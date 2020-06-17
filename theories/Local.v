@@ -1009,11 +1009,11 @@ Section Semantics.
     by move=> ST; move: (lstep_runnable ST)=>/run_step_sound/(lstep_eq ST).
   Qed.
 
-  Definition rel_trc := trace -> renv*qenv -> Prop.
+  Definition rel_trc := trace act -> renv*qenv -> Prop.
   Inductive l_lts_ (r : rel_trc) : rel_trc :=
   | lt_end E :
       (forall p, look E p = rl_end) ->
-      @l_lts_ r tr_end (E, [fmap])
+      @l_lts_ r (tr_end _) (E, [fmap])
   | lt_next a t P P' :
       lstep a P P' ->
       r t P' ->
@@ -1025,9 +1025,9 @@ Section Semantics.
   Definition l_lts t L := paco2 l_lts_ bot2 t L.
   Derive Inversion llts_inv with (forall tr G, l_lts tr G) Sort Prop.
 
-  Definition rty_trc := trace -> rl_ty -> Prop.
+  Definition rty_trc := trace act -> rl_ty -> Prop.
   Inductive l_trc_ (p : role) (r : rty_trc) : rty_trc :=
-  | l_trc_end : l_trc_ p r tr_end rl_end
+  | l_trc_end : l_trc_ p r (tr_end _) rl_end
   | l_trc_msg A TR L L' :
       subject A == p -> do_act_lt L A = Some L' ->
       r TR L' ->
@@ -1038,9 +1038,9 @@ Section Semantics.
 
   Definition l_trc p t L := paco2 (l_trc_ p) bot2 t L.
 
-  Definition trc_rel := trace -> trace -> Prop.
+  Definition trc_rel := trace act -> trace act -> Prop.
   Inductive subtrace_ (p : role) (r : trc_rel) : trc_rel :=
-  | subtrace_end : subtrace_ p r tr_end tr_end
+  | subtrace_end : subtrace_ p r (tr_end _) (tr_end _)
   | subtrace_skip A TRp TR :
       subject A != p ->
       r TRp TR ->

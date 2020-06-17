@@ -39,9 +39,10 @@ Canonical lact_eqType := Eval hnf in EqType l_act lact_eqMixin.
 Inductive act :=
 | mk_act (a : l_act) (p : role) (q : role) (l : lbl) (t : mty).
 
-CoInductive trace :=
-| tr_end : trace
-| tr_next : act -> trace -> trace.
+(* a trace is simply a stream of actions *)
+CoInductive trace (act : Type) :=
+| tr_end : trace act
+| tr_next : act -> trace act -> trace act.
 
 Definition subject A := let: mk_act a p q _ _ := A in p.
 Definition object A := let: mk_act a p q _ _ := A in q.
