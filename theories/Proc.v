@@ -229,26 +229,20 @@ Definition wt_recv (p : role) (a : wt_alts)
 Definition sing_alt a : wt_alts := ([::], a).
 Definition cons_alt a alts : wt_alts := (a :: alts.1, alts.2).
 
-Definition P_alt_lty T := fun L => coq_ty T -> wt_proc L.
-Definition P_alt_pl_ty := fun T => {L & P_alt_lty T L}.
-
 Declare Scope proc_scope.
-Notation " l1 [ x ':' T1 '];' p1"
+Notation " l1 'in[' x ':' T1 '];' p1"
   := (l1,
       existT (fun T => {L & coq_ty T -> wt_proc L}) T1
              (existT (fun L => coq_ty T1 -> wt_proc L)
                      _ (fun x => p1)))
        (at level 0, x ident) : proc_scope.
 
-Notation "'[alt' a1 ']'"
-  := (sing_alt a1) (at level 0) : proc_scope.
-
-Notation "'[alts' a1 | .. | a2 | an ']'"
+Notation "'[alts' | a1 | .. | a2 | an ']'"
   := (cons_alt a1 .. (cons_alt a2 (sing_alt an)) .. )
        (at level 0, a1 at level 99, a2 at level 99, an at level 99) : proc_scope.
 
 Notation branch p a := (wt_recv p a).
-(* Notation recv p a := (wt_recv p (sing_alt a)). *)
+Notation recv p a := (wt_recv p (sing_alt a)).
 
 Lemma if_proc_wt {L} (b : bool) (p1 p2 : wt_proc L) :
   of_lt (if b then proj1_sig p1 else proj1_sig p2) L.
@@ -262,56 +256,145 @@ Notation "'if' c 'then' vT 'else' vF" := (if_proc c vT vF) : proc_scope.
 Definition typed_proc := {L : l_ty & wt_proc L}.
 Notation "'[proc' p ']'" := (existT (fun L => wt_proc L) _ p) (at level 200) : proc_scope.
 
+(* Smart constructor and helpers for send *)
+Lemma find_cont_sing l T (L : l_ty)
+  : find_cont [:: (l, (T, L))] l == Some (T, L).
+Proof. by rewrite /find_cont/extend eq_refl. Qed.
+
+Definition wt_send p l T (pl : coq_ty T) L (P : wt_proc L)
+  : wt_proc (l_msg l_send p [::(l, (T, L))])
+  := exist _ _ (t_Send p pl (of_wt_proc P) (find_cont_sing l T L)).
+
+Fixpoint disj (l1 l2 : seq (lbl * (mty * l_ty)))
+  := match l1 with
+     | [::] => true
+     | h :: l1 => all (fun x => h.1 != x.1) l2 && (disj l1 l2)
+     end.
+
+Lemma fnd_app l (a1 a2 : seq (lbl * (mty * l_ty))) :
+  find_cont (a1 ++ a2) l =
+  if find_cont a1 l is Some (Ty, L) then Some (Ty, L)
+  else find_cont a2 l.
+Proof.
+  by elim: a1=>//= [][l'][Ty'] L' a1 Ih; rewrite /extend; case: ifP.
+Qed.
+
+Lemma disj_cons_l a1 h2 a2 :
+  disj a1 (h2 :: a2) -> all (fun x => h2.1 != x.1) a1 && disj a1 a2.
+Proof.
+  by elim: a1=>//= []h1 a1 Ih; rewrite eq_sym=>/andP-[/andP-[->->]/Ih->].
+Qed.
+
+Lemma disj_sym a1 a2 : disj a1 a2 -> disj a2 a1.
+Proof. by elim: a2 a1 =>[|h2 a2 Ih]//= a1 /disj_cons_l/andP-[->/Ih]. Qed.
+
+Lemma disj_fnd l Ty (L : l_ty) a1 a2 :
+  disj a1 a2 ->
+  find_cont a2 l == Some (Ty, L) ->
+  find_cont a1 l = None.
+Proof.
+  move=>/disj_sym; elim: a2=>//= [][l2][Ty2]L2 a2 Ih/=.
+  rewrite /extend; case: ifP=>[/eqP->|].
+  - move=>/andP-[ALL _] _ {Ih a2 l2 Ty2 L2 Ty L}; move: ALL.
+    by elim: a1=>//= [][l1 v1]/= a1 Ih; rewrite /extend eq_sym=>/andP-[/negPf->].
+  - by move=> _ /andP-[_].
+Qed.
+
+Lemma fnd_app_r l Ty (L : l_ty) a1 a2 :
+  disj a1 a2 ->
+  find_cont a2 l == Some (Ty, L) ->
+  find_cont (a1 ++ a2) l = Some (Ty, L).
+Proof. by rewrite fnd_app=>DISJ FND; rewrite (disj_fnd DISJ FND); apply/eqP. Qed.
+
+Lemma skipL_wt p a1 a2 (H : disj a1 a2) (P2 : wt_proc (l_msg l_send p a2))
+  : of_lt (proj1_sig P2) (l_msg l_send p (a1 ++ a2)).
+Proof.
+  case: P2=>//= x; case EQ: _ / => [||||q L a Ty l pl P o fnd] //.
+  move: EQ fnd=>[<-<-] /eqP-FND {q a}; apply/(t_Send p pl o)/eqP.
+  by move: FND=>/eqP; apply/fnd_app_r.
+Qed.
+
+Lemma skipR_wt p a1 a2 (H : disj a1 a2) (P1 : wt_proc (l_msg l_send p a1))
+  : of_lt (proj1_sig P1) (l_msg l_send p (a1 ++ a2)).
+Proof.
+  case: P1=>//= x; case EQ: _ / => [||||q L a Ty l pl P o fnd] //.
+  move: EQ fnd=>[<-<-] /eqP-FND {q a}; apply (t_Send p pl o).
+  by rewrite fnd_app FND.
+Qed.
+
+Lemma sel_wt b p a1 a2 (H : disj a1 a2)
+      (P1 : wt_proc (l_msg l_send p a1)) (P2 : wt_proc (l_msg l_send p a2))
+  : of_lt (if b then proj1_sig P1 else proj1_sig P2) (l_msg l_send p (a1 ++ a2)).
+Proof. by case: b; [apply/skipR_wt | apply/skipL_wt]. Qed.
+
+Definition sel_skipL p a1 a2 (P2 : wt_proc (l_msg l_send p a2)) (H : disj a1 a2)
+  : wt_proc (l_msg l_send p (a1 ++ a2))
+  := exist _ _ (skipL_wt H P2).
+Arguments sel_skipL p a1 [a2] _ _.
+
+Definition sel_skipR p a1 a2 (P1 : wt_proc (l_msg l_send p a1)) (H : disj a1 a2)
+  : wt_proc (l_msg l_send p (a1 ++ a2)) := exist _ _ (skipR_wt H P1).
+Arguments sel_skipR p [a1] a2 _ _.
+
+Definition wt_sel b p a1 a2
+           (P1 : wt_proc (l_msg l_send p a1)) (P2 : wt_proc (l_msg l_send p a2))
+           (H : disj a1 a2)
+  : wt_proc (l_msg l_send p (a1 ++ a2))
+  := exist _ _ (sel_wt b H P1 P2).
+
+Notation " 'out[' p ',' l ',' e '\as' T '];' p1 "
+  := (wt_send p l (T:=T) e p1) (at level 0, right associativity) : proc_scope.
+
+Notation "a '\skipL' pr"
+  := (sel_skipL _ a pr is_true_true)
+       (at level 0, right associativity) : proc_scope.
+
+Notation "pr '\skipR' a"
+  := (sel_skipR _ a pr is_true_true)
+       (at level 1, left associativity) : proc_scope.
+
+Notation " 'select' b 'then' pT 'else' pF " := (wt_sel b pT pF is_true_true) (at level 200).
+
+Open Scope proc_scope.
+Let p := roleid.mk_atom 0.
+Axiom b1 : bool.
+Axiom b2 : bool.
+Definition test1 :=
+  [proc
+     select b1
+     then out[p, 0, 0 \as T_nat]; wt_end
+          \skipR [:: (1, (T_bool, l_end))]
+     else select b2
+          then (out[p, 2, true \as T_bool]; wt_end)
+          else [:: (3, (T_nat, l_end))] \skipL (out[p, 4, true \as T_bool]; wt_end)
+  ].
+Eval compute in projT1 test1.
+Eval compute in get_proc (projT2 test1).
+
+Notation " 'select' p alts "
+  := (a1 p .. (a2 p (an p)) .. ) (at level 0) : proc_scope.
+
+
 Open Scope proc_scope.
 Definition test : typed_proc
   := [proc
         branch (roleid.mk_atom 0)
         [alts
-          0 [ x : T_bool ]; if x then wt_end else wt_end
-        | 1 [ x : T_nat  ]; wt_end
+        | 0 in[ x : T_bool ]; if x then wt_end else wt_end
+        | 1 in[ x : T_nat  ]; wt_end
         ]
      ].
-Eval compute in projT1 test.
-(* TODO: 'if' is a problem, and does not reduce, maybe a 'proc_if' *)
+Check (true => out[ 0, 0 : T_nat]; wt_end).
 
-Lemma find_cont_sing l T (L : l_ty)
-  : find_cont [:: (l, (T, L))] l == Some (T, L).
-Proof. by rewrite /find_cont/extend eq_refl. Qed.
-
-Definition wt_send p l T (pl : coq_ty T) P : wt_proc :=
-  exist _ (_, _) (t_Send p pl (of_wt_proc P) (find_cont_sing l T (get_ty P))).
-
-Definition wt_alt : Type
-  := lbl * {T & {L & { f : coq_ty T -> Proc | forall pl, of_lt (f pl) L}}}.
-Definition to_proc_alt a :=
-  (a.1, )
-Definition wt_cont :=
-  seq .
-Fixpoint get_proc_alts (t : wt_cont) :=
-  match t with
-  | [::] => [::]
-  | h :: t =>
-Definition wt_recv p (alts : )
-
-Fixpoint wt_select T (f : coq_ty T -> lbl) (alts : seq wt_proc) : coq_ty T -> wt_proc.
-
-Notation "'SELECT' e 'WITH' p1 '=>' c1 '|' .. '|' pn '=>' cn 'END'"
-  := (if e is p1 then c1 else (.. (if e is pn then cn else any _) ..)) (at level 0, p1 pattern, pn pattern).
-
-Require Extraction.
-Inductive test := C1 of nat | C2 of bool | C3.
-Definition is_one :=
-  (fun n =>
-    match n with
-    | C1 _ => true
-    | _ => match n with
-           | C2 b => b
-           | _ => true
-           end
-    end).
-Set Extraction Flag 2047.
-Extraction is_one.
-.
+Definition test' : typed_proc
+  := [proc
+        select (roleid.mk_atom 0)
+        [when
+        |
+        | _ => out[ 0, 0]; wt_end
+        ]
+     ].
+Close Scope proc_scope.
 
 
 Check (select true with true => false | false => true | _ => false end).
