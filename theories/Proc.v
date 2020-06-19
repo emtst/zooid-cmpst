@@ -502,15 +502,15 @@ Definition ping_pong_server p :=
      | \in Bye, _ : T_unit;
          finish
      | \in Ping, x : T_nat;
-         let y := x in
-         send p Pong y (jump 0)
+         (send p Pong x (jump 0))
      ]
      )
   ].
 
 Definition ping_pong_client1 p :=
   [proc
-     loop (send p Ping (T:=T_nat) 1 (jump 0))
+     loop (send p Ping (T:=T_nat) 1
+          (recv p \in Pong, x : T_nat; (jump 0)))
   ].
 
 Close Scope proc_scope.
