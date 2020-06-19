@@ -162,6 +162,10 @@ Definition wt_jump v : wt_proc (l_var v) :=  exist _ _ (t_Jump v).
 Definition wt_loop L (P : wt_proc L) : wt_proc (l_rec L)
   := exist _ _ (t_Loop (of_wt_proc P)).
 
+Notation finish := wt_end.
+Notation jump := wt_jump.
+Notation loop := wt_loop.
+
 (* Smart constructor and helpers for recv *)
 Definition wt_alt : Type := lbl * {T & {L & coq_ty T -> wt_proc L}}.
 
@@ -230,7 +234,7 @@ Definition sing_alt a : wt_alts := ([::], a).
 Definition cons_alt a alts : wt_alts := (a :: alts.1, alts.2).
 
 Declare Scope proc_scope.
-Notation " l1 [ 'in' x ':' T1 ]; p1"
+Notation " \in l1 , x ':' T1 ; p1"
   := (l1,
       existT (fun T => {L & coq_ty T -> wt_proc L}) T1
              (existT (fun L => coq_ty T1 -> wt_proc L)
@@ -361,14 +365,14 @@ Inductive sel_alt : Type :=
 | sk_alt (l : lbl) (T : mty) (L : l_ty)
 .
 
-Notation "b '=>' [ 'out' l , pl '\as' T ]; P"
+Notation "'\case' b '=>' l ',' pl '\as' T '!' P"
   := (if_alt b l (T:=T) pl P) (at level 0) : proc_scope.
-Notation "'_' '=>' [ 'out' l , pl '\as' T ]; P"
+Notation " '\otherwise' '=>' l , pl '\as' T '!' P"
   := (df_alt l (T:=T) pl P) (at level 0) : proc_scope.
-Notation "'\skip' [ 'out' l , pl ]; P"
+Notation "'\skip' '=>' l , pl '!' P"
   := (sk_alt l pl P) (at level 0) : proc_scope.
 Notation "[ 'sel' '|' a1 '|' .. '|' an ]"
-  := (cons a1 .. (cons an nil) .. ) (at level 0) : proc_scope.
+  := (cons a1 .. (cons an (@nil sel_alt)) .. ) (at level 0) : proc_scope.
 
 Definition get_alt_lt (s : sel_alt) :=
   match s with
@@ -457,44 +461,60 @@ Notation send := wt_send.
 
 (* Notation " 'select' b 'then' pT 'else' pF " := (wt_sel b pT pF is_true_true) (at level 200). *)
 
+Section Examples.
 Open Scope proc_scope.
 Let p := roleid.mk_atom 0.
-Axiom b1 : bool.
-Axiom b2 : bool.
-Definition test1 :=
+Definition test1 b1 b2 :=
   [proc
      select p
      [sel
-     | b1 => [out 0, 100 \as T_nat]; wt_end
-     | \skip [out 4, T_nat]; l_end
-     | b2 => [out 3, 10 \as T_nat]; wt_end
-     | _  => [out 1, b1 \as T_bool]; wt_end
-     | \skip [out 2, T_nat]; l_end
+     | \case b1   => 0 , 100 \as T_nat ! wt_end
+     | \skip      => 4 , T_nat         ! l_end
+     | \case b2   => 3 , 10 \as T_nat  ! wt_end
+     | \otherwise => 1 , b1 \as T_bool ! wt_end
+     | \skip      => 2 , T_nat         ! l_end
      ]
   ].
 
-Eval compute in projT1 test1.
-Eval compute in get_proc (projT2 test1).
+Eval compute in fun b1 b2 => projT1 (test1 b1 b2).
+Eval compute in fun b1 b2 => get_proc (projT2 (test1 b1 b2)).
 
 Definition test : typed_proc
   := [proc
         branch (roleid.mk_atom 0)
         [alts
-        | 0 [in x : T_bool ]; if x then wt_end else wt_end
-        | 1 [in x : T_nat  ]; wt_end
+        | \in 0, x : T_bool; if x then wt_end else wt_end
+        | \in 1, x : T_nat ; wt_end
         ]
      ].
 Eval compute in projT1 test.
 Eval compute in get_proc (projT2 test).
 
-(* Notation "[ 'when' b1 ';' .. ';' bn ] " := (all id (cons b1 .. (cons bn nil) .. )) (at level 0). *)
-(* Notation "[ 'when' b1 ';' .. ';' bn '|' t ]" := (match t with *)
-(*                                           | true => all id (cons b1 .. (cons bn nil) .. ) *)
-(*                                           | _ => has id (cons b1 .. (cons bn nil) .. ) *)
-(*                                           end) (at level 0). *)
+Definition Bye := 0.
+Definition Ping := 1.
+Definition Pong := 1.
 
-(* Eval compute in [when true ; false | false]. *)
+Definition ping_pong_server p :=
+  [proc
+     loop
+     (branch p
+     [alts
+     | \in Bye, _ : T_unit;
+         finish
+     | \in Ping, x : T_nat;
+         let y := x in
+         send p Pong y (jump 0)
+     ]
+     )
+  ].
+
+Definition ping_pong_client1 p :=
+  [proc
+     loop (send p Ping (T:=T_nat) 1 (jump 0))
+  ].
+
 Close Scope proc_scope.
+End Examples.
 
 Section OperationalSemantics.
 
