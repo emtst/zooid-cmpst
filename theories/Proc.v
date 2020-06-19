@@ -451,13 +451,13 @@ Notation send := wt_send.
 (* Notation " [ 'out' p ',' l ',' e '\as' T ]; p1 " *)
 (*   := (wt_send p l (T:=T) e p1) (at level 0, right associativity) : proc_scope. *)
 
-(* Notation "a '\skipL' pr" *)
-(*   := (sel_skipL _ a pr is_true_true) *)
-(*        (at level 0, right associativity) : proc_scope. *)
+Notation "a '\skipL' pr"
+  := (sel_skipL _ a pr is_true_true)
+       (at level 0, right associativity) : proc_scope.
 
-(* Notation "pr '\skipR' a" *)
-(*   := (sel_skipR _ a pr is_true_true) *)
-(*        (at level 1, left associativity) : proc_scope. *)
+Notation "pr '\skipR' a"
+  := (sel_skipR _ a pr is_true_true)
+       (at level 1, left associativity) : proc_scope.
 
 (* Notation " 'select' b 'then' pT 'else' pF " := (wt_sel b pT pF is_true_true) (at level 200). *)
 
@@ -509,8 +509,14 @@ Definition ping_pong_server p :=
 
 Definition ping_pong_client1 p :=
   [proc
-     loop (send p Ping (T:=T_nat) 1
-          (recv p \in Pong, x : T_nat; (jump 0)))
+     loop (
+       select p
+              [sel
+              | \skip      => Bye , T_unit ! l_end
+              | \otherwise => Ping, 1 \as T_nat !
+                                (recv p \in Pong, x : T_nat; (jump 0))
+              ]
+     )
   ].
 
 Close Scope proc_scope.
