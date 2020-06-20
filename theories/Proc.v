@@ -518,6 +518,19 @@ Definition ping_pong_server p :=
      )
   ].
 
+
+Definition ping_pong_client0 p :=
+  [proc
+     loop (
+       \select p
+        [sel
+        | \otherwise => Bye, tt \as T_unit ! finish
+        | \skip => Ping, T_nat ! l_msg l_recv p [:: (Pong, (T_nat, l_var 0))]
+
+        ]
+     )
+  ].
+
 Definition ping_pong_client1 p :=
   [proc
      loop (
@@ -529,6 +542,22 @@ Definition ping_pong_client1 p :=
         ]
      )
   ].
+
+Definition ping_pong_client2 p :=
+  [proc
+     \select p
+     [sel
+     | \otherwise => Bye, tt \as T_unit ! finish
+     | \skip => Ping, T_nat !
+             l_msg l_recv p
+             [:: (Pong, (T_nat, projT1 (ping_pong_client1 p)))]
+     ]
+  ].
+
+Goal projT1 (ping_pong_client2 p) = lunroll 1 (projT1 (ping_pong_client1 p)).
+  by [].
+Qed.
+
 
 Close Scope proc_scope.
 End Examples.
