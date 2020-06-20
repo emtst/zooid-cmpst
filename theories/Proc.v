@@ -234,19 +234,23 @@ Definition sing_alt a : wt_alts := ([::], a).
 Definition cons_alt a alts : wt_alts := (a :: alts.1, alts.2).
 
 Declare Scope proc_scope.
-Notation " \in l1 , x ':' T1 ; p1"
+Notation " \lbl l1 , x ':' T1 ; p1"
   := (l1,
       existT (fun T => {L & coq_ty T -> wt_proc L}) T1
              (existT (fun L => coq_ty T1 -> wt_proc L)
                      _ (fun x => p1)))
-       (at level 0, x ident) : proc_scope.
+       (at level 0, x ident, p1 constr at level 200) : proc_scope.
 
 Notation "[ 'alts' | a1 | .. | a2 | an ]"
   := (cons_alt a1 .. (cons_alt a2 (sing_alt an)) .. )
-       (at level 0, a1 at level 99, a2 at level 99, an at level 99) : proc_scope.
+       (at level 0,
+        a1 constr at level 200,
+        a2 constr at level 200,
+        an constr at level 200) : proc_scope.
 
-Notation branch p a := (wt_recv p a).
-Notation recv p a := (wt_recv p (sing_alt a)).
+Notation "\branch" := (wt_recv) (at level 0) : proc_scope.
+Notation "\recv" := (fun p a => wt_recv p (sing_alt a))
+                      (at level 0) : proc_scope.
 
 Lemma if_proc_wt {L} (b : bool) (p1 p2 : wt_proc L) :
   of_lt (if b then proj1_sig p1 else proj1_sig p2) L.
@@ -366,13 +370,19 @@ Inductive sel_alt : Type :=
 .
 
 Notation "'\case' b '=>' l ',' pl '\as' T '!' P"
-  := (if_alt b l (T:=T) pl P) (at level 0) : proc_scope.
+  := (if_alt b l (T:=T) pl P)
+       (at level 0, P constr at level 200) : proc_scope.
 Notation " '\otherwise' '=>' l , pl '\as' T '!' P"
-  := (df_alt l (T:=T) pl P) (at level 0) : proc_scope.
+  := (df_alt l (T:=T) pl P) (at level 0, P constr at level 200)
+     : proc_scope.
 Notation "'\skip' '=>' l , pl '!' P"
-  := (sk_alt l pl P) (at level 0) : proc_scope.
+  := (sk_alt l pl P) (at level 0, P constr at level 200)
+     : proc_scope.
 Notation "[ 'sel' '|' a1 '|' .. '|' an ]"
-  := (cons a1 .. (cons an (@nil sel_alt)) .. ) (at level 0) : proc_scope.
+  := (cons a1 .. (cons an (@nil sel_alt)) .. )
+       (at level 0,
+        a1 constr at level 200,
+        an constr at level 200) : proc_scope.
 
 Definition get_alt_lt (s : sel_alt) :=
   match s with
@@ -445,8 +455,9 @@ Fixpoint wt_select p (s : seq sel_alt)
        end
      end.
 
-Notation select p a := (@wt_select p a is_true_true is_true_true).
-Notation send := wt_send.
+Notation "'\select' p a" := (@wt_select p a is_true_true is_true_true)
+                            (at level 0, p at level 0, a constr at level 99).
+Notation "\send" := wt_send.
 
 (* Notation " [ 'out' p ',' l ',' e '\as' T ]; p1 " *)
 (*   := (wt_send p l (T:=T) e p1) (at level 0, right associativity) : proc_scope. *)
@@ -466,7 +477,7 @@ Open Scope proc_scope.
 Let p := roleid.mk_atom 0.
 Definition test1 b1 b2 :=
   [proc
-     select p
+     \select p
      [sel
      | \case b1   => 0 , 100 \as T_nat ! wt_end
      | \skip      => 4 , T_nat         ! l_end
@@ -481,10 +492,10 @@ Eval compute in fun b1 b2 => get_proc (projT2 (test1 b1 b2)).
 
 Definition test : typed_proc
   := [proc
-        branch (roleid.mk_atom 0)
+        \branch (roleid.mk_atom 0)
         [alts
-        | \in 0, x : T_bool; if x then wt_end else wt_end
-        | \in 1, x : T_nat ; wt_end
+        | \lbl 0, x : T_bool; if x then wt_end else wt_end
+        | \lbl 1, x : T_nat ; wt_end
         ]
      ].
 Eval compute in projT1 test.
@@ -496,26 +507,26 @@ Definition Pong := 1.
 
 Definition ping_pong_server p :=
   [proc
-     loop
-     (branch p
-     [alts
-     | \in Bye, _ : T_unit;
-         finish
-     | \in Ping, x : T_nat;
-         (send p Pong x (jump 0))
-     ]
+     loop (
+       \branch p
+        [alts
+        | \lbl Bye, _ : T_unit;
+            finish
+        | \lbl Ping, x : T_nat;
+            (\send p Pong x (jump 0))
+        ]
      )
   ].
 
 Definition ping_pong_client1 p :=
   [proc
      loop (
-       select p
-              [sel
-              | \skip      => Bye , T_unit ! l_end
-              | \otherwise => Ping, 1 \as T_nat !
-                                (recv p \in Pong, x : T_nat; (jump 0))
-              ]
+       \select p
+        [sel
+        | \skip      => Bye , T_unit ! l_end
+        | \otherwise => Ping, 1 \as T_nat !
+              (\recv p \lbl Pong, x : T_nat; (jump 0))
+        ]
      )
   ].
 
