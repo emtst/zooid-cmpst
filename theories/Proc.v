@@ -110,6 +110,13 @@ Fixpoint punroll d P :=
 (*       | _ => G *)
 (*     end. *)
 
+(*
+l_rec l_msg a p [(0, (t1, l_msg a r end)), (1, (t2, l_msg a q 0))]
+
+l_msg a p [(0, t1, l_msg a r end),
+(1, (t2, l_rec l_msg a q l_msg a p [(0, t1, l_msg a r end), (1, t2, 0)]0))]
+*)
+
 Fixpoint find_alt alts l :=
   match alts with
   | A_sing T l' rK

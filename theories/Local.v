@@ -103,16 +103,40 @@ Section Syntax.
   Definition lty_eqMixin := EqMixin lty_eqP.
   Canonical lty_eqType := Eval hnf in EqType l_ty lty_eqMixin.
 
+  Fixpoint l_shift n d (L : l_ty) :=
+    match L with
+    | l_end => l_end
+    | l_var v => if v >= d then l_var (n + v) else L
+    | l_msg a p Ks => l_msg a p [seq (K.1, (K.2.1, l_shift n d K.2.2)) | K <- Ks]
+    | l_rec L => l_rec (l_shift n d.+1 L)
+    end.
+
   Fixpoint l_open (d : nat) (L2 : l_ty) (L1 : l_ty) :=
     match L1 with
     | l_end => L1
-    | l_var v => if v == d then L2 else L1
+    | l_var v => if v == d then l_shift d 0 L2 else L1
     | l_rec L => l_rec (l_open d.+1 L2 L)
     | l_msg a p Ks =>
       l_msg a p [seq (K.lbl, (K.mty, l_open d L2 K.cnt)) | K <- Ks]
     end.
   Notation "{ k '~>' v } L":= (l_open k v L) (at level 30, right associativity).
   Notation "L '^' v":= (l_open 0 (l_var v) L) (at level 30, right associativity).
+
+  (* Lemma l_unroll_msg (l : l_ty) := *)
+  (*   let  *)
+  (*     match l with *)
+  (*     | l_rec (l_msg a p Ks) => *)
+  (*   l_msg a p *)
+  (*         [seq (K.1, (K.2.1, *)
+  (*                     l_rec (l_open 0 *)
+  (*                                   (l_msg a p [seq (K.1, (K.2.1, )) | K <- Ks]) *)
+  (*                                   K.2.2))) *)
+  (*         | K <- Ks *)
+  (*         ] *)
+  (* | _ => l *)
+  (* end *)
+
+
 
   Lemma open_notvar n L L' :
     (forall v : nat, L != l_var v) ->
@@ -177,6 +201,35 @@ Section Syntax.
       by move: M (Ih K M n)=>/memberP-M /(_ (H K M))=>->.
   Qed.
 
+  Lemma lfbvar_gt n m G :
+    n <= m ->
+    l_fidx n G == fset0 ->
+    l_fidx m G = fset0.
+  Proof.
+    move=> LE H; move: LE; elim: m=>[|m Ih]//; first by case: n H=>///eqP.
+    move: H; case: (boolP (n == m.+1))=>[/eqP->/eqP//|NE _ LE].
+    apply/lfbvar_next/eqP/Ih; move: (conj NE LE)=>/andP.
+    by rewrite -ltn_neqAle.
+  Qed.
+
+  Lemma lshift_closed n d G :
+    l_fidx d G == fset0 ->
+    l_shift n d G = G.
+  Proof.
+    elim/lty_ind2: G=> [| v | L Ih | a p Ks Ih]//= in d *.
+    { (* var *)
+      by case: ifP=>//; rewrite -cardfs_eq0 cardfs1.
+    }
+    { (* rec *)
+      by move=>H; congr l_rec; apply/Ih.
+    }
+    { (* msg *)
+      move=>/fsetUs_fset0/member_map/(_ _ ((rwP (memberP _ _)).2 _))-H.
+      congr l_msg; rewrite -{2}(map_id Ks); apply/eq_in_map=>K IN.
+      by rewrite (Ih _ IN _ (H _ IN)) -!surjective_pairing.
+    }
+  Qed.
+
   Lemma lopen_closed G :
     l_closed (l_rec G) ->
     l_closed (l_open 0 (l_rec G) G).
@@ -184,11 +237,13 @@ Section Syntax.
     rewrite/l_closed/==>G_fbv.
     have: l_fidx 0 (l_rec G) == fset0 by [].
     move: (l_rec G) => G' G'0.
-    elim/lty_ind2: G 0 G'0 G_fbv=>[//|v|G Ih|p q Ks Ih] n G'0/=.
-    - move=> H; case: ifP=>[//|/=]; case: ifP=>//; move: H.
-      case: ifP=>//; first by rewrite -cardfs_eq0 cardfs1//.
-      rewrite ltn_neqAle =>/(rwP negPf); rewrite negb_and negbK eq_sym.
-      by move=>/orP-[->//|/negPf->].
+    elim/lty_ind2: G 0 G_fbv=>[//|v|G Ih|p q Ks Ih] n /=.
+    - move=> H; case: ifP=>[|/=].
+      + move=> _; rewrite (lshift_closed n G'0); apply/eqP.
+        by move: G'0; apply/lfbvar_gt.
+      + case: ifP=>// LE /(rwP negPf)-NE; move: (conj NE LE)=>/andP.
+        rewrite eq_sym -ltn_neqAle=>LT; move: H; rewrite LT.
+        by rewrite -cardfs_eq0 cardfs1.
     - by apply: (Ih n.+1); rewrite lfbvar_next.
     - rewrite -map_comp/comp/=; move=>/fsetUs_fset0/member_map-H.
       apply/fsetUs_fset0/member_map=>K /memberP-M.
@@ -310,7 +365,8 @@ Section Syntax.
     lguarded d1 ({d2 ~> G'} G).
   Proof.
     elim/lty_ind2: G=>[|n|G Ih|p q Ks Ih]//= in d1 d2 *.
-    - by case: ifP=>// _ /lguarded_depth_gt-H /H-{H}H.
+    - case: ifP=>// _ gG cG; rewrite (lshift_closed _ cG)=>_.
+      by apply/(lguarded_depth_gt _ gG).
     - by apply/Ih.
     - move=> GG' CG'; elim: Ks=>[|K Ks IhK]//= in Ih *.
       move: (Ih K); rewrite in_cons eq_refl=>/(_ is_true_true _ _ GG' CG')-H.
@@ -386,6 +442,7 @@ Section Syntax.
   + by move=> m n L1 neq closed; rewrite /l_binds //=.
   + move=> v m n L1 neq closed.
     rewrite /l_binds //=; case: ifP => //=; rewrite <-(rwP eqP); move=>->.
+    rewrite (lshift_closed _ closed).
     move: (@l_closed_no_binds m _ closed); rewrite /l_binds; move =>->.
     by move: (negbTE neq).
   + by move=> L IH m n L1 neq closed; rewrite //=; apply: IH.
@@ -524,12 +581,26 @@ Section Semantics.
   Definition l_precond L :=
     l_closed L && lguarded 0 L && l_non_empty_cont L.
 
+  Lemma lne_shift d n G :
+    l_non_empty_cont G ->
+    l_non_empty_cont (l_shift d n G).
+  Proof.
+    elim/lty_ind2: G=>[|v|L Ih|a p Ks Ih]//= in n *.
+    - by case: ifP.
+    - by apply/Ih.
+    - move=>/andP-[NIL NE]; apply/andP;split;first by move: Ks NIL {Ih NE}=>[].
+      rewrite -map_comp /comp/=; move: NE=>/forallbP/forall_member/member_map.
+      move=>/(_ _ ((rwP (memberP _ _)).2 _))=> H.
+      apply/forallbP/forall_member/member_map=>b /(rwP (memberP _ _))-IN.
+      by apply: (Ih _ IN _ (H _ IN)).
+  Qed.
+
   Lemma lne_open n G G' :
     l_non_empty_cont G -> l_non_empty_cont G' -> l_non_empty_cont (l_open n G' G).
   Proof.
     move=> NE1 NE2; move: NE1.
     elim/lty_ind2: G n=>//.
-    - by move=>v n; rewrite /=; case: ifP=>//.
+    - by move=> v n; rewrite /=; case: ifP=>// _ _; apply/lne_shift.
     - by move=> G Ih n /=; apply/Ih.
     - move=> a T C Ih n /=; case: C Ih=>//= K Ks Ih /andP-[NE_K ALL].
       have K_in: K \in K :: Ks by rewrite in_cons !eq_refl.
@@ -863,13 +934,14 @@ Section Semantics.
 
   (* l_open d L (n_rec m L') = n_rec m (l_open (d - m) L L') ? *)
   Lemma lopen_nrec d m L
-    : l_open d L (n_rec m (l_var m)) = n_rec m (if d == 0 then L else l_var m).
+    : l_open d L (n_rec m (l_var m)) =
+      n_rec m (if d == 0 then l_shift (d + m) 0 L else l_var m).
   Proof.
-    rewrite -{2 4}(add0n m) -{1}(add0n d); move: {-3}0=>n.
+    rewrite -{2 5} (add0n m) -{1 3}(add0n d); move: {-3 5}0=>n.
     elim: m=>[|m Ih]/= in n *.
-    - case: (ifP (d == 0))=>[/eqP->|]; first by rewrite eq_refl.
+    - case: (ifP (d == 0))=>[/eqP->|]; first by rewrite eq_refl !addn0.
       by case: ifP=>//; rewrite eqn_add2l eq_sym=>->.
-    - by rewrite addnS -!addSn Ih.
+    - by rewrite !addnS -!addSn Ih.
   Qed.
 
   Lemma nrec_lrecdepthI L : L = n_rec (lrec_depth L) (get_nr L).
@@ -886,6 +958,14 @@ Section Semantics.
     by rewrite addn0 ltn_neqAle=>/andP-[/negPf->].
   Qed.
 
+  Lemma lshift_nrec d r m n :
+    n < r + m ->
+    l_shift d r (n_rec m (l_var n)) = n_rec m (l_var n).
+  Proof.
+    elim: m=> [|m Ih]//= in r *; first by rewrite addn0 ltnNge=>/negPf->.
+    by rewrite addnS -addSn/==>/Ih->.
+  Qed.
+
   Lemma lunroll_inf Li Lr Li' :
     lunroll (lrec_depth Li) Li = l_rec Li' ->
     LUnroll Li Lr.
@@ -900,7 +980,8 @@ Section Semantics.
     move=>/(_ _ _ (ex_intro _ _ (ex_intro _ _ (conj erefl _ ))))-CIH Li Lr.
     move=>[m][n][<-]{Li}; case: n=>//= n LE.
     apply/paco2_fold; constructor; move: LE; case: (boolP (n == m)).
-    - move=>/eqP-> _; rewrite lopen_nrec eq_refl nrec_comm nrec_twice addSn.
+    - move=>/eqP-> _; rewrite lopen_nrec add0n eq_refl.
+      rewrite -/(n_rec m.+1 _) lshift_nrec // nrec_twice addnS.
       by right; apply/CIH; apply: leq_addr.
     - move=> H0 H1; move: {H0 H1} (conj H0 H1)=>/andP.
       rewrite eq_sym -ltn_neqAle => LE; rewrite lopen_bound //.
