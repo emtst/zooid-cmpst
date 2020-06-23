@@ -665,6 +665,14 @@ Section OperationalSemantics.
     - by elim: alts=>[T l0 rK|T l0 rK a]//=; case: ifP.
   Qed.
 
+  Lemma find_alt_ty_shift n d alts
+    : same_dom (find_alt_ty (alt_shift n d alts)) (find_alt_ty alts).
+  Proof.
+    move=> l Ty; split=>[][][] H; exists tt; move: H; rewrite /find_alt_ty.
+    - by elim: alts=>[T l0 rK|T l0 rK a]//=; case: ifP.
+    - by elim: alts=>[T l0 rK|T l0 rK a]//=; case: ifP.
+  Qed.
+
   Lemma same_dom_map T T' (f : T -> T') (Ks : seq (lbl * (mty * T)))
     : same_dom (find_cont Ks) (find_cont [seq (K.1, (K.2.1, f K.2.2)) | K <- Ks]).
   Proof.
@@ -692,10 +700,27 @@ Section OperationalSemantics.
       by exists rK''; split.
   Qed.
 
-  Lemma find_cont_open n L L' Ks Ty l :
-    find_cont [seq (K.1, (K.2.1, l_open n L' K.2.2)) | K <- Ks] l = Some (Ty, L) ->
+  Lemma find_alt_shift n d alts l Ty rK
+    : find_alt (alt_shift n d alts) l = Some (existT (fun=>_) Ty rK) ->
+      exists rK',
+        find_alt alts l = Some (existT (fun=>_) Ty rK') /\
+        rK = (fun l => p_shift n d (rK' l)).
+  Proof.
+    elim: alts=>[T l0 rK''|T l0 rK'' alts Ih]/=; case:ifP=>// _.
+    - move=> [H]; move: H rK''=>-> rK'' H.
+      rewrite -(Eqdep_dec.inj_pair2_eq_dec _ _ _ _ _ _ H);
+        last by move=>x y; apply/(decP eqP).
+      by exists rK''; split.
+    - move=> [H]; move: H rK''=>-> rK'' H.
+      rewrite -(Eqdep_dec.inj_pair2_eq_dec _ _ _ _ _ _ H);
+        last by move=>x y; apply/(decP eqP).
+      by exists rK''; split.
+  Qed.
+
+  Lemma find_cont_map (L : l_ty) (Ks : seq (lbl * (mty * l_ty))) Ty l f :
+    find_cont [seq (K.1, (K.2.1, f K.2.2)) | K <- Ks] l = Some (Ty, L) ->
     exists L0,
-      find_cont Ks l = Some (Ty, L0) /\ L = l_open n L' L0.
+      find_cont Ks l = Some (Ty, L0) /\ L = f L0.
   Proof.
     elim: Ks=>//= [][l'][Ty'] L0 Ks Ih.
     by rewrite /extend/=; case:ifP=>// _ [-><-]; exists L0.
@@ -704,8 +729,25 @@ Section OperationalSemantics.
   Lemma shift_preserves_type n d P L :
     of_lt P L ->
     of_lt (p_shift d n P) (l_shift d n L).
-  Admitted.
+  Proof.
+    move=>H; elim: H=>
+    [
+    | v
+    | {}L {}P  H Ih
+    | K p alts DOM _ Ih
+    | p {}L K Ty l payload {}P H0 Ih fnd
+    ]//= in n *; try by (try (case: ifP); constructor).
+    - constructor;
+        first by apply/(same_dom_trans _ (same_dom_map _ _))
+                      /(same_dom_trans _ DOM)/find_alt_ty_shift.
+      move=>l Ty rK L0 /find_alt_shift-[rK'] [EQ0->] /find_cont_map-[L1][EQ1->].
+      by move=> pl; apply/(Ih _ _ _ _ EQ0 EQ1).
+    - apply/t_Send; first by apply/Ih.
+      elim: K fnd=>//= [][k v] t {}Ih; rewrite /extend/=.
+      by case: ifP=>// _ /eqP-[->]/=.
+  Qed.
 
+  (* TODO: can we generalise: of_lt (f P) (f' L) relate f f' in some way? *)
   Lemma open_preserves_type P P' L L' :
     of_lt P' L' -> of_lt P L -> of_lt (p_open 0 P' P) (l_open 0 L' L).
   Proof.
@@ -719,8 +761,9 @@ Section OperationalSemantics.
     - case: (ifP (v == n))=>_; try by constructor.
       by apply/shift_preserves_type.
     - apply/t_Recv;
-        first by apply/(same_dom_trans _ (same_dom_map _ _))/(same_dom_trans _ DOM)/find_alt_ty_open.
-      move=> l Ty rK L0 /find_alt_open-[rK'] [EQ0->] /find_cont_open-[L1][EQ1->] .
+        first by apply/(same_dom_trans _ (same_dom_map _ _))
+                      /(same_dom_trans _ DOM)/find_alt_ty_open.
+      move=> l Ty rK L0 /find_alt_open-[rK'] [EQ0->] /find_cont_map-[L1][EQ1->].
       by move=> pl; apply/(Ih _ _ _ _ EQ0 EQ1).
     - apply/t_Send; first by apply/Ih.
       elim: K fnd=>//= [][k v] t {}Ih; rewrite /extend/=.
