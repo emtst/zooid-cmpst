@@ -773,11 +773,12 @@ Section TraceEquivalence.
       p_lts_ r (tr_next A TR) P
   .
 
-  Lemma p_lts_monotone P : monotone2 (l_trc_ P).
-  Proof. pmonauto. Admitted.
+  (* Lemma p_lts_monotone : monotone2 p_lts_ . *)
+  (* Proof. *)
+  (*   pmonauto. *)
+  (* Abort. *)
 
   Definition p_lts TR P := paco2 (p_lts_) bot2 TR P.
-
 
   Definition p_accepts PTRACE P := p_lts PTRACE P.
 
@@ -790,11 +791,11 @@ Section TraceEquivalence.
     gty_accepts TRACE G ->
     subtrace p (erase PTRACE) TRACE.
   Proof.
+    move=> Hproj Hoft.
 
   Abort.
 
 End TraceEquivalence.
-
 
 (* Code Extraction *)
 
