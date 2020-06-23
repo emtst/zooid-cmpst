@@ -103,7 +103,6 @@ Section Syntax.
     (p1 == p2) && (q1 == q2) && all2 eq_alt Ks1 Ks2.
   Proof.
     rewrite /=; do 2 (case: eqP=>///= _).
-    by elim: Ks1 Ks2=>[|Ks1 K1 Ih]; case=>[|Ks2 K2]//; rewrite Ih.
   Qed.
   Hint Rewrite eqgty_all : mpst.
 

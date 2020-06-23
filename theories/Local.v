@@ -83,7 +83,6 @@ Section Syntax.
     (a1 == a2) && (r1 == r2) && all2 eq_lalt K1 K2.
   Proof.
     rewrite /=; do 2 (case: eqP=>///= _); move: K1 K2 {r1 r2 a1 a2}.
-    by elim=>//[[l1 L1] K1] Ih; case=>//[[l2 L2] K2]/=; rewrite Ih.
   Qed.
 
   Lemma lty_eqP : Equality.axiom eq_lty.
