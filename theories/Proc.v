@@ -780,15 +780,32 @@ Section TraceEquivalence.
       p_lts_ r (tr_next A TR) P
   .
 
-  Lemma p_lts_monotone P : monotone2 (l_trc_ P).
-  Proof. pmonauto. Admitted.
+  Lemma p_lts_monotone : monotone2 p_lts_ .
+  Proof.
+  Admitted.
+  Hint Resolve p_lts_monotone : paco.
+
 
   Definition p_lts TR P := paco2 (p_lts_) bot2 TR P.
-
 
   Definition p_accepts PTRACE P := p_lts PTRACE P.
 
   Definition erase : trace rt_act -> trace act := trace_map erase_act.
+
+  Definition trace_co {A} (tr : trace A) : trace A :=
+    match tr with
+    | tr_end => tr_end _
+    | tr_next a tr' => tr_next a tr'
+    end.
+
+  Lemma trace_co_id {A} (tr : trace A): tr = trace_co tr.
+    Proof. by case tr. Qed.
+
+  Lemma erase_end : erase (tr_end rt_act) = tr_end act.
+  Proof.
+    rewrite/erase/trace_map.
+    (* easy. *)
+  Admitted.
 
   Theorem process_traces_are_global_types G p L P PTRACE TRACE:
     project G p == Some L ->
@@ -797,11 +814,29 @@ Section TraceEquivalence.
     gty_accepts TRACE G ->
     subtrace p (erase PTRACE) TRACE.
   Proof.
+    move=> Hproj Hoft Lacc Gacc.
+    punfold Lacc.
+    punfold Gacc ; last apply g_lts_monotone.
+
+    elim Lacc=>//=.
+    {
+      pfold.
+      rewrite erase_end.
+
+      elim Gacc=>//= ; first by constructor.
+
+      move=>a tr G' G'' Dstep Dwhat.
+      have Something: (subject a != p) by admit.
+      (* somehow because G steps and the local type ended *)
+
+      (* eventually it is skip *)
+      apply subtrace_skip ; first by apply Something.
+
+      (* by magic and hope *) (* this tactic does not yet exist *)
 
   Abort.
 
 End TraceEquivalence.
-
 
 (* Code Extraction *)
 

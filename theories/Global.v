@@ -103,7 +103,6 @@ Section Syntax.
     (p1 == p2) && (q1 == q2) && all2 eq_alt Ks1 Ks2.
   Proof.
     rewrite /=; do 2 (case: eqP=>///= _).
-    by elim: Ks1 Ks2=>[|Ks1 K1 Ih]; case=>[|Ks2 K2]//; rewrite Ih.
   Qed.
   Hint Rewrite eqgty_all : mpst.
 
@@ -959,7 +958,7 @@ Section Semantics.
 
   Lemma g_lts_monotone : monotone2 g_lts_.
   Proof. pmonauto. Qed.
-  Hint Resolve g_lts_monotone.
+  Hint Resolve g_lts_monotone : paco.
 
   Close Scope mpst_scope.
 
