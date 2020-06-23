@@ -953,7 +953,9 @@ Section CProject.
   Proof.
   elim: G2 G1 k L1 L2.
   + by move=> G1 k L1 L2 gclo eq1 => //=; move=> [eq2]; rewrite -eq2 //=.
-  + by move=> VAR G1 k L1 L2 gclo eq1 => //=; move=> [eq2]; rewrite -eq2 //=; case: ifP.
+  + move=> VAR G1 k L1 L2 gclo eq1 => //=; move=> [eq2]; rewrite -eq2 //=.
+    case: ifP=>//; move:eq1=>/eqP-eq1.
+    by move: (gclosed_lclosed gclo eq1)=>/lshift_closed-> _; apply/eqP.
   + move=> GT IH G1 k L1 L2 gclo eq1 => //=; case Prj: project=>[LT| //=].
     * case: ifP; move=> lbi [eq2]; rewrite //=.
       move: (IH _ (k.+1) L1 LT gclo eq1 Prj) =>->; rewrite -eq2 //=.

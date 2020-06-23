@@ -49,11 +49,28 @@ Fixpoint in_alts l T (alt : coq_ty T -> Proc) (alts : Alts) : Prop
        end
      end.
 
+Fixpoint p_shift (n d : nat) (P : Proc) : Proc :=
+  match P with
+  | Finish => Finish
+  | Jump v => if v >= d then Jump (n + v) else Jump v
+  | Loop P => Loop (p_shift n d.+1 P)
+  | Recv p alts => Recv p (alt_shift n d alts)
+  | Send p _ l t P => Send p l t (p_shift n d P)
+  end
+with alt_shift (n d : nat) (alts : Alts) : Alts :=
+       match alts with
+       | A_sing _ l dproc =>
+         A_sing l (fun t => p_shift n d (dproc t))
+       | A_cons _ l dproc alts' =>
+         A_cons l (fun t => p_shift n d (dproc t)) (alt_shift n d alts')
+       end
+  .
+
 (* open variable d, with process P2 in process P1 *)
 Fixpoint p_open (d : nat) (P2 P1 : Proc) : Proc :=
   match P1 with
   | Finish => Finish
-  | Jump v => if v == d then P2 else P1
+  | Jump v => if v == d then p_shift d 0 P2 else P1
   | Loop P => Loop (p_open d.+1 P2 P)
   | Recv p alts => Recv p (alt_open d P2 alts)
   | Send p _ l t P => Send p l t (p_open d P2 P)
@@ -684,6 +701,11 @@ Section OperationalSemantics.
     by rewrite /extend/=; case:ifP=>// _ [-><-]; exists L0.
   Qed.
 
+  Lemma shift_preserves_type n d P L :
+    of_lt P L ->
+    of_lt (p_shift d n P) (l_shift d n L).
+  Admitted.
+
   Lemma open_preserves_type P P' L L' :
     of_lt P' L' -> of_lt P L -> of_lt (p_open 0 P' P) (l_open 0 L' L).
   Proof.
@@ -694,7 +716,8 @@ Section OperationalSemantics.
     | K p alts DOM _ Ih
     | p {}L K Ty l payload {}P H0 Ih fnd
     ]/= n; try by (constructor).
-    - by case: ifP=>//; constructor.
+    - case: (ifP (v == n))=>_; try by constructor.
+      by apply/shift_preserves_type.
     - apply/t_Recv;
         first by apply/(same_dom_trans _ (same_dom_map _ _))/(same_dom_trans _ DOM)/find_alt_ty_open.
       move=> l Ty rK L0 /find_alt_open-[rK'] [EQ0->] /find_cont_open-[L1][EQ1->] .
@@ -780,32 +803,15 @@ Section TraceEquivalence.
       p_lts_ r (tr_next A TR) P
   .
 
-  Lemma p_lts_monotone : monotone2 p_lts_ .
-  Proof.
-  Admitted.
-  Hint Resolve p_lts_monotone : paco.
-
+  Lemma p_lts_monotone P : monotone2 (l_trc_ P).
+  Proof. pmonauto. Admitted.
 
   Definition p_lts TR P := paco2 (p_lts_) bot2 TR P.
+
 
   Definition p_accepts PTRACE P := p_lts PTRACE P.
 
   Definition erase : trace rt_act -> trace act := trace_map erase_act.
-
-  Definition trace_co {A} (tr : trace A) : trace A :=
-    match tr with
-    | tr_end => tr_end _
-    | tr_next a tr' => tr_next a tr'
-    end.
-
-  Lemma trace_co_id {A} (tr : trace A): tr = trace_co tr.
-    Proof. by case tr. Qed.
-
-  Lemma erase_end : erase (tr_end rt_act) = tr_end act.
-  Proof.
-    rewrite/erase/trace_map.
-    (* easy. *)
-  Admitted.
 
   Theorem process_traces_are_global_types G p L P PTRACE TRACE:
     project G p == Some L ->
@@ -814,29 +820,11 @@ Section TraceEquivalence.
     gty_accepts TRACE G ->
     subtrace p (erase PTRACE) TRACE.
   Proof.
-    move=> Hproj Hoft Lacc Gacc.
-    punfold Lacc.
-    punfold Gacc ; last apply g_lts_monotone.
-
-    elim Lacc=>//=.
-    {
-      pfold.
-      rewrite erase_end.
-
-      elim Gacc=>//= ; first by constructor.
-
-      move=>a tr G' G'' Dstep Dwhat.
-      have Something: (subject a != p) by admit.
-      (* somehow because G steps and the local type ended *)
-
-      (* eventually it is skip *)
-      apply subtrace_skip ; first by apply Something.
-
-      (* by magic and hope *) (* this tactic does not yet exist *)
 
   Abort.
 
 End TraceEquivalence.
+
 
 (* Code Extraction *)
 
