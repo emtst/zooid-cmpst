@@ -66,21 +66,21 @@ with alt_shift (n d : nat) (alts : Alts) : Alts :=
        end
   .
 
-(* open variable n after d binders, with process P2 in process P1 *)
-Fixpoint p_open (d n : nat) (P2 P1 : Proc) : Proc :=
+(* open variable d, with process P2 in process P1 *)
+Fixpoint p_open (d : nat) (P2 P1 : Proc) : Proc :=
   match P1 with
   | Finish => Finish
-  | Jump v => if v == n + d then p_shift d 0 P2 else P1
-  | Loop P => Loop (p_open d.+1 n P2 P)
-  | Recv p alts => Recv p (alt_open d n P2 alts)
-  | Send p _ l t P => Send p l t (p_open d n P2 P)
+  | Jump v => if v == d then p_shift d 0 P2 else P1
+  | Loop P => Loop (p_open d.+1 P2 P)
+  | Recv p alts => Recv p (alt_open d P2 alts)
+  | Send p _ l t P => Send p l t (p_open d P2 P)
   end
-with alt_open (d n : nat) (P2 : Proc) (alts : Alts) : Alts :=
+with alt_open (d : nat) (P2 : Proc) (alts : Alts) : Alts :=
        match alts with
        | A_sing _ l dproc =>
-         A_sing l (fun t => p_open d n P2 (dproc t))
+         A_sing l (fun t => p_open d P2 (dproc t))
        | A_cons _ l dproc alts' =>
-         A_cons l (fun t => p_open d n P2 (dproc t)) (alt_open d n P2 alts')
+         A_cons l (fun t => p_open d P2 (dproc t)) (alt_open d P2 alts')
        end
   .
 
@@ -99,7 +99,7 @@ Fixpoint punroll d P :=
   | 0 => P
   | d.+1 =>
     match P with
-    | Loop P' => punroll d (p_open 0 0 P P')
+    | Loop P' => punroll d (p_open 0 P P')
     | _ => P
     end
   end.
@@ -657,8 +657,8 @@ Section OperationalSemantics.
     by rewrite-/prec_depth-/lrec_depth Eq.
   Qed.
 
-  Lemma find_alt_ty_open n d P alts
-    : same_dom (find_alt_ty (alt_open n d P alts)) (find_alt_ty alts).
+  Lemma find_alt_ty_open n P alts
+    : same_dom (find_alt_ty (alt_open n P alts)) (find_alt_ty alts).
   Proof.
     move=> l Ty; split=>[][][] H; exists tt; move: H; rewrite /find_alt_ty.
     - by elim: alts=>[T l0 rK|T l0 rK a]//=; case: ifP.
@@ -683,11 +683,11 @@ Section OperationalSemantics.
     - by move: (dom' Ih EQ).
   Qed.
 
-  Lemma find_alt_open n d P alts l Ty rK
-    : find_alt (alt_open n d P alts) l = Some (existT (fun=>_) Ty rK) ->
+  Lemma find_alt_open n P alts l Ty rK
+    : find_alt (alt_open n P alts) l = Some (existT (fun=>_) Ty rK) ->
       exists rK',
         find_alt alts l = Some (existT (fun=>_) Ty rK') /\
-        rK = (fun l => p_open n d P (rK' l)).
+        rK = (fun l => p_open n P (rK' l)).
   Proof.
     elim: alts=>[T l0 rK''|T l0 rK'' alts Ih]/=; case:ifP=>// _.
     - move=> [H]; move: H rK''=>-> rK'' H.
@@ -749,16 +749,16 @@ Section OperationalSemantics.
 
   (* TODO: can we generalise: of_lt (f P) (f' L) relate f f' in some way? *)
   Lemma open_preserves_type P P' L L' :
-    of_lt P' L' -> of_lt P L -> of_lt (p_open 0 0 P' P) (l_open 0 0 L' L).
+    of_lt P' L' -> of_lt P L -> of_lt (p_open 0 P' P) (l_open 0 L' L).
   Proof.
-    move: {-2 4}0 => n H H'; elim: H' n =>
+    move: 0 => n H H'; elim: H' n =>
     [
     | v
     | {}L {}P Ih
     | K p alts DOM _ Ih
     | p {}L K Ty l payload {}P H0 Ih fnd
     ]/= n; try by (constructor).
-    - rewrite !add0n; case: (ifP (v == n))=>_; try by constructor.
+    - case: (ifP (v == n))=>_; try by constructor.
       by apply/shift_preserves_type.
     - apply/t_Recv;
         first by apply/(same_dom_trans _ (same_dom_map _ _))
