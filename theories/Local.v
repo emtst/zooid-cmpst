@@ -1101,6 +1101,7 @@ Section Semantics.
   Hint Constructors l_lts_.
   Lemma l_lts_monotone : monotone2 l_lts_.
   Proof. pmonauto. Qed.
+  Hint Resolve l_lts_monotone : paco.
 
   Definition l_lts t L := paco2 l_lts_ bot2 t L.
   Derive Inversion llts_inv with (forall tr G, l_lts tr G) Sort Prop.
