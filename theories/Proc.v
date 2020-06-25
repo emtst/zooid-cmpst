@@ -835,6 +835,26 @@ End OperationalSemantics.
 
 Section TraceEquivalence.
 
+  (* single local type trace (MOVE TO Local.v) *)
+  Definition rel_sl_trc := trace act -> l_ty -> Prop.
+  Inductive sl_lts_ (r : rel_sl_trc) : rel_sl_trc :=
+  | slt_end :
+      @sl_lts_ r (tr_end _) l_end
+  | slt_next a t L L' :
+      do_act_l_ty L a == Some L' ->
+      r t L' ->
+      @sl_lts_ r (tr_next a t) L.
+
+  Hint Constructors sl_lts_.
+  Lemma sl_lts_monotone : monotone2 sl_lts_.
+  Proof. pmonauto. Qed.
+  Hint Resolve sl_lts_monotone : paco.
+
+  Definition sl_lts t L := paco2 sl_lts_ bot2 t L.
+  Definition sl_accepts TRACE L := sl_lts TRACE L.
+
+
+  (* process local type trace *)
   Definition rel_proc_trc := trace rt_act -> Proc -> Prop.
 
   Inductive p_lts_ (r : rel_proc_trc) : rel_proc_trc :=
@@ -846,8 +866,9 @@ Section TraceEquivalence.
       p_lts_ r (tr_next A TR) P
   .
 
-  Lemma p_lts_monotone P : monotone2 (l_trc_ P).
-  Proof. pmonauto. Admitted.
+  Lemma p_lts_monotone : monotone2 p_lts_.
+  Proof. pmonauto.  Admitted.
+  Hint Resolve p_lts_monotone : paco.
 
   Definition p_lts TR P := paco2 (p_lts_) bot2 TR P.
 
@@ -856,6 +877,19 @@ Section TraceEquivalence.
 
   Definition erase : trace rt_act -> trace act := trace_map erase_act.
 
+  Lemma local_subtrace_of_global G p L LTRACE TRACE:
+    project G p == Some L ->
+    sl_accepts LTRACE L ->
+    gty_accepts TRACE G ->
+    subtrace p LTRACE TRACE.
+  Admitted.
+
+  Lemma local_type_accepts_process_trace P L PTRACE:
+    of_lt P L ->
+    p_accepts PTRACE P ->
+    sl_accepts (erase PTRACE) L.
+  Admitted.
+
   Theorem process_traces_are_global_types G p L P PTRACE TRACE:
     project G p == Some L ->
     of_lt P L ->
@@ -863,8 +897,10 @@ Section TraceEquivalence.
     gty_accepts TRACE G ->
     subtrace p (erase PTRACE) TRACE.
   Proof.
-
-  Abort.
+    move=> Hproj Hoft Hpacc Hlacc.
+    have Hslacc:= local_type_accepts_process_trace Hoft Hpacc.
+    by apply (local_subtrace_of_global Hproj Hslacc Hlacc).
+  Qed.
 
 End TraceEquivalence.
 
