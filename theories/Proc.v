@@ -872,38 +872,65 @@ Section TraceEquivalence.
 
   Definition p_lts TR P := paco2 (p_lts_) bot2 TR P.
 
-
   Definition p_accepts PTRACE P := p_lts PTRACE P.
 
   Definition erase : trace rt_act -> trace act := trace_map erase_act.
 
-  Lemma local_subtrace_of_global G p L LTRACE TRACE:
-    project G p == Some L ->
-    sl_accepts LTRACE L ->
-    gty_accepts TRACE G ->
-    subtrace p LTRACE TRACE.
-  Admitted.
+  (* no longer needed definitely maybe *)
+  (* Lemma local_subtrace_of_penv G p L LTRACE TRACE: *)
+  (*   project G p == Some L -> *)
+  (*   sl_accepts LTRACE L -> *)
+  (*   gty_accepts TRACE G -> *)
+  (*   subtrace p LTRACE TRACE. *)
+  (* Admitted. *)
+
+  (* Lemma single_ind_coind L L' TRACE: *)
+  (*   sl_accepts TRACE L -> *)
+  (*   LUnroll L L' -> *)
+  (*   csl_accepts TRACE L'. *) (* <- to define *)
 
   Lemma local_type_accepts_process_trace P L PTRACE:
     of_lt P L ->
     p_accepts PTRACE P ->
     sl_accepts (erase PTRACE) L.
+  Proof.
   Admitted.
 
-  Theorem process_traces_are_global_types G p L P PTRACE TRACE:
-    project G p == Some L ->
+  (* alternative trace building function *)
+  CoFixpoint build_trace' (TR : trace rt_act) (G : g_ty) : trace act.
+  Abort.
+
+  CoFixpoint build_trace (TR : trace act) (Pe : renv) : trace act.
+  (* a send can be done, a receive can only be done if we can receive
+     from someone else on the renv *)
+  Admitted.
+
+  Lemma build_accepts G TR Pe:
+    (* we know things we could add as hyps here *)
+    gty_accepts (build_trace TR Pe) G.
+  Admitted.
+
+  Lemma build_subtrace p PTR TR Pe:
+        (* we know things we could add as hyps here *)
+    subtrace p PTR (build_trace TR Pe).
+  Admitted.
+
+  Theorem process_traces_are_global_types G p L iPe P PTRACE:
+    eproject G == Some iPe ->
     of_lt P L ->
+    LUnroll L (l_expand (ilook iPe p)) ->
     p_accepts PTRACE P ->
-    gty_accepts TRACE G ->
-    subtrace p (erase PTRACE) TRACE.
+    exists TRACE, (* constructed with the build function *)
+      gty_accepts TRACE G /\ subtrace p (erase PTRACE) TRACE.
   Proof.
-    move=> Hproj Hoft Hpacc Hlacc.
-    have Hslacc:= local_type_accepts_process_trace Hoft Hpacc.
-    by apply (local_subtrace_of_global Hproj Hslacc Hlacc).
+    case/eqP=> Hproj Hoft Hunr Hpacc.
+    have He := expand_eProject Hproj. (* just in case for now *)
+
+    exists (build_trace (erase PTRACE) (expand_env iPe));
+    split ; [ apply build_accepts | apply build_subtrace].
   Qed.
 
 End TraceEquivalence.
-
 
 (* Code Extraction *)
 

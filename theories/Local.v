@@ -20,6 +20,8 @@ Section Syntax.
   | l_msg (a : l_act) (r : role) (Ks : seq (lbl * (mty * l_ty)))
   .
 
+  Definition ilook (E : {fmap role -> l_ty}) p := odflt l_end E.[? p]%fmap.
+
   Open Scope mpst_scope.
 
   Fixpoint partsL (G : l_ty) :=
