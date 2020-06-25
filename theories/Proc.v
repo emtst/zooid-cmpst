@@ -191,78 +191,74 @@ Notation jump := wt_jump.
 Notation loop := wt_loop.
 
 (* Smart constructor and helpers for recv *)
-Definition wt_alt : Type := lbl * {T & {L & coq_ty T -> wt_proc L}}.
+Inductive wt_alt : lbl * (mty * l_ty) -> Type
+  := | wt_cont l T L : (coq_ty T -> wt_proc L) -> wt_alt (l, (T, L)).
 
-Fixpoint to_proc_alts (alts : seq wt_alt) (a0 : wt_alt) : Alts
+Definition app L (a : wt_alt L) : coq_ty L.2.1 -> wt_proc L.2.2 :=
+  match a with
+  | wt_cont _ _ _ f => f
+  end.
+
+Inductive wt_alts : seq (lbl * (mty * l_ty)) -> Type :=
+| wta_sing L : wt_alt L -> wt_alts [:: L]
+| wta_cons L Ls : wt_alt L -> wt_alts Ls -> wt_alts (L :: Ls).
+
+Fixpoint mk_proc_alts L (alts : wt_alts L) : Alts
   := match alts with
-     | [::] =>
-       A_sing a0.1
-              (fun x => get_proc (projT2 (projT2 a0.2) x))
-     | a1 :: alts =>
-       A_cons a1.1
-              (fun x => get_proc (projT2 (projT2 a1.2) x))
-              (to_proc_alts alts a0)
+     | wta_sing L f => A_sing L.1 (fun x => get_proc (app f x))
+     | wta_cons L Ls f fs
+       => A_cons L.1 (fun x => get_proc (app f x)) (mk_proc_alts fs)
      end.
 
-Fixpoint to_lt_alts (alts : seq wt_alt) (a0 : wt_alt) : seq (lbl * (mty * l_ty))
-  := match alts with
-     | [::] => [:: (a0.1, (projT1 a0.2, projT1 (projT2 a0.2)))]
-     | a1 :: alts =>
-       (a1.1, (projT1 a1.2, projT1 (projT2 a1.2))) :: to_lt_alts alts a0
-     end.
-
-Lemma same_dom_alts (a : seq wt_alt) (a0 : wt_alt)
-  : same_dom (find_alt_ty (to_proc_alts a a0)) (find_cont (to_lt_alts a a0)).
+Lemma same_dom_alts L (a : wt_alts L)
+  : same_dom (find_alt_ty (mk_proc_alts a)) (find_cont L).
 Proof.
-  elim: a=>[|a1 alts Ih]/=; [case: a0| case: a1]; move=>l [Ty [L P]] l' Ty'/=;
-    split=>[][x]/=; rewrite /extend/find_alt_ty/=; case: ifP=>[/eqP->|]//=;
-    rewrite ?eq_refl/=; try rewrite eq_sym=>->; try move=>[-> _];
-    try (by exists L); try (by exists tt).
+  elim: a=>[{}L f|{}L Ls f a Ih]/=; case: L f=>[l[T L]] f l' T';
+    rewrite /extend/empty/find_alt_ty/=; case: ifP=>[/eqP->|]//=;
+    rewrite ?eq_refl; try rewrite eq_sym=>->; split=>[][x]//=[];
+    try move=>[-> _]; try (by exists L); try (by exists tt).
   - case EQ: find_alt=>[[Ty0 x0]|]//= [<- _].
-    have: find_alt_ty (to_proc_alts alts a0) l' = Some (Ty0, tt)
+    have: find_alt_ty (mk_proc_alts a) l' = Some (Ty0, tt)
       by rewrite /find_alt_ty EQ/=.
     by move=>/(dom Ih).
   - move=>/(dom' Ih)-[][]; rewrite /find_alt_ty; case: find_alt=>//[][Ty0]/=_[<-].
     by exists tt.
 Qed.
 
-Lemma to_alts_wt (a : seq wt_alt) (a0 : wt_alt)
+Lemma to_alts_wt Ls (a : wt_alts Ls)
   : forall l Ty rK L,
-    find_alt (to_proc_alts a a0) l = Some (existT _ Ty rK) ->
-    find_cont (to_lt_alts a a0) l = Some (Ty, L) ->
+    find_alt (mk_proc_alts a) l = Some (existT _ Ty rK) ->
+    find_cont Ls l = Some (Ty, L) ->
     forall pl, of_lt (rK pl) L.
 Proof.
-  elim: a=>[|a1 alts Ih]; [case: a0|case: a1];
-    move=>l0 [Ty0] [L0] P0 l Ty rK L/=; rewrite /extend eq_sym;
-    case: ifP=>[_ {l0 l}|NE]//.
-  - move=>[EQ]; move: EQ P0=>-> P0 H {Ty0}.
+  elim: a=>[L f|L {}Ls f a Ih]; case: L f=>[l[T L]] f/= l' T' rK L'/=;
+    rewrite /extend eq_sym; case: ifP=>[_ {l'}|NE]//.
+  - move=>[EQ]; move: EQ f=>-> f H {T}.
     rewrite -(Eqdep_dec.inj_pair2_eq_dec _ _ _ _ _ _ H) => {H};
       last by move=>x y; apply/(decP eqP).
-    by move=>[<-] pl; apply: (of_wt_proc (P0 pl)).
-  - move=>[EQ]; move: EQ P0=>-> P0 H {Ty0}.
+    by move=>[<-] pl; apply: (of_wt_proc (app f pl)).
+  - move=>[EQ]; move: EQ f =>-> f H {T}.
     rewrite -(Eqdep_dec.inj_pair2_eq_dec _ _ _ _ _ _ H) => {H};
       last by move=>x y; apply/(decP eqP).
-    by move=>[<-] pl; apply: (of_wt_proc (P0 pl)).
+    by move=>[<-] pl; apply: (of_wt_proc (app f pl)).
   - by move=> H1 H2; apply: Ih; [apply: H1 | apply: H2].
 Qed.
-Arguments to_alts_wt : clear implicits.
-
-Definition wt_alts := (seq wt_alt * wt_alt)%type.
+Arguments to_alts_wt [_] _.
 
 (* Well-typed recv *)
-Definition wt_recv (p : role) (a : wt_alts)
-  : wt_proc (l_msg l_recv p (to_lt_alts a.1 a.2))
-  := exist _ _ (t_Recv p (same_dom_alts a.1 a.2) (to_alts_wt a.1 a.2)).
+Definition wt_recv Ls (p : role) (a : wt_alts Ls)
+  : wt_proc (l_msg l_recv p Ls)
+  := exist _ _ (t_Recv p (same_dom_alts a) (to_alts_wt a)).
 
-Definition sing_alt a : wt_alts := ([::], a).
-Definition cons_alt a alts : wt_alts := (a :: alts.1, alts.2).
+Definition sing_alt L1 (a : wt_alt L1) : wt_alts [:: L1]
+  := wta_sing a.
+Definition cons_alt L1 Ls (a : wt_alt L1) (alts : wt_alts Ls)
+  : wt_alts (L1 :: Ls) := wta_cons a alts.
 
+Print wt_alt.
 Declare Scope proc_scope.
 Notation " \lbl l1 , x ':' T1 ; p1"
-  := (l1,
-      existT (fun T => {L & coq_ty T -> wt_proc L}) T1
-             (existT (fun L => coq_ty T1 -> wt_proc L)
-                     _ (fun x => p1)))
+  := (@wt_cont l1 T1 _ (fun x => p1))
        (at level 0, x ident, p1 constr at level 200) : proc_scope.
 
 Notation "[ 'alts' | a1 | .. | a2 | an ]"
@@ -273,7 +269,7 @@ Notation "[ 'alts' | a1 | .. | a2 | an ]"
         an constr at level 200) : proc_scope.
 
 Notation "\branch" := (wt_recv) (at level 0) : proc_scope.
-Notation "\recv" := (fun p a => wt_recv p (sing_alt a))
+Notation "\recv" := (fun p a => let: a' := sing_alt a in wt_recv p a')
                       (at level 0) : proc_scope.
 
 Lemma if_proc_wt {L} (b : bool) (p1 p2 : wt_proc L) :
@@ -387,11 +383,18 @@ Definition wt_sel b p a1 a2
   : wt_proc (l_msg l_send p (a1 ++ a2))
   := exist _ _ (sel_wt b P1 P2 H).
 
-Inductive sel_alt : Type :=
+Inductive sel_alt : (lbl * (mty * l_ty)) -> Type :=
 | if_alt (b : bool) (l : lbl)  T (pl : coq_ty T) L (P : wt_proc L)
+  : sel_alt (l, (T, L))
 | df_alt (l : lbl) T (pl : coq_ty T) L (P : wt_proc L)
+  : sel_alt (l, (T, L))
 | sk_alt (l : lbl) (T : mty) (L : l_ty)
+  : sel_alt (l, (T, L))
 .
+
+Inductive sel_alts : seq (lbl * (mty * l_ty)) -> Type :=
+| sa_nil L : sel_alt L -> sel_alts [:: L]
+| sa_cons L Ls : sel_alt L -> sel_alts Ls -> sel_alts (L :: Ls).
 
 Notation "'\case' b '=>' l ',' pl '\as' T '!' P"
   := (if_alt b l (T:=T) pl P)
@@ -402,84 +405,94 @@ Notation " '\otherwise' '=>' l , pl '\as' T '!' P"
 Notation "'\skip' '=>' l , pl '!' P"
   := (sk_alt l pl P) (at level 0, P constr at level 200)
      : proc_scope.
-Notation "[ 'sel' '|' a1 '|' .. '|' an ]"
-  := (cons a1 .. (cons an (@nil sel_alt)) .. )
+Notation "[ 'sel' '|' a1 '|' .. '|' a2 '|' an ]"
+  := (sa_cons a1 .. (sa_cons a2 (sa_nil an)) .. )
        (at level 0,
         a1 constr at level 200,
         an constr at level 200) : proc_scope.
 
-Definition get_alt_lt (s : sel_alt) :=
-  match s with
-  | if_alt b l T _ L _ => (l, (T, L))
-  | df_alt l T _ L _ => (l, (T, L))
-  | sk_alt l T L  => (l, (T, L))
-  end.
-
-Definition to_lt_sel_alts (s : seq sel_alt) : seq (lbl * (mty * l_ty))
-  := [seq get_alt_lt x | x <- s].
-
-Definition is_dflt (s : sel_alt) :=
+Definition is_dflt L (s : sel_alt L ) :=
   match s with
   | df_alt _ _ _ _ _ => true
   | _ => false
   end.
 
-Definition is_skip (s : sel_alt) :=
+Definition is_skip L (s : sel_alt L) :=
   match s with
   | sk_alt _ _ _ => true
   | _ => false
   end.
 
-Fixpoint has_single_default (s : seq sel_alt) :=
+Fixpoint all_alts (P : forall L, sel_alt L -> bool) Ls (a : sel_alts Ls) : bool
+  := match a with
+     | sa_nil _ h => P _ h
+     | sa_cons _ _ h t => P _ h && all_alts P t
+     end.
+
+Fixpoint has_single_default Ls (s : sel_alts Ls) :=
   match s with
-  | [::] => false
-  | h :: t => if is_dflt h then all (fun x => is_skip x) t
-              else has_single_default t
+  | sa_nil _ h => is_dflt h
+  | sa_cons _ _ h t => if is_dflt h then all_alts is_skip t
+                       else has_single_default t
   end.
 
-Lemma has_single_default_nil : has_single_default [::] -> False.
+Lemma hsd_if_false b l T (c : coq_ty T) L (w : wt_proc L)
+  : ~ has_single_default (sa_nil (if_alt b l c w)).
 Proof. by []. Qed.
 
-Lemma unique_labels_tail h t :
-  unique_labels (h :: t) -> unique_labels t.
-Proof. by rewrite /==>/andP-[]. Qed.
+Lemma hsd_sk_false l T L
+  : ~ has_single_default (sa_nil (sk_alt l T L)).
+Proof. by []. Qed.
 
-Fixpoint wt_select p (s : seq sel_alt)
+About wt_sel.
+
+Lemma hsd_cons_next L Ls (h : sel_alt L) (t : sel_alts Ls)
+  : has_single_default (sa_cons h t) -> ~~ (is_dflt h) -> has_single_default t.
+Proof. by case: h. Qed.
+
+Lemma ul_next h t : unique_labels (h :: t) -> unique_labels t.
+Proof. by move=>/andP-[]. Qed.
+
+Fixpoint wt_select p Ls (s : sel_alts Ls)
   : has_single_default s ->
-    unique_labels (to_lt_sel_alts s) ->
-    wt_proc (l_msg l_send p (to_lt_sel_alts s))
+    unique_labels Ls ->
+    wt_proc (l_msg l_send p Ls)
   := match s with
-     | [::] =>
-       fun H _ =>
-         match has_single_default_nil H with end
-     | h :: t =>
+     | sa_nil L h =>
        match h
+             in sel_alt L
              return
-             has_single_default (h::t) ->
-             unique_labels (to_lt_sel_alts (h::t)) ->
-             wt_proc (l_msg l_send p (to_lt_sel_alts (h::t)))
+             has_single_default (sa_nil h) ->
+             unique_labels [:: L] ->
+             wt_proc (l_msg l_send p [:: L])
        with
-       | if_alt b l _ pl _ k =>
+       | sk_alt _ _ _ => fun H=> match hsd_sk_false H with end
+       | if_alt _ _ _ _ _ _ => fun H=> match hsd_if_false H with end
+       | df_alt l _ v _ k => fun H0 H1 => wt_send p l v k
+       end
+     | sa_cons L Ls h t =>
+       match h
+             in sel_alt L
+             return
+             has_single_default (sa_cons h t) ->
+             unique_labels (L :: Ls) ->
+             wt_proc (l_msg l_send p (L :: Ls))
+       with
+       | sk_alt l T L =>
          fun H1 H2 =>
-           wt_sel b (wt_send p l pl k)
-                  (@wt_select p t H1 (unique_labels_tail H2))
-                  H2
-
-       | sk_alt l pl k =>
+           sel_skipL p [:: (l, (T, L))]
+                  (@wt_select p Ls t (hsd_cons_next H1 is_true_true)
+                              (ul_next H2)) H2
+       | if_alt b l _ v _ k =>
          fun H1 H2 =>
-           sel_skipL p [:: (l, (pl, k))]
-                     (@wt_select p t H1 (unique_labels_tail H2))
-                     H2
-       | df_alt l _ pl _ k =>
-         fun H1 H2 =>
-           sel_skipR
-             p (to_lt_sel_alts t)
-             (wt_send p l pl k)
-             H2
+           wt_sel b (wt_send p l v k)
+                  (@wt_select p Ls t (hsd_cons_next H1 is_true_true)
+                              (ul_next H2)) H2
+       | df_alt l _ v _ k => fun _ H2 => sel_skipR p Ls (wt_send p l v k) H2
        end
      end.
 
-Notation "'\select' p a" := (@wt_select p a is_true_true is_true_true)
+Notation "'\select' p a" := (@wt_select p _ a is_true_true is_true_true)
                             (at level 0, p at level 0, a constr at level 99).
 Notation "\send" := wt_send.
 
@@ -582,6 +595,94 @@ Goal projT1 (ping_pong_client2 p) = lunroll 1 (projT1 (ping_pong_client1 p)).
   by [].
 Qed.
 
+Fixpoint ping_pong_client3 n p {struct n}:=
+  match n with
+  | 0 =>
+    [proc \select p
+          [sel
+          | \otherwise => Bye, tt \as T_unit ! finish
+          | \skip => Ping, T_nat !
+                                 l_msg l_recv p
+                                 [:: (Pong, (T_nat, projT1 (ping_pong_client1 p)))]]
+    ]
+  | m.+1 =>
+    [proc \select p
+          [sel
+          | \skip => Bye, T_unit ! l_end
+          | \otherwise =>
+            Ping, n \as T_nat !
+              (\recv p \lbl Pong, x : T_nat; projT2 (ping_pong_client3 m p))
+          ]
+    ]
+  end.
+
+Fixpoint l_unravel_n n L :=
+  match n, lunroll (lrec_depth L) L with
+  | n.+1, l_msg p q Ks => l_msg p q [seq (K.1, (K.2.1, l_unravel_n n K.2.2)) | K <- Ks]
+  | _, _ => L
+  end.
+
+Goal projT1 (ping_pong_client3 4 p) = l_unravel_n 9 (projT1 (ping_pong_client1 p)).
+  by [].
+Qed.
+
+
+Definition ping_pong_client4 p :=
+  [proc \select p
+        [sel
+        | \skip => Bye, T_unit ! l_end
+        | \otherwise => Ping, 1 \as T_nat !
+              loop(
+                \recv p \lbl Pong, x : T_nat;
+                  \select p
+                   [sel
+                   | \case (x > 3) => Bye, tt \as T_unit ! finish
+                   | \otherwise => Ping, x + 1 \as T_nat ! jump 0
+                   ]
+              )
+        ]
+  ].
+Eval compute in projT1 (ping_pong_client4 p).
+Eval compute in get_proc (projT2 (ping_pong_client4 p)).
+
+Lemma same_dom_eta A B C
+      (f : lbl -> option (mty * A))
+      (g : lbl -> option (mty * B)) (h : B -> C) :
+  same_dom f g ->
+  same_dom f (fun l => match g l with
+                       | Some (Ty, x) => Some (Ty, h x)
+                       | None => None
+                       end).
+Admitted.
+
+Lemma same_dom_extend A B l T (L1 : A) (L2 : B) f g :
+  same_dom f g -> same_dom (extend l (T, L1) f) (extend l (T, L2) g).
+Admitted.
+
+(* About extend. *)
+(* Lemma same_dom_extend A B (f : lbl -> option (mty * A)) (g : A -> B) : *)
+(*   same_dom f (fun l => match f l with *)
+(*                        | Some (Ty, x) => Some (Ty, g x) *)
+(*                        | None => None *)
+(*                        end). *)
+(* Admitted. *)
+Goal forall Li Lc, (Li = projT1 (ping_pong_client4 p) /\
+                    Lc = l_expand (projT1 (ping_pong_client1 p))) ->
+                   LUnroll Li Lc.
+  apply/paco2_acc=> r _ /(_ _ _ (conj erefl erefl))/=-CIH Li Lr [->->].
+  apply: paco2_fold; rewrite l_expand_once/=; constructor=>/=;
+    first by apply/same_dom_eta/same_dom_extend/same_dom_extend/same_dom_refl.
+  move=> l Ty G G'; rewrite /extend/empty/=.
+  case: ifP=>//;
+    first by move=>_ [<-<-] [<-]; left; apply/paco2_fold;
+             rewrite l_expand_once; constructor.
+  case: ifP=>//; move=> _ _ [<-<-] [<-]; left; apply/paco2_fold.
+  constructor=>/=; left; rewrite l_expand_once/=.
+  apply: paco2_fold; constructor;
+    first by apply/same_dom_eta/same_dom_extend/same_dom_refl.
+  move=> {}l {}Ty {}G {}G'/=; rewrite /extend/empty/=.
+  by case: ifP=>// _ [<-<-] [<-]; right; apply/CIH.
+Qed.
 
 Close Scope proc_scope.
 End Examples.
