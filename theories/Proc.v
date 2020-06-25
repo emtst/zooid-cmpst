@@ -936,6 +936,26 @@ End OperationalSemantics.
 
 Section TraceEquivalence.
 
+  (* single local type trace (MOVE TO Local.v) *)
+  Definition rel_sl_trc := trace act -> l_ty -> Prop.
+  Inductive sl_lts_ (r : rel_sl_trc) : rel_sl_trc :=
+  | slt_end :
+      @sl_lts_ r (tr_end _) l_end
+  | slt_next a t L L' :
+      do_act_l_ty L a == Some L' ->
+      r t L' ->
+      @sl_lts_ r (tr_next a t) L.
+
+  Hint Constructors sl_lts_.
+  Lemma sl_lts_monotone : monotone2 sl_lts_.
+  Proof. pmonauto. Qed.
+  Hint Resolve sl_lts_monotone : paco.
+
+  Definition sl_lts t L := paco2 sl_lts_ bot2 t L.
+  Definition sl_accepts TRACE L := sl_lts TRACE L.
+
+
+  (* process local type trace *)
   Definition rel_proc_trc := trace rt_act -> Proc -> Prop.
 
   Inductive p_lts_ (r : rel_proc_trc) : rel_proc_trc :=
@@ -947,28 +967,71 @@ Section TraceEquivalence.
       p_lts_ r (tr_next A TR) P
   .
 
-  Lemma p_lts_monotone P : monotone2 (l_trc_ P).
-  Proof. pmonauto. Admitted.
+  Lemma p_lts_monotone : monotone2 p_lts_.
+  Proof. pmonauto.  Admitted.
+  Hint Resolve p_lts_monotone : paco.
 
   Definition p_lts TR P := paco2 (p_lts_) bot2 TR P.
-
 
   Definition p_accepts PTRACE P := p_lts PTRACE P.
 
   Definition erase : trace rt_act -> trace act := trace_map erase_act.
 
-  Theorem process_traces_are_global_types G p L P PTRACE TRACE:
-    project G p == Some L ->
+  (* no longer needed definitely maybe *)
+  (* Lemma local_subtrace_of_penv G p L LTRACE TRACE: *)
+  (*   project G p == Some L -> *)
+  (*   sl_accepts LTRACE L -> *)
+  (*   gty_accepts TRACE G -> *)
+  (*   subtrace p LTRACE TRACE. *)
+  (* Admitted. *)
+
+  (* Lemma single_ind_coind L L' TRACE: *)
+  (*   sl_accepts TRACE L -> *)
+  (*   LUnroll L L' -> *)
+  (*   csl_accepts TRACE L'. *) (* <- to define *)
+
+  Lemma local_type_accepts_process_trace P L PTRACE:
     of_lt P L ->
     p_accepts PTRACE P ->
-    gty_accepts TRACE G ->
-    subtrace p (erase PTRACE) TRACE.
+    sl_accepts (erase PTRACE) L.
   Proof.
+  Admitted.
 
+  (* alternative trace building function *)
+  CoFixpoint build_trace' (TR : trace rt_act) (G : g_ty) : trace act.
   Abort.
 
-End TraceEquivalence.
+  CoFixpoint build_trace (TR : trace act) (Pe : renv) : trace act.
+  (* a send can be done, a receive can only be done if we can receive
+     from someone else on the renv *)
+  Admitted.
 
+  Lemma build_accepts G TR Pe:
+    (* we know things we could add as hyps here *)
+    gty_accepts (build_trace TR Pe) G.
+  Admitted.
+
+  Lemma build_subtrace p PTR TR Pe:
+        (* we know things we could add as hyps here *)
+    subtrace p PTR (build_trace TR Pe).
+  Admitted.
+
+  Theorem process_traces_are_global_types G p L iPe P PTRACE:
+    eproject G == Some iPe ->
+    of_lt P L ->
+    LUnroll L (l_expand (ilook iPe p)) ->
+    p_accepts PTRACE P ->
+    exists TRACE, (* constructed with the build function *)
+      gty_accepts TRACE G /\ subtrace p (erase PTRACE) TRACE.
+  Proof.
+    case/eqP=> Hproj Hoft Hunr Hpacc.
+    have He := expand_eProject Hproj. (* just in case for now *)
+
+    exists (build_trace (erase PTRACE) (expand_env iPe));
+    split ; [ apply build_accepts | apply build_subtrace].
+  Qed.
+
+End TraceEquivalence.
 
 (* Code Extraction *)
 

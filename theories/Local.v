@@ -20,6 +20,8 @@ Section Syntax.
   | l_msg (a : l_act) (r : role) (Ks : seq (lbl * (mty * l_ty)))
   .
 
+  Definition ilook (E : {fmap role -> l_ty}) p := odflt l_end E.[? p]%fmap.
+
   Open Scope mpst_scope.
 
   Fixpoint partsL (G : l_ty) :=
@@ -1108,6 +1110,7 @@ Section Semantics.
   Hint Constructors l_lts_.
   Lemma l_lts_monotone : monotone2 l_lts_.
   Proof. pmonauto. Qed.
+  Hint Resolve l_lts_monotone : paco.
 
   Definition l_lts t L := paco2 l_lts_ bot2 t L.
   Derive Inversion llts_inv with (forall tr G, l_lts tr G) Sort Prop.
