@@ -980,13 +980,41 @@ Section TraceEquivalence.
   CoFixpoint build_trace' (TR : trace rt_act) (G : g_ty) : trace act.
   Abort.
 
-  CoFixpoint build_trace (TR : trace act) (Pe : renv) : trace act.
+  (* Note: we consider that we start with empty queues to avoid them, we
+     guide the "asynchrony" with TR *)
+  CoFixpoint build_trace (TR : trace act) (Pe : renv) : trace act :=
+    match TR with
+      (* we're done *)
+      | tr_end  => tr_end _
+      (* we can always send *)
+      | tr_next (mk_act l_send p q l T) TR' =>
+        tr_next (mk_act l_send p q l T) (build_trace TR' Pe)
+      (* we can only receive if someone is sending *)
+      | tr_next (mk_act l_recv p q l T) TR'  =>
+        match look Pe q with
+        (* we can receive from q *)
+        |  rl_msg l_send p' C =>
+           if p == p' then (* roles match *)
+             match C l with
+             | Some (T', K) => (* label is acceptable *)
+               if T == T' then (* payloads match *)
+                 tr_next (mk_act l_send q p l T)
+                      (tr_next (mk_act l_recv p q l T) (build_trace TR' (Pe.[ q <- K] )))
+               else tr_end _
+             | None => tr_end _
+             end
+           else
+             tr_end _
+        (* we are not receiving anything else *)
+        | _ => tr_end _ (* we are not receiving anything else *)
+        end
+    end%fmap.
   (* a send can be done, a receive can only be done if we can receive
      from someone else on the renv *)
-  Admitted.
+
 
   Lemma build_accepts G TR Pe:
-    (* we know things we could add as hyps here *)
+    (* we know things we could add as hyps here, like how Pe and G are related *)
     gty_accepts (build_trace TR Pe) G.
   Admitted.
 
