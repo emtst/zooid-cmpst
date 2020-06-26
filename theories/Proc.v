@@ -645,27 +645,6 @@ Definition ping_pong_client4 p :=
 Eval compute in projT1 (ping_pong_client4 p).
 Eval compute in get_proc (projT2 (ping_pong_client4 p)).
 
-Lemma same_dom_eta A B C
-      (f : lbl -> option (mty * A))
-      (g : lbl -> option (mty * B)) (h : B -> C) :
-  same_dom f g ->
-  same_dom f (fun l => match g l with
-                       | Some (Ty, x) => Some (Ty, h x)
-                       | None => None
-                       end).
-Admitted.
-
-Lemma same_dom_extend A B l T (L1 : A) (L2 : B) f g :
-  same_dom f g -> same_dom (extend l (T, L1) f) (extend l (T, L2) g).
-Admitted.
-
-(* About extend. *)
-(* Lemma same_dom_extend A B (f : lbl -> option (mty * A)) (g : A -> B) : *)
-(*   same_dom f (fun l => match f l with *)
-(*                        | Some (Ty, x) => Some (Ty, g x) *)
-(*                        | None => None *)
-(*                        end). *)
-(* Admitted. *)
 Goal forall Li Lc, (Li = projT1 (ping_pong_client4 p) /\
                     Lc = l_expand (projT1 (ping_pong_client1 p))) ->
                    LUnroll Li Lc.

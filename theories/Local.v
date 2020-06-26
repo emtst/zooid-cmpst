@@ -1008,13 +1008,6 @@ Section Semantics.
       by move: (UNR _ _ _ _ EQ EQ')=>[].
   Qed.
 
-  Definition loop_unr L := l_open 0 L L.
-
-  Lemma lunroll_loop_unr L cL :
-    LUnroll (l_rec L) cL -> LUnroll (l_rec (loop_unr L)) cL.
-  Proof.
-    rewrite /loop_unr.
-
   Open Scope fmap_scope.
   (** lstep a Q P Q' P' is the 'step' relation <P, Q> ->^a <P', Q'> in Coq*)
   Inductive lstep : act -> renv * qenv -> renv * qenv -> Prop :=

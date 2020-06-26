@@ -278,6 +278,21 @@ Proof.
   by move=>/=; rewrite /extend eq_refl=>/(_ erefl)=>[][]//.
 Qed.
 
+Lemma same_dom_eta A B C
+      (f : lbl -> option (mty * A))
+      (g : lbl -> option (mty * B)) (h : B -> C) :
+  same_dom f g ->
+  same_dom f (fun l => match g l with
+                       | Some (Ty, x) => Some (Ty, h x)
+                       | None => None
+                       end).
+Proof.
+  move=> DOM l T; case EQ: (f l)=>[[T' G']|];
+    last by move: (dom_none DOM EQ)=>->; split=>[][].
+  by move: (dom DOM EQ)=>[b->]; split=>[][x][<- _];
+       [exists (h b)|exists G'].
+Qed.
+
 Definition P_all A (P : A -> Prop) (F : lbl /-> mty * A) :=
   forall l Ty a, F l = Some (Ty, a) -> P a.
 
