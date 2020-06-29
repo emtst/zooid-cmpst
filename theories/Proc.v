@@ -1015,9 +1015,89 @@ Section TraceEquivalence.
   Definition env_unroll (iPe :  {fmap role -> l_ty})(Pe :  {fmap role -> rl_ty}) : Prop :=
     forall p, LUnroll (ilook iPe p) (look Pe p).
 
-  Lemma build_accepts G TR (iPe :  {fmap role -> l_ty}) :
-    eproject G == Some iPe ->
+  (* Lemma look_expand_commute iPe p: *)
+  (*     look (expand_env iPe) p = l_expand (ilook iPe p). *)
+  (* Proof. *)
+  (* Admitted. *)
+
+  (* Lemma precond_if_it_projects G iPe: *)
+  (*   eproject G == Some iPe -> g_precond G. *)
+  (* Proof. *)
+  (*   rewrite/eproject. *)
+  (*   case (g_precond G) ; [ easy | case/eqP ; congruence]. *)
+  (* Qed. *)
+
+  (* Lemma nice_if_it_projects G iPe: *)
+  (*   eproject G == Some iPe -> project_all (participants G) G == Some iPe. *)
+  (* Proof. *)
+  (*   rewrite/eproject. *)
+  (*   case (g_precond G) ; [ easy | case/eqP ; congruence]. *)
+  (* Qed. *)
+
+  (* Lemma nice_project_all G parts iPe: *)
+  (*   project_all parts G == Some iPe -> *)
+  (*   forall p, p \in parts -> project G p == Some (ilook iPe p). *)
+  (* Proof. *)
+  (*   (* only true if p \in parts *) *)
+  (* Admitted. *)
+
+
+  (* if the process enviroment results from a projection then its unrolling makes sense *)
+  (* Lemma eproject_unrolls_expanded G iPe: *)
+  (*   eproject G == Some iPe -> *)
+  (*   env_unroll iPe (expand_env iPe). *)
+  (* Proof. *)
+  (*   rewrite/env_unroll=>Hproj p. *)
+
+  (*   destruct(p \in participants G) eqn: Hin. (* what is the ssreflefcty way of doing this *) *)
+  (*   { *)
+  (*     rewrite look_expand_commute. *)
+  (*     apply: l_expand_unr. *)
+  (*     rewrite /eproject. *)
+
+  (*     apply (@project_guarded p G (ilook iPe p)). *)
+  (*     move: (nice_if_it_projects Hproj) Hin. *)
+  (*     admit. *)
+  (*     admit. *)
+  (*     admit. *)
+  (*   } *)
+  (*   { *)
+  (*     (* if p \notin participants G then p \notin dom eproject G then ... *) *)
+  (*     admit. *)
+  (*   } *)
+  (* Admitted. *)
+
+
+  (* this is a silly definition, but coercions drive me nuts *)
+  Definition eproject_eq_some G iPe :
+    eproject G == Some iPe -> eproject G.
+      by move/eqP=>->.
+  Defined.
+
+  Lemma eproject_project_env G iPe (WF : well_formed G) (Hproj :eproject G == Some iPe):
+        project_env WF = iPe.
+  Proof.
+  Admitted. (* this is a simple proof made annoying by depdent types *)
+
+  Lemma build_accepts G TR (iPe :  {fmap role -> l_ty})
+        (Hproj : eproject G == Some iPe) :
     gty_accepts (build_trace TR (expand_env iPe)) G.
+  Proof.
+    have Htrc:
+      (lty_accepts (build_trace TR (expand_env iPe)) iPe
+       -> gty_accepts (build_trace TR (expand_env iPe)) G).
+    {
+      move=>Hl.
+      apply (IndTraceEquiv (eproject_eq_some Hproj) (build_trace TR (expand_env iPe))).
+        by rewrite (eproject_project_env (eproject_eq_some Hproj) Hproj).
+    }
+    apply: Htrc. (* we use trace equivalence to deal with local types only *)
+
+    (* at this point it is a local trace accepts proof *)
+    (* move=>{G} {Hproj}. *)
+    rewrite/lty_accepts.
+
+
   Admitted.
 
   Lemma build_subtrace p PTR TR Pe:
@@ -1035,7 +1115,7 @@ Section TraceEquivalence.
   Proof.
     case/eqP=> Hproj Hoft Hunr Hpacc.
     have He := expand_eProject Hproj. (* just in case for now *)
-
+    move=>{Hoft}{Hunr}{Hpacc}{He}. (* RED ALERT: for now none of these are used!!!! *)
     exists (build_trace (erase PTRACE) (expand_env iPe)).
     split ; [ apply: build_accepts | apply: build_subtrace].
     move:Hproj=>/eqP ; apply.
