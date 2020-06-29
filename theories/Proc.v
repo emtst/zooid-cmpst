@@ -1012,10 +1012,12 @@ Section TraceEquivalence.
   (* a send can be done, a receive can only be done if we can receive
      from someone else on the renv *)
 
+  Definition env_unroll (iPe :  {fmap role -> l_ty})(Pe :  {fmap role -> rl_ty}) : Prop :=
+    forall p, LUnroll (ilook iPe p) (look Pe p).
 
-  Lemma build_accepts G TR Pe:
-    (* we know things we could add as hyps here, like how Pe and G are related *)
-    gty_accepts (build_trace TR Pe) G.
+  Lemma build_accepts G TR (iPe :  {fmap role -> l_ty}) :
+    eproject G == Some iPe ->
+    gty_accepts (build_trace TR (expand_env iPe)) G.
   Admitted.
 
   Lemma build_subtrace p PTR TR Pe:
@@ -1034,8 +1036,9 @@ Section TraceEquivalence.
     case/eqP=> Hproj Hoft Hunr Hpacc.
     have He := expand_eProject Hproj. (* just in case for now *)
 
-    exists (build_trace (erase PTRACE) (expand_env iPe));
-    split ; [ apply build_accepts | apply build_subtrace].
+    exists (build_trace (erase PTRACE) (expand_env iPe)).
+    split ; [ apply: build_accepts | apply: build_subtrace].
+    move:Hproj=>/eqP ; apply.
   Qed.
 
 End TraceEquivalence.
