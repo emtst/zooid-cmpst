@@ -5,6 +5,7 @@ From Paco Require Import paco paco2.
 
 Require Import MPST.Actions.
 Require Import MPST.AtomSets.
+Require Import MPST.Forall.
 Require Import MPST.Global.
 Require Import MPST.Projection.
 Require Import MPST.Local.
@@ -1016,29 +1017,169 @@ Section TraceEquivalence.
       | Some K =>
         tr_next (mk_act l_send F T K.1 K.2.1)
                 (tr_next (mk_act l_recv T F K.1 K.2.1)
-                         (build_trace (match_tail F T TR) g))
+                         (build_trace (match_tail F T TR) K.2.2))
       | None => tr_end _
       end
     | _ => tr_end _
     end.
 
-  (* alternative trace building function *)
-  CoFixpoint build_trace' (TR : trace rt_act) (G : g_ty) : trace act.
-  Abort.
+  Definition build_trace' (TR : trace act) (g : g_ty) : trace act :=
+    match g with
+    | g_msg F T Ks =>
+      match select_alt (match_head F T TR) Ks with
+      | Some K =>
+        tr_next (mk_act l_send F T K.1 K.2.1)
+                (tr_next (mk_act l_recv T F K.1 K.2.1)
+                         (build_trace (match_tail F T TR) K.2.2))
+      | None => tr_end _
+      end
+    | _ => tr_end _
+    end.
 
-  CoFixpoint build_trace (TR : trace act) (Pe : renv) : trace act.
-  (* a send can be done, a receive can only be done if we can receive
-     from someone else on the renv *)
-  Admitted.
+  Lemma trace_unr (T : trace act) : T = match T with
+                                        | tr_next h t => tr_next h t
+                                        | tr_end => tr_end _
+                                        end.
+  Proof. by case: T. Qed.
 
-  Lemma build_accepts G TR Pe:
-    (* we know things we could add as hyps here *)
-    gty_accepts (build_trace TR Pe) G.
-  Admitted.
+  Lemma build_trace_unr TR g : build_trace TR g = build_trace' TR (n_unroll (rec_depth g) g).
+  Proof.
+    rewrite (trace_unr (build_trace TR g)) /build_trace' /=.
+    case: (n_unroll (rec_depth g) g) =>// F T C.
+    by case: (select_alt (match_head F T TR) C).
+  Qed.
 
-  Lemma build_subtrace p PTR TR Pe:
+  Definition env_unroll (iPe :  {fmap role -> l_ty})(Pe :  {fmap role -> rl_ty}) : Prop :=
+    forall p, LUnroll (ilook iPe p) (look Pe p).
+
+  (* Lemma look_expand_commute iPe p: *)
+  (*     look (expand_env iPe) p = l_expand (ilook iPe p). *)
+  (* Proof. *)
+  (* Admitted. *)
+
+  (* Lemma precond_if_it_projects G iPe: *)
+  (*   eproject G == Some iPe -> g_precond G. *)
+  (* Proof. *)
+  (*   rewrite/eproject. *)
+  (*   case (g_precond G) ; [ easy | case/eqP ; congruence]. *)
+  (* Qed. *)
+
+  (* Lemma nice_if_it_projects G iPe: *)
+  (*   eproject G == Some iPe -> project_all (participants G) G == Some iPe. *)
+  (* Proof. *)
+  (*   rewrite/eproject. *)
+  (*   case (g_precond G) ; [ easy | case/eqP ; congruence]. *)
+  (* Qed. *)
+
+  (* Lemma nice_project_all G parts iPe: *)
+  (*   project_all parts G == Some iPe -> *)
+  (*   forall p, p \in parts -> project G p == Some (ilook iPe p). *)
+  (* Proof. *)
+  (*   (* only true if p \in parts *) *)
+  (* Admitted. *)
+
+
+  (* if the process enviroment results from a projection then its unrolling makes sense *)
+  (* Lemma eproject_unrolls_expanded G iPe: *)
+  (*   eproject G == Some iPe -> *)
+  (*   env_unroll iPe (expand_env iPe). *)
+  (* Proof. *)
+  (*   rewrite/env_unroll=>Hproj p. *)
+
+  (*   destruct(p \in participants G) eqn: Hin. (* what is the ssreflefcty way of doing this *) *)
+  (*   { *)
+  (*     rewrite look_expand_commute. *)
+  (*     apply: l_expand_unr. *)
+  (*     rewrite /eproject. *)
+
+  (*     apply (@project_guarded p G (ilook iPe p)). *)
+  (*     move: (nice_if_it_projects Hproj) Hin. *)
+  (*     admit. *)
+  (*     admit. *)
+  (*     admit. *)
+  (*   } *)
+  (*   { *)
+  (*     (* if p \notin participants G then p \notin dom eproject G then ... *) *)
+  (*     admit. *)
+  (*   } *)
+  (* Admitted. *)
+
+
+  (* this is a silly definition, but coercions drive me nuts *)
+  Definition eproject_eq_some G iPe :
+    eproject G == Some iPe -> eproject G.
+      by move/eqP=>->.
+  Defined.
+
+
+  Lemma eproject_project_env G iPe (WF : well_formed G) (Hproj :eproject G == Some iPe):
+        project_env WF = iPe.
+  Proof.
+  Admitted. (* this is a simple proof made annoying by depdent types *)
+
+  Lemma build_accepts' C F T (r : trace act -> ig_ty -> Prop)
+        (CIH : forall t g,
+            non_empty_cont g -> r (build_trace t g) (ig_end (g_expand g)))
+        (TR : trace act)
+        (NE1 : ~~ nilp C)
+        (NE2 : forall x, member x C -> non_empty_cont x.2.2)
+    : paco2 g_lts_ r
+            match ohead C with
+            | Some K => tr_next (mk_act l_send F T K.1 K.2.1) (tr_next (mk_act l_recv T F K.1 K.2.1) (build_trace TR K.2.2))
+            | None => tr_end act
+            end
+            (ig_end (rg_msg F T (fun l : lbl => match find_cont C l with
+                                                | Some (Ty, G0) => Some (Ty, g_expand G0)
+                                                | None => None
+                                                end))).
+  Proof.
+    move: NE1 NE2; case: C=>//=[[l [Ty G]]]/= C _ /(_ _ (or_introl erefl))-NE.
+    apply/paco2_fold; apply: eg_trans;
+      first by apply/st_unr/st_send=>/=; rewrite /extend eq_refl.
+    left; apply/paco2_fold; apply: eg_trans;
+      first by apply/st_recv; rewrite /extend eq_refl.
+    by right; apply/CIH.
+  Qed.
+
+  Lemma build_accepts G TR :
+    non_empty_cont G ->
+    gty_accepts (build_trace TR G) G.
+  Proof.
+    rewrite /gty_accepts => EQ1.
+    move EQ2: (build_trace TR G) => iG.
+    move EQ3: (ig_end (g_expand G)) => cG.
+    move: (conj EQ1 (conj EQ2 EQ3)) => {EQ1 EQ2 EQ3}.
+    move=>/(ex_intro (fun=>_) TR)=> {TR}.
+    move=>/(ex_intro (fun=>_) G)=> {G}.
+    move: iG cG; apply/paco2_acc=>r _.
+    move=>/(_ _ _ (ex_intro _ _ (ex_intro _ _ (conj _ (conj erefl erefl)))))-CIH.
+    move=>TR' PG [iG][TR][H1][<-][<-] {TR' PG}.
+    rewrite g_expand_once build_trace_unr.
+    move: H1 =>/(ne_unr (rec_depth iG)); move: (n_unroll (rec_depth iG) iG)=>{iG}.
+    case=>[|v|G|F T C] /=NE; try (by apply/paco2_fold; constructor).
+    move: NE=>/andP-[NE1 /forallbP/forall_member/member_map-NE2].
+    rewrite /select_alt/match_head/match_tail.
+    case: TR=>[|[a p q l t] TR]/=; first by apply/build_accepts'.
+    case: ifP=>[|_]; last by apply/build_accepts'.
+    rewrite /find_cont_dflt => EQ.
+    case EQ1: find_cont=>[[Ty G]|]; last by apply/build_accepts'.
+    case: ifP=>[/eqP->{t}/=|_]; last by apply/build_accepts'.
+    apply/paco2_fold; apply: eg_trans; first by apply/st_unr/st_send; rewrite EQ1.
+    left; apply/paco2_fold; apply: eg_trans; first by apply/st_recv; rewrite EQ1.
+    by right; apply/CIH/(NE2 (l, (Ty, G)))/find_member.
+  Qed.
+
+  Lemma build_subtrace p TR G L :
         (* we know things we could add as hyps here *)
-    subtrace p PTR (build_trace TR Pe).
+    project G p == Some L ->
+    sl_accepts TR L ->
+    subtrace p TR (build_trace TR G).
+    rewrite /sl_accepts.
+    Print sl_lts_.
+    Print do_act_l_ty.
+    SearchAbout project.
+    (* TODO: local types up to unrollings accept the same traces
+     *)
   Admitted.
 
   Theorem process_traces_are_global_types G p L iPe P PTRACE:
@@ -1051,9 +1192,11 @@ Section TraceEquivalence.
   Proof.
     case/eqP=> Hproj Hoft Hunr Hpacc.
     have He := expand_eProject Hproj. (* just in case for now *)
-
-    exists (build_trace (erase PTRACE) (expand_env iPe));
-    split ; [ apply build_accepts | apply build_subtrace].
+    move=>{Hoft}{Hunr}{He}. (* RED ALERT: for now none of these are used!!!! *)
+    exists (build_trace (erase PTRACE) (expand_env iPe)).
+    split ; [ apply: build_accepts | apply: build_subtrace].
+    move:Hproj=>/eqP ; apply.
+    apply: Hpacc.
   Qed.
 
 End TraceEquivalence.
