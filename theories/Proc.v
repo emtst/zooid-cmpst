@@ -107,34 +107,6 @@ Fixpoint punroll d P :=
 (* the correctness conditions is that punroll (prec_depth P) P is
    either Finish or Send or Recv *)
 
-(* (* alternative definition with the order swapped *) *)
-(* Fixpoint punroll' d P := *)
-(*     match P with *)
-(*     | Loop P' => *)
-(*       match d with *)
-(*       | 0 => P *)
-(*       | d.+1 => punroll' d (p_open 0 P P') *)
-(*       end *)
-(*     | _ => P *)
-(*     end. *)
-
-(*   Fixpoint lunroll' d G := *)
-(*       match G with *)
-(*       | l_rec G' => *)
-(*         match d with *)
-(*         | 0 => G *)
-(*         | d.+1 => lunroll d (l_open 0 G G') *)
-(*         end *)
-(*       | _ => G *)
-(*     end. *)
-
-(*
-l_rec l_msg a p [(0, (t1, l_msg a r end)), (1, (t2, l_msg a q 0))]
-
-l_msg a p [(0, t1, l_msg a r end),
-(1, (t2, l_rec l_msg a q l_msg a p [(0, t1, l_msg a r end), (1, t2, 0)]0))]
-*)
-
 Fixpoint find_alt alts l :=
   match alts with
   | A_sing T l' rK
@@ -958,19 +930,6 @@ Section TraceEquivalence.
 
   Definition erase : trace rt_act -> trace act := trace_map erase_act.
 
-  (* no longer needed definitely maybe *)
-  (* Lemma local_subtrace_of_penv G p L LTRACE TRACE: *)
-  (*   project G p == Some L -> *)
-  (*   sl_accepts LTRACE L -> *)
-  (*   gty_accepts TRACE G -> *)
-  (*   subtrace p LTRACE TRACE. *)
-  (* Admitted. *)
-
-  (* Lemma single_ind_coind L L' TRACE: *)
-  (*   sl_accepts TRACE L -> *)
-  (*   LUnroll L L' -> *)
-  (*   csl_accepts TRACE L'. *) (* <- to define *)
-
   Lemma local_type_accepts_process_trace P L PTRACE:
     of_lt P L ->
     p_accepts PTRACE P ->
@@ -1051,59 +1010,6 @@ Section TraceEquivalence.
 
   Definition env_unroll (iPe :  {fmap role -> l_ty})(Pe :  {fmap role -> rl_ty}) : Prop :=
     forall p, LUnroll (ilook iPe p) (look Pe p).
-
-  (* Lemma look_expand_commute iPe p: *)
-  (*     look (expand_env iPe) p = l_expand (ilook iPe p). *)
-  (* Proof. *)
-  (* Admitted. *)
-
-  (* Lemma precond_if_it_projects G iPe: *)
-  (*   eproject G == Some iPe -> g_precond G. *)
-  (* Proof. *)
-  (*   rewrite/eproject. *)
-  (*   case (g_precond G) ; [ easy | case/eqP ; congruence]. *)
-  (* Qed. *)
-
-  (* Lemma nice_if_it_projects G iPe: *)
-  (*   eproject G == Some iPe -> project_all (participants G) G == Some iPe. *)
-  (* Proof. *)
-  (*   rewrite/eproject. *)
-  (*   case (g_precond G) ; [ easy | case/eqP ; congruence]. *)
-  (* Qed. *)
-
-  (* Lemma nice_project_all G parts iPe: *)
-  (*   project_all parts G == Some iPe -> *)
-  (*   forall p, p \in parts -> project G p == Some (ilook iPe p). *)
-  (* Proof. *)
-  (*   (* only true if p \in parts *) *)
-  (* Admitted. *)
-
-
-  (* if the process enviroment results from a projection then its unrolling makes sense *)
-  (* Lemma eproject_unrolls_expanded G iPe: *)
-  (*   eproject G == Some iPe -> *)
-  (*   env_unroll iPe (expand_env iPe). *)
-  (* Proof. *)
-  (*   rewrite/env_unroll=>Hproj p. *)
-
-  (*   destruct(p \in participants G) eqn: Hin. (* what is the ssreflefcty way of doing this *) *)
-  (*   { *)
-  (*     rewrite look_expand_commute. *)
-  (*     apply: l_expand_unr. *)
-  (*     rewrite /eproject. *)
-
-  (*     apply (@project_guarded p G (ilook iPe p)). *)
-  (*     move: (nice_if_it_projects Hproj) Hin. *)
-  (*     admit. *)
-  (*     admit. *)
-  (*     admit. *)
-  (*   } *)
-  (*   { *)
-  (*     (* if p \notin participants G then p \notin dom eproject G then ... *) *)
-  (*     admit. *)
-  (*   } *)
-  (* Admitted. *)
-
 
   (* this is a silly definition, but coercions drive me nuts *)
   Definition eproject_eq_some G iPe :
