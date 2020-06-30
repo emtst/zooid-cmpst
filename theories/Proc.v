@@ -1099,11 +1099,10 @@ Section TraceEquivalence.
     case/eqP=> Hproj Hoft Hunr Hpacc.
     have He := expand_eProject Hproj. (* just in case for now *)
     move=>{Hoft}{Hunr}{He}. (* RED ALERT: for now none of these are used!!!! *)
-    exists (build_trace (erase PTRACE) (expand_env iPe)).
+    exists (build_trace (erase PTRACE) G).
     split ; [ apply: build_accepts | apply: build_subtrace].
-    move:Hproj=>/eqP ; apply.
-    apply: Hpacc.
-  Qed.
+  Admitted.
+
 
 End TraceEquivalence.
 
