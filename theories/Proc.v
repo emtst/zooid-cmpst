@@ -664,6 +664,7 @@ Goal forall Li Lc, (Li = projT1 (ping_pong_client4 p) /\
 Qed.
 
 Close Scope proc_scope.
+
 End Examples.
 
 Section OperationalSemantics.
@@ -975,6 +976,51 @@ Section TraceEquivalence.
     sl_accepts (erase PTRACE) L.
   Proof.
   Admitted.
+
+  Definition match_head F T TR :=
+    match TR with
+    | tr_next a _ =>
+      if (F == subject a) && (T == object a) && (l_send == act_ty a)
+         || (F == object a) && (T == subject a) && (l_recv == act_ty a)
+      then Some a
+      else None
+    | _ => None
+    end.
+
+  Definition match_tail F T TR :=
+    match TR with
+    | tr_next a TR' =>
+      if (F == subject a) && (T == object a) && (l_send == act_ty a)
+         || (F == object a) && (T == subject a) && (l_recv == act_ty a)
+      then TR'
+      else TR
+    | _ => TR
+    end.
+
+  Definition find_cont_dflt l Ty (Ks : seq (lbl * (mty * g_ty)))
+    := match find_cont Ks l with
+       | None => ohead Ks
+       | Some (Ty', G) => if Ty == Ty' then Some (l, (Ty, G)) else ohead Ks
+       end.
+
+  Definition select_alt TRH (Ks : seq (lbl * (mty * g_ty)))
+    := match TRH with
+       | Some (mk_act _ _ _ l Ty) => find_cont_dflt l Ty Ks
+       | None => ohead Ks
+       end.
+
+  CoFixpoint build_trace (TR : trace act) (g : g_ty) : trace act :=
+    match n_unroll (rec_depth g) g with
+    | g_msg F T Ks =>
+      match select_alt (match_head F T TR) Ks with
+      | Some K =>
+        tr_next (mk_act l_send F T K.1 K.2.1)
+                (tr_next (mk_act l_recv T F K.1 K.2.1)
+                         (build_trace (match_tail F T TR) g))
+      | None => tr_end _
+      end
+    | _ => tr_end _
+    end.
 
   (* alternative trace building function *)
   CoFixpoint build_trace' (TR : trace rt_act) (G : g_ty) : trace act.
