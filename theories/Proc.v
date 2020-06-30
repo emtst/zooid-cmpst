@@ -985,11 +985,11 @@ Section TraceEquivalence.
   CoFixpoint build_trace (TR : trace act) (Pe : renv) : trace act :=
     match TR with
       (* we're done *)
-      | tr_end  => tr_end _
+      | tr_end  => tr_end _ (* this is bad the rest of the world may continue when we end *)
       (* we can always send *)
       | tr_next (mk_act l_send p q l T) TR' =>
         tr_next (mk_act l_send p q l T) (build_trace TR' Pe)
-      (* we can only receive if someone is sending *)
+      (* we can only receive if q is sending *)
       | tr_next (mk_act l_recv p q l T) TR'  =>
         match look Pe q with
         (* we can receive from q *)
@@ -999,7 +999,8 @@ Section TraceEquivalence.
              | Some (T', K) => (* label is acceptable *)
                if T == T' then (* payloads match *)
                  tr_next (mk_act l_send q p l T)
-                      (tr_next (mk_act l_recv p q l T) (build_trace TR' (Pe.[ q <- K] )))
+                      (tr_next (mk_act l_recv p q l T)
+                               (build_trace TR' (Pe.[ q <- K ] )))
                else tr_end _
              | None => tr_end _
              end
@@ -1009,8 +1010,6 @@ Section TraceEquivalence.
         | _ => tr_end _ (* we are not receiving anything else *)
         end
     end%fmap.
-  (* a send can be done, a receive can only be done if we can receive
-     from someone else on the renv *)
 
   Definition env_unroll (iPe :  {fmap role -> l_ty})(Pe :  {fmap role -> rl_ty}) : Prop :=
     forall p, LUnroll (ilook iPe p) (look Pe p).
@@ -1102,7 +1101,6 @@ Section TraceEquivalence.
     punfold Hpacc.
     case Hpacc=>//=.
     rewrite /erase/trace_map.
-
   Admitted.
 
   Lemma build_subtrace p PTR TR Pe:
