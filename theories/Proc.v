@@ -1074,29 +1074,34 @@ Section TraceEquivalence.
       by move/eqP=>->.
   Defined.
 
+
   Lemma eproject_project_env G iPe (WF : well_formed G) (Hproj :eproject G == Some iPe):
         project_env WF = iPe.
   Proof.
   Admitted. (* this is a simple proof made annoying by depdent types *)
 
-  Lemma build_accepts G TR (iPe :  {fmap role -> l_ty})
+  Lemma build_accepts G TR P (iPe :  {fmap role -> l_ty})
         (Hproj : eproject G == Some iPe) :
-    gty_accepts (build_trace TR (expand_env iPe)) G.
+    p_accepts TR P ->
+
+    gty_accepts (build_trace (erase TR) (expand_env iPe)) G.
   Proof.
+    move=> Hpacc.
     have Htrc:
-      (lty_accepts (build_trace TR (expand_env iPe)) iPe
-       -> gty_accepts (build_trace TR (expand_env iPe)) G).
+      (lty_accepts (build_trace (erase TR) (expand_env iPe)) iPe
+       -> gty_accepts (build_trace (erase TR) (expand_env iPe)) G).
     {
       move=>Hl.
-      apply (IndTraceEquiv (eproject_eq_some Hproj) (build_trace TR (expand_env iPe))).
+      apply (IndTraceEquiv (eproject_eq_some Hproj) (build_trace (erase TR) (expand_env iPe))).
         by rewrite (eproject_project_env (eproject_eq_some Hproj) Hproj).
     }
     apply: Htrc. (* we use trace equivalence to deal with local types only *)
 
     (* at this point it is a local trace accepts proof *)
-    (* move=>{G} {Hproj}. *)
-    rewrite/lty_accepts.
-
+    move=>{G} {Hproj}. (* maybe we don't need stuff about projection anymore *)
+    punfold Hpacc.
+    case Hpacc=>//=.
+    rewrite /erase/trace_map.
 
   Admitted.
 
@@ -1115,10 +1120,11 @@ Section TraceEquivalence.
   Proof.
     case/eqP=> Hproj Hoft Hunr Hpacc.
     have He := expand_eProject Hproj. (* just in case for now *)
-    move=>{Hoft}{Hunr}{Hpacc}{He}. (* RED ALERT: for now none of these are used!!!! *)
+    move=>{Hoft}{Hunr}{He}. (* RED ALERT: for now none of these are used!!!! *)
     exists (build_trace (erase PTRACE) (expand_env iPe)).
     split ; [ apply: build_accepts | apply: build_subtrace].
     move:Hproj=>/eqP ; apply.
+    apply: Hpacc.
   Qed.
 
 End TraceEquivalence.
