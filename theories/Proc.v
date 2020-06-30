@@ -1000,7 +1000,7 @@ Section TraceEquivalence.
                if T == T' then (* payloads match *)
                  tr_next (mk_act l_send q p l T)
                       (tr_next (mk_act l_recv p q l T)
-                               (build_trace TR' (Pe.[ q <- K ] )))
+                               (build_trace TR' (Pe.[ q <- K ])))
                else tr_end _
              | None => tr_end _
              end
