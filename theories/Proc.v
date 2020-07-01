@@ -666,17 +666,37 @@ Section TraceEquivalence.
     exists L, of_lt P L /\ LUnroll L cL.
 
   (* TODO: Lorenzo *)
-  Lemma sl_accepts_unr L cL TRACE :
+  Lemma sl_accepts_unr s L cL TRACE :
     LUnroll L cL ->
-    sl_accepts TRACE L ->
-    srl_accepts TRACE cL.
+    sl_accepts s TRACE L ->
+    srl_accepts s TRACE cL.
   Proof.
     move=> H1 H2; move: (conj H1 H2)=>{H1 H2}.
     move=>/(ex_intro (fun=>_) L)=>{L}.
     move: TRACE cL; apply: paco2_acc=>r _.
     move=>/(_ _ _ (ex_intro _ _ (conj _ _)))-CIH.
-    move=>TRACE cL [L][Hunr Hacc].
-  Admitted.
+    move=>TRACE cL [L] [Hunr Hacc].
+    move: Hacc Hunr; rewrite/sl_accepts/sl_lts.
+    move=>/(paco2_unfold (@sl_lts_monotone s)); case.
+    + move=> Hunr; rewrite(lunroll_end Hunr).
+      by apply/paco2_fold.
+    + move=> a t L0 L1 subj doact [upaco | //] Hunr.
+      apply/paco2_fold. move: doact; rewrite/do_act_l_ty.
+      case: a subj=>[a p q l T]/= subj; move: Hunr=>/(LUnroll_ind (lrec_depth L0)).
+      case E: (lunroll (lrec_depth L0) L0)=> [|||a0 r0 Ks]//=.
+      move=>/(paco2_unfold l_unroll_monotone).
+      rewrite -E; move=> lunr; move: lunr E; case=>//=.
+      move=> a1 r1 Ks' C samed rall [eq1 eq2 eq3].
+      move: samed rall; rewrite eq1 eq2 eq3; move=>samed rall.
+      case E: (find_cont Ks l)=>[[T0 Lp]|//].
+      case: ifP=>// /andP[/andP[]]/eqP-{}eq1/eqP-{}eq2/eqP-{}eq3/eqP[eq4].
+      move: E; rewrite -eq1 -eq2 -eq3 eq4; move=> E.
+      move: (samed l T); elim; elim; [|by exists L1].
+      move=> cL1 Cl _; apply: (@srlt_next _ _ _ _ _ cL1)=>//=.
+      - by rewrite /do_act_lt Cl; rewrite !eq_refl.
+      - right; apply: (CIH _ _ L1)=>//=.
+        by move: (rall _ _ _ _ E Cl); elim.
+  Qed.
 
   Lemma proj_all_in G iPe p ps :
     (p \in ps) ->
