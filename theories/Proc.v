@@ -655,6 +655,11 @@ Section TraceEquivalence.
         move: Hunr Hacc; case EQ: _ _ / =>[||a q Ks' CC DOM UNR]//.
         move: EQ DOM UNR=>[<-<-<-] DOM UNR{a q Ks'}.
         move=>/(paco2_unfold (@srl_lts_monotone p)).
+
+        (* Lemma srl_lts_msg_inv :  *)
+        (*   srl_lts_ p r TR (rl_msg a q CC) -> *)
+        (*   exists l T TR', *)
+        (*     TR = tr_next (mk_act a p q l t) *)
   Admitted.
 
   Definition of_lt_unr P cL :=
