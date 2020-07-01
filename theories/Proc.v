@@ -448,7 +448,12 @@ Section TraceEquivalence.
   .
 
   Lemma p_lts_monotone p : monotone2 (p_lts_ p).
-  Proof. pmonauto. Admitted.
+  Proof.
+  rewrite /monotone2; move=> t P r r' rel le.
+  case: rel; [by constructor|].
+  move=> A {}P P' TR Hsub dostep rel.
+  by apply/(pt_next Hsub dostep (le _ _ rel)).
+  Qed.
   Hint Resolve p_lts_monotone : paco.
 
   Definition p_lts p TR P := paco2 (p_lts_ p) bot2 TR P.
