@@ -686,7 +686,7 @@ Section TraceEquivalence.
       by apply: Ih.
   Qed.
 
-  (* TODO: Francisco *)
+  (* end is a complete subtrace of G, if p \notin G *)
   Lemma subtrace_end p G :
     p \notin participants G ->
     subtrace p (tr_end act) (build_trace (tr_end act) G).
@@ -698,7 +698,34 @@ Section TraceEquivalence.
     move: TRACE1 TRACE2; apply/paco2_acc=>r _.
     move=>/(_ _ _ (ex_intro _ _ (conj (conj erefl erefl) _)))-CIH.
     move=> TR1 TR2 [G][[<-<-] p_notin_G] {TR1 TR2}.
-  Admitted.
+    rewrite build_trace_unr=>//=.
+    move:p_notin_G=>/notin_nunroll=>/(_ (rec_depth G)).
+    case (n_unroll (rec_depth G) G)=>[Hni | x Hni | Hni GT | FROM TO CONT Hni]//= ;
+              try (apply/paco2_fold ; constructor).
+    { (* the other case *)
+      apply/paco2_fold.
+      case EQ:CONT=>[ | X XS] //= ; constructor.
+      - move:Hni =>//=.
+        rewrite in_cons negb_or=>/andP-[A _];
+          by rewrite eq_sym.
+      - (* skipped once *)
+        left.
+        apply/paco2_fold; constructor. (* skip again *)
+        + move:Hni =>//=.
+          rewrite in_cons negb_or=>/andP[_ A]. move:A.
+          rewrite in_cons negb_or=>/andP-[A _].
+            by rewrite eq_sym.
+        + right.
+          apply CIH.
+          {
+            move:EQ Hni=>->//=.
+            rewrite !in_cons mem_cat !negb_or.
+            move=>/andP-[_ A]. move:A.
+            move=>/andP-[_ A]. move:A=>/andP[B _].
+            by [].
+          }
+    }
+  Qed.
 
   Theorem process_traces_are_global_types G p iPe P PTRACE:
     eproject G == Some iPe ->
