@@ -646,21 +646,9 @@ Section TraceEquivalence.
       move: (samed l T); elim; elim; [|by exists L1].
       move=> cL1 Cl _; apply: (@srlt_next _ _ _ _ cL1)=>//=.
       - by rewrite /do_act_lt Cl; rewrite !eq_refl.
-      - right; apply: (CIH _ _ L1).
-        *
-        *
-
-
-      move: paco2_fold.
-
-      move=>/(paco2_unfold l_unroll_monotone).
-      case E.
-
-=>//=.
-
-
-(*LUnroll_ind.*)
-  Admitted.
+      - right; apply: (CIH _ _ L1)=>//=.
+        by move: (rall _ _ _ _ E Cl); elim.
+  Qed.
 
   Lemma not_srl_accepts_end h t :
     ~ srl_accepts (tr_next h t) rl_end.
