@@ -639,10 +639,12 @@ Section TraceEquivalence.
     by case: a=>[a p q l {}t]/=.
   Qed.
 
-  Lemma proj_all_in G iPe p :
-    project_all (participants G) G = Some iPe ->
-    (p \in participants G) ->
+  Lemma proj_all_in G iPe p ps :
+    (p \in ps) ->
+    project_all ps G = Some iPe ->
     project G p = Some (ilook iPe p).
+  Proof.
+    elim: ps=>[|q ps Ih]//=.
   Admitted.
 
   Lemma proj_all_notin G iPe p :
@@ -677,7 +679,8 @@ Section TraceEquivalence.
     have NE: non_empty_cont G by move: Hpre=>/andP-[].
     exists (build_trace (erase PTRACE) G); split; first by apply: build_accepts.
     case: (boolP (p \in participants G)).
-    - move=>/(proj_all_in Hproj); move: (ilook iPe p) Hunr=>iL Hunr /eqP-{}Hproj.
+    - move=>/(fun H => proj_all_in H Hproj).
+      move: (ilook iPe p) Hunr=>iL Hunr /eqP-{}Hproj.
       move: Hpacc=>/(local_type_accepts_process_trace Hoft)/(sl_accepts_unr Hunr).
       apply: (build_subtrace Hpre Hproj).
       move: Hpre=>/andP-[/andP-[CG GG] _].
