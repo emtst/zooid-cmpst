@@ -799,7 +799,7 @@ Section TraceEquivalence.
     }
   Qed.
 
-  (* Of local type of 'p' up to unrolling *)
+  (* 'P' implements participant 'p' in 'iPe' *)
   Definition of_lt_unr p P iPe :=
     exists L, of_lt P L /\ LUnroll L (l_expand (ilook iPe p)).
 
