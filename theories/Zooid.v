@@ -510,3 +510,23 @@ Qed.
 Close Scope proc_scope.
 
 End Examples.
+
+(* Code Extraction *)
+
+From Coq Require Extraction.
+Module MP.
+  Parameter t : Type -> Type.
+
+  Parameter send : forall T, role -> lbl -> T -> t unit.
+  (* Extract Constant send => "ocaml_send". *)
+
+  Parameter recv : (lbl -> t unit) -> t unit.
+  Parameter recv_one : forall T, role -> t T.
+
+  Parameter bind : forall T1 T2, t T1 -> (T1 -> t T2) -> t T2.
+
+  Parameter pure : forall T1, T1 -> t T1.
+
+  Parameter loop : forall T1, nat -> t T1 -> t T1.
+  Parameter set_current: nat -> t unit.
+End MP.
