@@ -448,7 +448,7 @@ Section TraceEquivalence.
   .
 
   Lemma p_lts_monotone p : monotone2 (p_lts_ p).
-  Proof. pmonauto.  Admitted.
+  Proof. pmonauto. Admitted.
   Hint Resolve p_lts_monotone : paco.
 
   Definition p_lts p TR P := paco2 (p_lts_ p) bot2 TR P.
@@ -544,11 +544,6 @@ Section TraceEquivalence.
       by move/eqP=>->.
   Defined.
 
-  Lemma eproject_project_env G iPe (WF : well_formed G) (Hproj :eproject G == Some iPe):
-        project_env WF = iPe.
-  Proof.
-  Admitted. (* this is a simple proof made annoying by depdent types *)
-
   Lemma build_accepts' C F T (r : trace act -> ig_ty -> Prop)
         (CIH : forall t g,
             non_empty_cont g -> r (build_trace t g) (ig_end (g_expand g)))
@@ -620,6 +615,35 @@ Section TraceEquivalence.
     by case: a=>[a {}p q l {}t]/=.
   Qed.
 
+  Lemma srl_acc_msg_inv a p q TR CC :
+    srl_accepts p TR (rl_msg a q CC) ->
+    exists l t TR' G,
+      TR = tr_next (mk_act a p q l t) TR' /\
+      CC l = Some (t, G) /\
+      srl_accepts p TR' G.
+  Proof.
+    move=>/(paco2_unfold (@srl_lts_monotone p)).
+    case EQ: _ / =>[|a' TR' L L' SUBJ Hact [Hr|]]//.
+    move: EQ Hact=><- Hact {L}; case: a' Hact SUBJ Hr.
+    move=> a' p' q' l t=>/=.
+    case EQ: CC=>[[t' L]|]//; case:ifP=>//.
+    move=>/andP-[/andP-[/eqP->/eqP->]/eqP->] [<-] /eqP-> Hr {a' q' t L' p'}.
+    by exists l, t', TR', L.
+  Qed.
+
+  Lemma precond_msg_fnd p q C l t G :
+    g_precond (g_msg p q C) ->
+    find_cont C l = Some (t, G) ->
+    g_precond G.
+  Proof.
+    rewrite /g_precond/g_closed/==>/andP-[/andP-[]].
+    move=>/fsetUs_fset0/member_map-cG.
+    move=>/forallbP/forall_member-gG.
+    move=>/andP-[_ /forallbP/forall_member/member_map-NE].
+    move=> H; move: (find_member H)=>{}H.
+    by move: (cG _ H) (gG _ H) (NE _ H)=>/=->->->.
+  Qed.
+
   Local Notation conj5 H1 H2 H3 H4 H5
     := (conj H1 (conj H2 (conj H3 (conj H4 H5)))).
   Local Notation ex_intro3 X Y Z H :=
@@ -654,12 +678,26 @@ Section TraceEquivalence.
       + move=>[<-]{L'} Hpre _; move=>/(paco2_unfold l_unroll_monotone)-Hunr.
         move: Hunr Hacc; case EQ: _ _ / =>[||a q Ks' CC DOM UNR]//.
         move: EQ DOM UNR=>[<-<-<-] DOM UNR{a q Ks'}.
-        move=>/(paco2_unfold (@srl_lts_monotone p)).
-
-        (* Lemma srl_lts_msg_inv :  *)
-        (*   srl_lts_ p r TR (rl_msg a q CC) -> *)
-        (*   exists l T TR', *)
-        (*     TR = tr_next (mk_act a p q l t) *)
+        move=>/srl_acc_msg_inv=>[[l][t][TR][cL'][->][CCL Hacc]] {TR1}.
+        rewrite /= !eq_refl /= /find_cont_dflt; move: (dom' DOM CCL)=>[L'] Ksl.
+        move: (dom' (prjall_dom Hprj) Ksl)=>[G']Cl; rewrite Cl eq_refl/=.
+        move: (UNR _ _ _ _ Ksl CCL)=>[Hunr|//].
+        move: (prjall_fnd Hprj Cl Ksl)  (precond_msg_fnd Hpre Cl)=>/eqP-{}Hprj {}Hpre.
+        apply/paco2_fold/subtrace_msg=>//; left.
+        apply/paco2_fold/subtrace_skip=>//=; first by rewrite eq_sym; apply/negPf.
+        by right; apply: (CIH _ _ _ _ Hpre Hprj Hunr Hacc).
+      + move=>[<-]{L'} Hpre _; move=>/(paco2_unfold l_unroll_monotone)-Hunr.
+        move: Hunr Hacc; case EQ: _ _ / =>[||a q Ks' CC DOM UNR]//.
+        move: EQ DOM UNR=>[<-<-<-] DOM UNR{a q Ks'}.
+        move=>/srl_acc_msg_inv=>[[l][t][TR][cL'][->][CCL Hacc]] {TR1}.
+        rewrite /= !eq_refl orbT /= /find_cont_dflt; move: (dom' DOM CCL)=>[L'] Ksl.
+        move: (dom' (prjall_dom Hprj) Ksl)=>[G']Cl; rewrite Cl eq_refl/=.
+        move: (UNR _ _ _ _ Ksl CCL)=>[Hunr|//].
+        move: (prjall_fnd Hprj Cl Ksl)  (precond_msg_fnd Hpre Cl)=>/eqP-{}Hprj {}Hpre.
+        apply/paco2_fold/subtrace_skip=>//=; first by apply/negPf.
+        left; apply/paco2_fold/subtrace_msg=>//.
+        by right; apply: (CIH _ _ _ _ Hpre Hprj Hunr Hacc).
+      +
   Admitted.
 
   Definition of_lt_unr P cL :=
