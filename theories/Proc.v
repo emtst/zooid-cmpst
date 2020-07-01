@@ -632,7 +632,12 @@ Section TraceEquivalence.
 
   Lemma not_srl_accepts_end h t :
     ~ srl_accepts (tr_next h t) rl_end.
-  Admitted.
+  Proof.
+    move EQ1 : (tr_next _ t) => TR; move EQ2 : rl_end => RL.
+    move=>/(paco2_unfold srl_lts_monotone)-H; case: H EQ1 EQ2=>// a TR' L L'.
+    move=> Hact _ _ Hend; move: Hend Hact=><-.
+    by case: a=>[a p q l {}t]/=.
+  Qed.
 
   Lemma proj_all_in G iPe p :
     project_all (participants G) G = Some iPe ->
