@@ -644,8 +644,13 @@ Section TraceEquivalence.
     project_all ps G = Some iPe ->
     project G p = Some (ilook iPe p).
   Proof.
-    elim: ps=>[|q ps Ih]//=.
-  Admitted.
+    elim: ps=>[|q ps Ih]//= in iPe *; case: (boolP (p == q))=>[/eqP<-{Ih}|].
+    - move=> _; case: project=>// L; case: project_all=>// iPe'[<-].
+      by rewrite /ilook fnd_set eq_refl.
+    - move=> NE IN; move: IN NE; rewrite in_cons=>/orP-[->|IN NE]//.
+      case: project=>// L; case Hprj: project_all=>[iPe'|]//.
+      by move: Hprj=>/(Ih _ IN)-> [<-]; rewrite /ilook fnd_set (negPf NE).
+  Qed.
 
   Lemma proj_all_notin G iPe p :
     project_all (participants G) G = Some iPe ->
