@@ -599,19 +599,50 @@ Section TraceEquivalence.
     by right; apply/CIH/(NE2 (l, (Ty, G)))/find_member.
   Qed.
 
+  Lemma gpre_unr n G : g_precond G -> g_precond (n_unroll n G).
+  Proof.
+    rewrite /g_precond=>/andP-[/andP-[CG GG] NE].
+    by rewrite g_closed_unroll //= g_guarded_nunroll//= ne_unr.
+  Qed.
+
+  Lemma not_srl_accepts_end h t :
+    ~ srl_accepts (tr_next h t) rl_end.
+  Proof.
+    move EQ1 : (tr_next _ t) => TR; move EQ2 : rl_end => RL.
+    move=>/(paco2_unfold srl_lts_monotone)-H; case: H EQ1 EQ2=>// a TR' L L'.
+    move=> Hact _ _ Hend; move: Hend Hact=><-.
+    by case: a=>[a p q l {}t]/=.
+  Qed.
+
+  Local Notation conj5 H1 H2 H3 H4 H5
+    := (conj H1 (conj H2 (conj H3 (conj H4 H5)))).
+  Local Notation ex_intro3 X Y Z H :=
+    (ex_intro (fun=> _) X (ex_intro (fun=>_) Y (ex_intro (fun=>_) Z H))).
   Lemma build_subtrace p TR G L cL :
-        (* we know things we could add as hyps here *)
     g_precond G ->
     project G p == Some L ->
     LUnroll L cL ->
     srl_accepts TR cL ->
     subtrace p TR (build_trace TR G).
-    (* rewrite /sl_accepts. *)
-    (* Print sl_lts_. *)
-    (* Print do_act_l_ty. *)
-    (* SearchAbout project. *)
-    (* (* TODO: local types up to unrollings accept the same traces *)
-    (*  *) *)
+  Proof.
+    move=> H1 H2 H3 H4; move H5: (build_trace TR G)=>TR'.
+    move: (ex_intro3 G L cL (conj5 H1 H2 H3 H4 H5))=>{H1 H2 H3 H4 H5 G L cL}.
+    move: TR TR'; apply/paco2_acc=>r _.
+    move=>/(_ _ _ (ex_intro3 _ _ _ (conj5 _ _ _ _ erefl)))-CIH.
+    move=> TR1 TR2 [G][L][cL][Hpre][Hprj][Hunr][Hacc]<- {TR2}.
+    rewrite build_trace_unr/build_trace'.
+    have CG: g_closed G by move: Hpre=>/andP-[/andP-[]].
+    have GG: guarded 0 G by move: Hpre=>/andP-[/andP-[]].
+    move: Hprj=>/eqP/(project_unroll (rec_depth G) CG)-[n1][n2][L'][Hprj EQ].
+    move: Hunr=>/(LUnroll_ind n1); move: EQ=>-> {L n1}; rewrite -LUnroll_ind.
+    move: (unroll_guarded CG GG) => {CG GG}.
+    move: (n_unroll _ _) Hprj (gpre_unr (rec_depth G) Hpre)=>{Hpre}[]/=.
+    - move=>[<-] _ _ /lunroll_end-EQ; move: EQ Hacc=>-> {cL CIH L' n2}.
+      case: TR1=>[_|h TR]; first by apply/paco2_fold; constructor.
+      by move=>/not_srl_accepts_end.
+    - by move=> V _; rewrite /g_precond/g_closed/= -cardfs_eq0 cardfs1.
+    - by move=> G' _ _ /(_ G')/eqP.
+    - admit.
   Admitted.
 
   Definition of_lt_unr P cL :=
@@ -629,15 +660,6 @@ Section TraceEquivalence.
     move=>/(_ _ _ (ex_intro _ _ (conj _ _)))-CIH.
     move=>TRACE cL [L][Hunr Hacc].
   Admitted.
-
-  Lemma not_srl_accepts_end h t :
-    ~ srl_accepts (tr_next h t) rl_end.
-  Proof.
-    move EQ1 : (tr_next _ t) => TR; move EQ2 : rl_end => RL.
-    move=>/(paco2_unfold srl_lts_monotone)-H; case: H EQ1 EQ2=>// a TR' L L'.
-    move=> Hact _ _ Hend; move: Hend Hact=><-.
-    by case: a=>[a p q l {}t]/=.
-  Qed.
 
   Lemma proj_all_in G iPe p ps :
     (p \in ps) ->
