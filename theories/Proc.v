@@ -652,11 +652,17 @@ Section TraceEquivalence.
       by move: Hprj=>/(Ih _ IN)-> [<-]; rewrite /ilook fnd_set (negPf NE).
   Qed.
 
-  Lemma proj_all_notin G iPe p :
-    project_all (participants G) G = Some iPe ->
-    (p \notin participants G) ->
+  Lemma proj_all_notin G iPe p ps :
+    project_all ps G = Some iPe ->
+    (p \notin ps) ->
     ilook iPe p = l_end.
-  Admitted.
+  Proof.
+    elim: ps=>[|q ps Ih]/= in iPe *.
+    - by move=>[<-] _; rewrite /ilook not_fnd.
+    - case: project=>// L; case Hprj: project_all=>[iPe'|]// [<-].
+      rewrite in_cons negb_or /ilook fnd_set=>/andP-[/negPf->].
+      by apply: Ih.
+  Qed.
 
   (* TODO: Francisco *)
   Lemma subtrace_end p G :
