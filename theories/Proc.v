@@ -622,6 +622,12 @@ Section TraceEquivalence.
     LUnroll L cL ->
     sl_accepts TRACE L ->
     srl_accepts TRACE cL.
+  Proof.
+    move=> H1 H2; move: (conj H1 H2)=>{H1 H2}.
+    move=>/(ex_intro (fun=>_) L)=>{L}.
+    move: TRACE cL; apply: paco2_acc=>r _.
+    move=>/(_ _ _ (ex_intro _ _ (conj _ _)))-CIH.
+    move=>TRACE cL [L][Hunr Hacc].
   Admitted.
 
   Lemma not_srl_accepts_end h t :
@@ -644,6 +650,14 @@ Section TraceEquivalence.
   Lemma subtrace_end p G :
     p \notin participants G ->
     subtrace p (tr_end act) (build_trace (tr_end act) G).
+  Proof.
+    move EQ1: (tr_end act)=>TRACE1.
+    move EQ2: (build_trace _ G)=>TRACE2.
+    move=>H; move: (conj (conj EQ1 EQ2) H)=>{EQ1 EQ2 H}.
+    move=>/(ex_intro (fun=>_) G)=>{G}.
+    move: TRACE1 TRACE2; apply/paco2_acc=>r _.
+    move=>/(_ _ _ (ex_intro _ _ (conj (conj erefl erefl) _)))-CIH.
+    move=> TR1 TR2 [G][[<-<-] p_notin_G] {TR1 TR2}.
   Admitted.
 
   Theorem process_traces_are_global_types G p iPe P PTRACE:
