@@ -412,6 +412,22 @@ Section TraceEquivalence.
   Definition sl_lts t L := paco2 sl_lts_ bot2 t L.
   Definition sl_accepts TRACE L := sl_lts TRACE L.
 
+  Definition rel_srl_trc := trace act -> rl_ty -> Prop.
+  Inductive srl_lts_ (r : rel_srl_trc) : rel_srl_trc :=
+  | srlt_end :
+      @srl_lts_ r (tr_end _) rl_end
+  | srlt_next a t L L' :
+      do_act_lt L a = Some L' ->
+      r t L' ->
+      @srl_lts_ r (tr_next a t) L.
+
+  Hint Constructors srl_lts_.
+  Lemma srl_lts_monotone : monotone2 srl_lts_.
+  Proof. pmonauto. Qed.
+  Hint Resolve srl_lts_monotone : paco.
+
+  Definition srl_lts t L := paco2 srl_lts_ bot2 t L.
+  Definition srl_accepts TRACE L := srl_lts TRACE L.
 
   (* process local type trace *)
   Definition rel_proc_trc := trace rt_act -> Proc -> Prop.
@@ -522,7 +538,6 @@ Section TraceEquivalence.
       by move/eqP=>->.
   Defined.
 
-
   Lemma eproject_project_env G iPe (WF : well_formed G) (Hproj :eproject G == Some iPe):
         project_env WF = iPe.
   Proof.
@@ -536,13 +551,17 @@ Section TraceEquivalence.
         (NE2 : forall x, member x C -> non_empty_cont x.2.2)
     : paco2 g_lts_ r
             match ohead C with
-            | Some K => tr_next (mk_act l_send F T K.1 K.2.1) (tr_next (mk_act l_recv T F K.1 K.2.1) (build_trace TR K.2.2))
+            | Some K => tr_next (mk_act l_send F T K.1 K.2.1)
+                                (tr_next (mk_act l_recv T F K.1 K.2.1)
+                                         (build_trace TR K.2.2))
             | None => tr_end act
             end
-            (ig_end (rg_msg F T (fun l : lbl => match find_cont C l with
-                                                | Some (Ty, G0) => Some (Ty, g_expand G0)
-                                                | None => None
-                                                end))).
+            (ig_end (rg_msg F T
+                            (fun l : lbl => match find_cont C l with
+                                            | Some (Ty, G0) =>
+                                              Some (Ty, g_expand G0)
+                                            | None => None
+                                            end))).
   Proof.
     move: NE1 NE2; case: C=>//=[[l [Ty G]]]/= C _ /(_ _ (or_introl erefl))-NE.
     apply/paco2_fold; apply: eg_trans;
@@ -580,33 +599,77 @@ Section TraceEquivalence.
     by right; apply/CIH/(NE2 (l, (Ty, G)))/find_member.
   Qed.
 
-  Lemma build_subtrace p TR G L :
+  Lemma build_subtrace p TR G L cL :
         (* we know things we could add as hyps here *)
+    g_precond G ->
     project G p == Some L ->
-    sl_accepts TR L ->
+    LUnroll L cL ->
+    srl_accepts TR cL ->
     subtrace p TR (build_trace TR G).
-    rewrite /sl_accepts.
-    Print sl_lts_.
-    Print do_act_l_ty.
-    SearchAbout project.
-    (* TODO: local types up to unrollings accept the same traces
-     *)
+    (* rewrite /sl_accepts. *)
+    (* Print sl_lts_. *)
+    (* Print do_act_l_ty. *)
+    (* SearchAbout project. *)
+    (* (* TODO: local types up to unrollings accept the same traces *)
+    (*  *) *)
   Admitted.
 
-  Theorem process_traces_are_global_types G p L iPe P PTRACE:
+  Definition of_lt_unr P cL :=
+    exists L, of_lt P L /\ LUnroll L cL.
+
+  (* TODO: Lorenzo *)
+  Lemma sl_accepts_unr L cL TRACE :
+    LUnroll L cL ->
+    sl_accepts TRACE L ->
+    srl_accepts TRACE cL.
+  Admitted.
+
+  Lemma not_srl_accepts_end h t :
+    ~ srl_accepts (tr_next h t) rl_end.
+  Admitted.
+
+  Lemma proj_all_in G iPe p :
+    project_all (participants G) G = Some iPe ->
+    (p \in participants G) ->
+    project G p = Some (ilook iPe p).
+  Admitted.
+
+  Lemma proj_all_notin G iPe p :
+    project_all (participants G) G = Some iPe ->
+    (p \notin participants G) ->
+    ilook iPe p = l_end.
+  Admitted.
+
+  (* TODO: Francisco *)
+  Lemma subtrace_end p G :
+    p \notin participants G ->
+    subtrace p (tr_end act) (build_trace (tr_end act) G).
+  Admitted.
+
+  Theorem process_traces_are_global_types G p iPe P PTRACE:
     eproject G == Some iPe ->
-    of_lt P L ->
-    LUnroll L (l_expand (ilook iPe p)) ->
+    of_lt_unr P (l_expand (ilook iPe p)) ->
     p_accepts PTRACE P ->
     exists TRACE, (* constructed with the build function *)
       gty_accepts TRACE G /\ subtrace p (erase PTRACE) TRACE.
   Proof.
-    case/eqP=> Hproj Hoft Hunr Hpacc.
-    have He := expand_eProject Hproj. (* just in case for now *)
-    move=>{Hoft}{Hunr}{He}. (* RED ALERT: for now none of these are used!!!! *)
-    exists (build_trace (erase PTRACE) G).
-    split ; [ apply: build_accepts | apply: build_subtrace].
-  Admitted.
-
+    move=>/eqP-Hproj [L][Hoft] Hunr Hpacc.
+    move: Hproj; rewrite /eproject; case: ifP=>//Hpre Hproj.
+    have NE: non_empty_cont G by move: Hpre=>/andP-[].
+    exists (build_trace (erase PTRACE) G); split; first by apply: build_accepts.
+    case: (boolP (p \in participants G)).
+    - move=>/(proj_all_in Hproj); move: (ilook iPe p) Hunr=>iL Hunr /eqP-{}Hproj.
+      move: Hpacc=>/(local_type_accepts_process_trace Hoft)/(sl_accepts_unr Hunr).
+      apply: (build_subtrace Hpre Hproj).
+      move: Hpre=>/andP-[/andP-[CG GG] _].
+      move: (proj_lclosed CG Hproj) (project_guarded Hproj) (proj_lne NE Hproj) => CL GL LNE.
+      by apply: l_expand_unr.
+    - move=>p_notin_G; move: (proj_all_notin Hproj p_notin_G)=>EQ; move: EQ Hunr=>->.
+      rewrite l_expand_once/==>Hunr.
+      move: Hpacc=>/(local_type_accepts_process_trace Hoft)/(sl_accepts_unr Hunr).
+      rewrite (trace_unr (erase PTRACE))/=.
+      case: PTRACE=>[|h t]; last by move=>/not_srl_accepts_end.
+      by move=>_; apply/subtrace_end.
+  Qed.
 
 End TraceEquivalence.
