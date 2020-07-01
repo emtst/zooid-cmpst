@@ -642,7 +642,14 @@ Section TraceEquivalence.
       by move=>/not_srl_accepts_end.
     - by move=> V _; rewrite /g_precond/g_closed/= -cardfs_eq0 cardfs1.
     - by move=> G' _ _ /(_ G')/eqP.
-    - admit.
+    - move=>F T C; rewrite -/(prj_all _ _).
+      case Hprj: prj_all=>[Ks|]//; case: ifP=>//.
+      case: ifP=>[/eqP->{F} pT|]; [|case: ifP=>[/eqP->{T} _ Fp|Tp Fp FT]].
+      + move=>[<-]{L'} Hpre _; move=>/(paco2_unfold l_unroll_monotone)-Hunr.
+        move: Hunr Hacc; case EQ: _ _ / =>[||a q Ks' CC DOM UNR]//.
+        move: EQ DOM UNR=>[<-<-<-] DOM UNR{a q Ks'}.
+        move=>/(paco2_unfold srl_lts_monotone).
+        case: TR1.
   Admitted.
 
   Definition of_lt_unr P cL :=
