@@ -644,6 +644,18 @@ Section TraceEquivalence.
     by move: (cG _ H) (gG _ H) (NE _ H)=>/=->->->.
   Qed.
 
+  Lemma select_notnil MH C :
+    ~~ nilp C ->
+    exists K, select_alt MH C = Some K.
+  Proof.
+    case: MH=>[[_ _ _ l t]|]/=; case: C=>[|K C]// _; last (by exists K).
+    case: K=>[l' [t' L]]; rewrite /find_cont_dflt/=/extend/=.
+    case: ifP=>[/eqP->|_]; first (by case:ifP=>[/eqP->|_]; exists (l, (t', L))).
+    case: find_cont=>[[t0 L']|]//; last (by exists (l', (t', L))).
+    case: ifP=>_; first by exists (l, (t, L')).
+    by exists (l', (t', L)).
+  Qed.
+
   Local Notation conj5 H1 H2 H3 H4 H5
     := (conj H1 (conj H2 (conj H3 (conj H4 H5)))).
   Local Notation ex_intro3 X Y Z H :=
@@ -697,7 +709,11 @@ Section TraceEquivalence.
         apply/paco2_fold/subtrace_skip=>//=; first by apply/negPf.
         left; apply/paco2_fold/subtrace_msg=>//.
         by right; apply: (CIH _ _ _ _ Hpre Hprj Hunr Hacc).
-      +
+      + move=> MRG; move: (prjall_merge_cons Hprj MRG)=> [K mem] Hpre _ Hunr.
+        move: Hprj MRG=>/eqP-Hprj /eqP-MRG; move: (prjall_merge Hprj MRG mem)=>Hprj'.
+        SearchAbout member.
+
+        SearchAbout merge_all.
   Admitted.
 
   (* TODO: Lorenzo *)
