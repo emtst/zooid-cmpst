@@ -651,14 +651,39 @@ Section TraceEquivalence.
 
   Lemma select_notnil MH C :
     ~~ nilp C ->
-    exists K, select_alt MH C = Some K.
+    exists K, select_alt MH C = Some K /\ find_cont C K.1 = Some K.2.
   Proof.
-    case: MH=>[[_ _ _ l t]|]/=; case: C=>[|K C]// _; last (by exists K).
-    case: K=>[l' [t' L]]; rewrite /find_cont_dflt/=/extend/=.
-    case: ifP=>[/eqP->|_]; first (by case:ifP=>[/eqP->|_]; exists (l, (t', L))).
-    case: find_cont=>[[t0 L']|]//; last (by exists (l', (t', L))).
-    case: ifP=>_; first by exists (l, (t, L')).
-    by exists (l', (t', L)).
+    case: MH=>[[_ _ _ l t]|]/=; case: C=>[|[l' TG] C]// _;
+      last by (exists (l', TG); rewrite /=/extend eq_refl).
+    rewrite /find_cont_dflt/=/extend; case: ifP=>[/eqP->|NE].
+    - case: TG=>[T G]; case: ifP=>[/eqP->|_];
+         by (exists (l, (T, G)); rewrite /=eq_refl).
+    - case EQ: find_cont =>[[T' G]|].
+      + case: ifP=>[/eqP->|NE']; first (by exists (l, (T', G)); rewrite /= NE).
+        by exists (l', TG); rewrite/= eq_refl.
+      + by exists (l', TG); rewrite /= eq_refl.
+  Qed.
+
+  Lemma member_find A (K : lbl * (mty * A)) C :
+    member K C -> exists K', find_cont C K'.1 = Some K'.2.
+  Proof.
+    elim: C=>// K' C Ih [<-|];
+      first (by exists K=>{Ih}; case: K=>l/= Pl; rewrite /extend eq_refl).
+    move=>/Ih-[[l [T a]]]/= {}Ih; case: K'=>[l' [T' a']].
+    case: (boolP (l == l'))=>[/eqP<-|/negPf-NE].
+    - by exists (l, (T', a')); rewrite /extend/= eq_refl.
+    - by exists (l, (T, a)); rewrite /extend/= eq_sym NE.
+  Qed.
+
+  Lemma match_tail_eq p TR cL F T :
+    srl_accepts p TR cL ->
+    (F == p) = false ->
+    (T == p) = false ->
+    match_tail F T TR = TR.
+  Proof.
+    move=>/(paco2_unfold (@srl_lts_monotone p)).
+    case=>[|[a F' T' l t TR' L L']]//=.
+    by move=>/eqP-> _ _ -> ->/=; rewrite andbF/=.
   Qed.
 
   Local Notation conj5 H1 H2 H3 H4 H5
@@ -714,12 +739,20 @@ Section TraceEquivalence.
         apply/paco2_fold/subtrace_skip=>//=; first by apply/negPf.
         left; apply/paco2_fold/subtrace_msg=>//.
         by right; apply: (CIH _ _ _ _ Hpre Hprj Hunr Hacc).
-      + move=> MRG; move: (prjall_merge_cons Hprj MRG)=> [K mem] Hpre _ Hunr.
-        move: Hprj MRG=>/eqP-Hprj /eqP-MRG; move: (prjall_merge Hprj MRG mem)=>Hprj'.
-        SearchAbout member.
-
-        SearchAbout merge_all.
-  Admitted.
+      + move=>Hmrg Hpre; have NN: ~~nilp C by move: Hpre=>/andP-[_ /andP-[]].
+        move: (select_notnil (match_head F T TR1) NN)=>[K][->]/=.
+        rewrite (surjective_pairing K.2)=>Hfnd.
+        move: (find_member Hfnd); rewrite -!surjective_pairing=>mem.
+        move: (dom (prjall_dom Hprj) Hfnd)=>[L] Ksl.
+        move: (prjall_fnd Hprj Hfnd Ksl)=>/eqP-Hprj' _ Hunr.
+        move: Hprj Hmrg=>/eqP-Hprj /eqP-Hmrg.
+        move: (prjall_merge Hprj Hmrg mem)=>{}Hprj.
+        move: (precond_msg_fnd Hpre Hfnd)=>Hpre'.
+        rewrite (match_tail_eq Hacc)//.
+        apply/paco2_fold/subtrace_skip=>//=; first by apply/negPf.
+        left; apply/paco2_fold/subtrace_skip=>//=; first by apply/negPf.
+        by right; apply: (CIH _ _ _ _ Hpre' Hprj Hunr).
+  Qed.
 
   (* TODO: Lorenzo *)
   Lemma sl_accepts_unr s L cL TRACE :
