@@ -627,7 +627,13 @@ Section TraceEquivalence.
     move=>/(ex_intro (fun=>_) L)=>{L}.
     move: TRACE cL; apply: paco2_acc=>r _.
     move=>/(_ _ _ (ex_intro _ _ (conj _ _)))-CIH.
-    move=>TRACE cL [L][Hunr Hacc].
+    move=>TRACE cL [L] [Hunr Hacc].
+    move: Hacc Hunr; rewrite/sl_accepts/sl_lts.
+    move=>/(paco2_unfold sl_lts_monotone); case.
+    + move=> Hunr; rewrite(lunroll_end Hunr).
+      by apply/paco2_fold.
+    + move=> a t L0 L1 doact upaco Hunr.
+      apply/paco2_fold. move: (srlt_next ).
   Admitted.
 
   Lemma not_srl_accepts_end h t :
