@@ -396,65 +396,71 @@ Section TraceEquivalence.
 
   (* single local type trace (MOVE TO Local.v) *)
   Definition rel_sl_trc := trace act -> l_ty -> Prop.
-  Inductive sl_lts_ (r : rel_sl_trc) : rel_sl_trc :=
+  Inductive sl_lts_ p (r : rel_sl_trc) : rel_sl_trc :=
   | slt_end :
-      @sl_lts_ r (tr_end _) l_end
+      @sl_lts_ p r (tr_end _) l_end
   | slt_next a t L L' :
+      subject a == p ->
       do_act_l_ty L a == Some L' ->
       r t L' ->
-      @sl_lts_ r (tr_next a t) L.
+      @sl_lts_ p r (tr_next a t) L.
 
   Hint Constructors sl_lts_.
-  Lemma sl_lts_monotone : monotone2 sl_lts_.
+  Lemma sl_lts_monotone p : monotone2 (sl_lts_ p).
   Proof. pmonauto. Qed.
   Hint Resolve sl_lts_monotone : paco.
 
-  Definition sl_lts t L := paco2 sl_lts_ bot2 t L.
-  Definition sl_accepts TRACE L := sl_lts TRACE L.
+  Definition sl_lts p t L := paco2 (sl_lts_ p) bot2 t L.
+  Definition sl_accepts p TRACE L := sl_lts p TRACE L.
 
   Definition rel_srl_trc := trace act -> rl_ty -> Prop.
-  Inductive srl_lts_ (r : rel_srl_trc) : rel_srl_trc :=
+  Inductive srl_lts_ p (r : rel_srl_trc) : rel_srl_trc :=
   | srlt_end :
-      @srl_lts_ r (tr_end _) rl_end
+      @srl_lts_ p r (tr_end _) rl_end
   | srlt_next a t L L' :
+      subject a == p ->
       do_act_lt L a = Some L' ->
       r t L' ->
-      @srl_lts_ r (tr_next a t) L.
+      @srl_lts_ p r (tr_next a t) L.
 
   Hint Constructors srl_lts_.
-  Lemma srl_lts_monotone : monotone2 srl_lts_.
+  Lemma srl_lts_monotone p : monotone2 (srl_lts_ p).
   Proof. pmonauto. Qed.
   Hint Resolve srl_lts_monotone : paco.
 
-  Definition srl_lts t L := paco2 srl_lts_ bot2 t L.
-  Definition srl_accepts TRACE L := srl_lts TRACE L.
+  Definition srl_lts p t L := paco2 (srl_lts_ p) bot2 t L.
+  Definition srl_accepts p TRACE L := srl_lts p TRACE L.
 
   (* process local type trace *)
   Definition rel_proc_trc := trace rt_act -> Proc -> Prop.
 
-  Inductive p_lts_ (r : rel_proc_trc) : rel_proc_trc :=
+  Definition rt_subj A :=
+    let: mk_rt_act _ p _ _ _ _ := A in p.
+
+  Inductive p_lts_ p (r : rel_proc_trc) : rel_proc_trc :=
   | pt_end :
-      p_lts_ r (tr_end _) Finish
+      p_lts_ p r (tr_end _) Finish
   | pt_next A P P' TR :
+      rt_subj A == p ->
       do_step_proc P A = Some P' ->
       r TR P' ->
-      p_lts_ r (tr_next A TR) P
+      p_lts_ p r (tr_next A TR) P
   .
 
-  Lemma p_lts_monotone : monotone2 p_lts_.
+  Lemma p_lts_monotone p : monotone2 (p_lts_ p).
   Proof. pmonauto.  Admitted.
   Hint Resolve p_lts_monotone : paco.
 
-  Definition p_lts TR P := paco2 (p_lts_) bot2 TR P.
+  Definition p_lts p TR P := paco2 (p_lts_ p) bot2 TR P.
 
-  Definition p_accepts PTRACE P := p_lts PTRACE P.
+  Definition p_accepts p PTRACE P := p_lts p PTRACE P.
 
   Definition erase : trace rt_act -> trace act := trace_map erase_act.
 
-  Lemma local_type_accepts_process_trace P L PTRACE:
+  Lemma local_type_accepts_process_trace p P L PTRACE:
     of_lt P L ->
-    p_accepts PTRACE P ->
-    sl_accepts (erase PTRACE) L.
+    p_accepts p PTRACE P ->
+    sl_accepts p (erase PTRACE) L.
   Proof.
   Admitted.
 
@@ -605,13 +611,13 @@ Section TraceEquivalence.
     by rewrite g_closed_unroll //= g_guarded_nunroll//= ne_unr.
   Qed.
 
-  Lemma not_srl_accepts_end h t :
-    ~ srl_accepts (tr_next h t) rl_end.
+  Lemma not_srl_accepts_end p h t :
+    ~ srl_accepts p (tr_next h t) rl_end.
   Proof.
     move EQ1 : (tr_next _ t) => TR; move EQ2 : rl_end => RL.
-    move=>/(paco2_unfold srl_lts_monotone)-H; case: H EQ1 EQ2=>// a TR' L L'.
-    move=> Hact _ _ Hend; move: Hend Hact=><-.
-    by case: a=>[a p q l {}t]/=.
+    move=>/(paco2_unfold (@srl_lts_monotone p))-H; case: H EQ1 EQ2=>// a TR' L L'.
+    move=> _ Hact _ _ Hend; move: Hend Hact=><-.
+    by case: a=>[a {}p q l {}t]/=.
   Qed.
 
   Local Notation conj5 H1 H2 H3 H4 H5
@@ -622,7 +628,7 @@ Section TraceEquivalence.
     g_precond G ->
     project G p == Some L ->
     LUnroll L cL ->
-    srl_accepts TR cL ->
+    srl_accepts p TR cL ->
     subtrace p TR (build_trace TR G).
   Proof.
     move=> H1 H2 H3 H4; move H5: (build_trace TR G)=>TR'.
@@ -648,8 +654,7 @@ Section TraceEquivalence.
       + move=>[<-]{L'} Hpre _; move=>/(paco2_unfold l_unroll_monotone)-Hunr.
         move: Hunr Hacc; case EQ: _ _ / =>[||a q Ks' CC DOM UNR]//.
         move: EQ DOM UNR=>[<-<-<-] DOM UNR{a q Ks'}.
-        move=>/(paco2_unfold srl_lts_monotone).
-        case: TR1.
+        move=>/(paco2_unfold (@srl_lts_monotone p)).
   Admitted.
 
   Definition of_lt_unr P cL :=
@@ -737,7 +742,7 @@ Section TraceEquivalence.
   Theorem process_traces_are_global_types G p iPe P PTRACE:
     eproject G == Some iPe ->
     of_lt_unr P (l_expand (ilook iPe p)) ->
-    p_accepts PTRACE P ->
+    p_accepts p PTRACE P ->
     exists TRACE, (* constructed with the build function *)
       gty_accepts TRACE G /\ subtrace p (erase PTRACE) TRACE.
   Proof.
