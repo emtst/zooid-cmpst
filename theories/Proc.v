@@ -700,9 +700,6 @@ Section TraceEquivalence.
       +
   Admitted.
 
-  Definition of_lt_unr P cL :=
-    exists L, of_lt P L /\ LUnroll L cL.
-
   (* TODO: Lorenzo *)
   Lemma sl_accepts_unr s L cL TRACE :
     LUnroll L cL ->
@@ -802,14 +799,19 @@ Section TraceEquivalence.
     }
   Qed.
 
-  Theorem process_traces_are_global_types G p iPe P PTRACE:
+  (* Of local type of 'p' up to unrolling *)
+  Definition of_lt_unr p P iPe :=
+    exists L, of_lt P L /\ LUnroll L (l_expand (ilook iPe p)).
+
+  Theorem process_traces_are_global_types G p iPe P :
     eproject G == Some iPe ->
-    of_lt_unr P (l_expand (ilook iPe p)) ->
-    p_accepts p PTRACE P ->
-    exists TRACE, (* constructed with the build function *)
-      gty_accepts TRACE G /\ subtrace p (erase PTRACE) TRACE.
+    of_lt_unr p P iPe ->
+    forall PTRACE,
+      p_accepts p PTRACE P ->
+      exists TRACE, (* constructed with the build function *)
+        gty_accepts TRACE G /\ subtrace p (erase PTRACE) TRACE.
   Proof.
-    move=>/eqP-Hproj [L][Hoft] Hunr Hpacc.
+    move=>/eqP-Hproj [L][Hoft] Hunr PTRACE Hpacc.
     move: Hproj; rewrite /eproject; case: ifP=>//Hpre Hproj.
     have NE: non_empty_cont G by move: Hpre=>/andP-[].
     exists (build_trace (erase PTRACE) G); split; first by apply: build_accepts.
