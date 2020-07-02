@@ -910,12 +910,16 @@ Section TraceEquivalence.
     forall PTRACE,
       p_accepts p PTRACE P ->
       exists TRACE, (* constructed with the build function *)
-        gty_accepts TRACE G /\ subtrace p (erase PTRACE) TRACE.
+        lty_accepts TRACE iPe /\ subtrace p (erase PTRACE) TRACE.
   Proof.
     move=>/eqP-Hproj [L][Hoft] Hunr PTRACE Hpacc.
+    have WF: well_formed G by rewrite /well_formed; move: Hproj=>->.
+    have iPe_prj: project_env WF = iPe
+      by move: WF;rewrite /well_formed/project_env Hproj.
     move: Hproj; rewrite /eproject; case: ifP=>//Hpre Hproj.
     have NE: non_empty_cont G by move: Hpre=>/andP-[].
-    exists (build_trace (erase PTRACE) G); split; first by apply: build_accepts.
+    exists (build_trace (erase PTRACE) G); split;
+      first by rewrite -iPe_prj; apply/IndTraceEquiv/build_accepts.
     case: (boolP (p \in participants G)).
     - move=>/(fun H => proj_all_in H Hproj).
       move: (ilook iPe p) Hunr=>iL Hunr /eqP-{}Hproj.
