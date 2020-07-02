@@ -462,14 +462,27 @@ Section TraceEquivalence.
 
   Definition erase : trace rt_act -> trace act := trace_map erase_act.
 
+  Lemma trace_unr (T : trace act) : T = match T with
+                                        | tr_next h t => tr_next h t
+                                        | tr_end => tr_end _
+                                        end.
+  Proof. by case: T. Qed.
+
+
   Lemma erase_tr_end: erase (tr_end rt_act) = tr_end act.
   Proof.
-  rewrite /erase/trace_map.
-  Admitted.
+  by rewrite (trace_unr (erase _)).
+  Qed.
 
   Lemma erase_tr_next a PTRACE: erase (tr_next a PTRACE) =
     tr_next (erase_act a) (erase PTRACE).
   Proof.
+  by rewrite (trace_unr (erase _)).
+  Qed.
+
+  Lemma sl_accepts_roll r p a t L: 
+    sl_lts_ r p (tr_next a t) (lunroll (lrec_depth L) L)
+    -> sl_lts_ r p (tr_next a t) L.
   Admitted.
 
   Lemma local_type_accepts_process_trace p P L PTRACE:
@@ -485,16 +498,50 @@ Section TraceEquivalence.
   move=>/(ex_intro (fun=>_) PTRACE)=>{PTRACE}.
   move=>/(ex_intro (fun=>_) P)=>{P}.
   move: TRACE L; apply: paco2_acc=>r _ .
-  move=>/(_ _ _ (ex_intro _ _ (ex_intro _ _ (conj _ (conj _ _)))))-CIH.
+  move=>/(_ _ _ (ex_intro _ _ (ex_intro _ _ (conj erefl (conj _ _)))))-CIH.
   move=> TRACE L [P] [PTRACE] []-> [] Htype Hplts.
   move: Hplts Htype; move=>/(paco2_unfold (@p_lts_monotone p)).
   case.
-  + rewrite erase_tr_end.
-    have E': exists Pr, Pr = Finish. by exists Finish.
-    move: E'=>[{}P eq]; rewrite -eq; move=> Htype; move: Htype eq.
-    move=> []//= _; by apply/paco2_fold; constructor.
-  + move=> a t L0 L1 subj dostep [upaco | //] Htype.
-    apply/paco2_fold; move: dostep; rewrite/do_step_proc.
+  + rewrite erase_tr_end. (*here*)
+    case EE: _ _ / =>//.
+    by apply/paco2_fold; constructor.
+  + move=> a P0 P1 t subj dostep [upaco | //] Htype.
+    case: a subj dostep=> [a from to l T]/=.
+    move: (unroll_preserves_type (prec_depth P0) Htype).
+    rewrite {2}(same_red_depth Htype).
+    move=> Htype' T0 eqp EQ.
+    rewrite erase_tr_next /=. apply /paco2_fold.
+    apply sl_accepts_roll.
+    move: (punroll _ _ )  (lunroll _ _ )  Htype' EQ=> PP LL.
+    Print of_lt.
+    case =>//.
+Print of_lt.
+    apply: (@slt_next _ _ _ _ L)=>//.
+    rewrite /do_act_l_ty.
+    
+
+
+SearchAbout prec_depth.
+    move: (preservation Htype dostep)=>Htype1.
+    move
+    apply/paco2_fold; move: dostep Htype1; rewrite/do_step_proc.
+    case: a subj=>[a from to l T]/= subj=>/eqP eqp.
+    case epun: (punroll (prec_depth P0) P0)=>[| | |q AA | q ll]//=.
+    - case: ifP=>//=/andP[/eqP aeq /eqP eqq].
+      case efind: (find_alt AA l)=>[[T0 HT0]|]//= .
+      case eqP=> eqT//=.
+      have eqT': T = T0 by[].
+      move: eqT' HT0 efind eqT=><- {T0} HT0 efind eqT.
+      rewrite (eq_axiomK eqT)/=; move=> [HT0subj].
+      rewrite erase_tr_next. (*here*)
+      move=> Htype1.
+      apply: (@slt_next _ _ _ _ _ (run_act_l_ty L (mk_act a from to l T))).
+      * by rewrite eqp.
+      * apply/eqP=>/=. SearchAbout run_act_l_ty.
+  
+      
+      
+ case.
   Admitted.
 
 
@@ -555,12 +602,6 @@ Section TraceEquivalence.
       end
     | _ => tr_end _
     end.
-
-  Lemma trace_unr (T : trace act) : T = match T with
-                                        | tr_next h t => tr_next h t
-                                        | tr_end => tr_end _
-                                        end.
-  Proof. by case: T. Qed.
 
   Lemma build_trace_unr TR g : build_trace TR g = build_trace' TR (n_unroll (rec_depth g) g).
   Proof.
