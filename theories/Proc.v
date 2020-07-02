@@ -914,4 +914,6 @@ Section TraceEquivalence.
       by move=>_; apply/subtrace_end.
   Qed.
 
+  Print Assumptions process_traces_are_global_types.
+
 End TraceEquivalence.
