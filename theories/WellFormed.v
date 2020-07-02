@@ -286,18 +286,4 @@ continuations are never empty*)
     + by apply/(RF_L' Ty' G' erefl).
   Qed.
 
-(*The two following lemmas are now true by construction.
-I left them there as a reminder for now; to be removed later.*)
-
-  (*Lemma RCVFree_GUnroll iG G:
-    GUnroll iG G -> RCV_Free G.
-  Proof.
-  Admitted.*)
-
-  (*Lemma wform_GUnroll iG G:
-    GUnroll iG G -> well_formed G.
-  Proof.
-  by move=> hp; apply: wform_RCV_Free; apply: (RCVFree_GUnroll hp).
-  Qed.*)
-
 End WellFormed.

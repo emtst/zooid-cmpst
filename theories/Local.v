@@ -1117,7 +1117,12 @@ Section Semantics.
       l_trc_ p r (tr_next A TR) L
   .
   Lemma l_trc_monotone p : monotone2 (l_trc_ p).
-  Admitted.
+  Proof.
+    move=>TR cL r r' Htrc MON; move: Htrc; case.
+    - by constructor.
+    - move=>A TR0 L L' Hsubj Hact /MON.
+      by move: Hsubj Hact; apply l_trc_msg.
+  Qed.
 
   Definition l_trc p t L := paco2 (l_trc_ p) bot2 t L.
 
@@ -1134,27 +1139,15 @@ Section Semantics.
       subtrace_ p r (tr_next A TRp) (tr_next A TR)
   .
   Lemma subtrace_monotone p : monotone2 (subtrace_ p).
-  Admitted.
+  Proof.
+    move=>TR cL r r' Htrc MON; move: Htrc; case.
+    - by constructor.
+    - move=> A TRp TR0 Hsubj /MON; move: Hsubj.
+      by apply: subtrace_skip.
+    - move=> A TRp TR0 Hsubj /MON; move: Hsubj.
+      by apply: subtrace_msg.
+  Qed.
   Definition subtrace p T0 T1 := paco2 (subtrace_ p) bot2 T0 T1.
-
-  Lemma ltrc_sound p E Tp T
-    : l_trc p Tp (look E.1 p) -> l_lts T E -> subtrace p Tp T.
-  Admitted.
-
-  (*
-    project G p == Some L ->
-    il_trc p Tp L ->
-    g_accepts T G ->
-    subtrace p Tp T.
-   *)
-
-  (*
-    project G p == Some L ->
-    of_lt P L ->
-    p_accepts p Tp         P ->
-    g_accepts   T          G ->
-    subtrace  p (erase Tp) T.
-   *)
 
 End Semantics.
 
