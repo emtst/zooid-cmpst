@@ -346,18 +346,12 @@ Section OperationalSemantics.
   Theorem preservation P Ps A L:
     of_lt P L ->
     do_step_proc P A = Some Ps ->
-    of_lt Ps (run_act_l_ty L (erase_act A)).
+    exists Ls, do_act_l_ty L (erase_act A) = Some Ls /\ of_lt Ps Ls.
   Proof.
-
-    rewrite/run_step_proc/run_act_l_ty/do_step_proc/do_act_l_ty.
-    case A => a p q l T t.
-    move=> Hp.
-    rewrite (same_red_depth Hp).
-    move:(unroll_preserves_type (lrec_depth L) Hp).
-
-    move:(punroll _ _) (lunroll _ _)=> P' L'//=.
-
-    case=>//.
+    rewrite/run_step_proc/do_step_proc/do_act_l_ty.
+    case A => [a p q l T t] Htype.
+    move: (unroll_preserves_type (prec_depth P) Htype).
+    rewrite {2}(same_red_depth Htype); case=>//=.
     {
       move=>a0 p0 alts.
       case:ifP; last by case: (find_cont a0 l)=>[[t' Lp] | ].
@@ -370,9 +364,8 @@ Section OperationalSemantics.
       move: Tt' rK EQ EQ' =>-> {T'' H}.
       case: eqP=>//; case: (boolP (T == T'))=>[/eqP<-|/eqP//] EQ {T'}.
       rewrite (eq_irrelevance EQ erefl)/= => rK EQ0 EQ1 [<-]{EQ Ps}.
-      by apply/OFT; first by apply/EQ1.
+      by exists Lp; split=>//; apply/OFT; first by apply/EQ1.
     }
-
     {
       move=>p0 L0 a0 T0 l0 t0 K Hk Hfind.
       case:ifP ; last by case Hfind':(find_cont a0 l)=>[[T1 L1]|].
@@ -387,7 +380,18 @@ Section OperationalSemantics.
       rewrite (eq_irrelevance Hesym erefl)=>//=.
       case:ifP=>//.
       move=>_ []<-//.
+      by exists L0.
     }
+  Qed.
+
+  Corollary preservation' P Ps A L:
+    of_lt P L ->
+    do_step_proc P A = Some Ps ->
+    of_lt Ps (run_act_l_ty L (erase_act A)).
+  Proof.
+    move=> H0 H1.
+    move: (preservation H0 H1)=>[L'][{}H0 {}H1].
+    by rewrite /run_act_l_ty H0/=.
   Qed.
 
 End OperationalSemantics.
@@ -480,17 +484,55 @@ Section TraceEquivalence.
   by rewrite (trace_unr (erase _)).
   Qed.
 
-  Lemma sl_accepts_roll r p a t L: 
-    sl_lts_ r p (tr_next a t) (lunroll (lrec_depth L) L)
-    -> sl_lts_ r p (tr_next a t) L.
-  Admitted.
+  (* TODO: Lorenzo *)
+  Lemma sl_accepts_unr s L cL TRACE :
+    LUnroll L cL ->
+    sl_accepts s TRACE L ->
+    srl_accepts s TRACE cL.
+  Proof.
+    move=> H1 H2; move: (conj H1 H2)=>{H1 H2}.
+    move=>/(ex_intro (fun=>_) L)=>{L}.
+    move: TRACE cL; apply: paco2_acc=>r _.
+    move=>/(_ _ _ (ex_intro _ _ (conj _ _)))-CIH.
+    move=>TRACE cL [L] [Hunr Hacc].
+    move: Hacc Hunr; rewrite/sl_accepts/sl_lts.
+    move=>/(paco2_unfold (@sl_lts_monotone s)); case.
+    + move=> Hunr; rewrite(lunroll_end Hunr).
+      by apply/paco2_fold.
+    + move=> a t L0 L1 subj doact [upaco | //] Hunr.
+      apply/paco2_fold; move: doact; rewrite/do_act_l_ty.
+      case: a subj=>[a p q l T]/= subj; move: Hunr=>/(LUnroll_ind (lrec_depth L0)).
+      case E: (lunroll (lrec_depth L0) L0)=> [|||a0 r0 Ks]//=.
+      move=>/(paco2_unfold l_unroll_monotone).
+      rewrite -E; move=> lunr; move: lunr E; case=>//=.
+      move=> a1 r1 Ks' C samed rall [eq1 eq2 eq3].
+      move: samed rall; rewrite eq1 eq2 eq3; move=>samed rall.
+      case E: (find_cont Ks l)=>[[T0 Lp]|//].
+      case: ifP=>// /andP[/andP[]]/eqP-{}eq1/eqP-{}eq2/eqP-{}eq3/eqP[eq4].
+      move: E; rewrite -eq1 -eq2 -eq3 eq4; move=> E.
+      move: (samed l T); elim; elim; [|by exists L1].
+      move=> cL1 Cl _; apply: (@srlt_next _ _ _ _ _ cL1)=>//=.
+      - by rewrite /do_act_lt Cl; rewrite !eq_refl.
+      - right; apply: (CIH _ _ L1)=>//=.
+        by move: (rall _ _ _ _ E Cl); elim.
+  Qed.
+
+  Lemma LUnroll_rl_end L :
+    LUnroll L rl_end ->
+    (lunroll (lrec_depth L) L = l_end) \/
+    (exists L', lunroll (lrec_depth L) L = l_rec L').
+  Proof.
+    move=>/(LUnroll_ind (lrec_depth L)); move: (lunroll _ _)=>L'.
+    move=>/(paco2_unfold l_unroll_monotone).
+    by case EQ: _ / =>[|L0|]//; [left|right; exists L0].
+  Qed.
 
   Lemma local_type_accepts_process_trace p P L PTRACE:
     of_lt P L ->
     p_accepts p PTRACE P ->
     sl_accepts p (erase PTRACE) L.
   Proof.
-  have E': exists TRACE, TRACE = erase PTRACE. 
+  have E': exists TRACE, TRACE = erase PTRACE.
     by exists (erase PTRACE).
   move: E'; move=>[TRACE H1]; rewrite -H1.
   rewrite /p_accepts/sl_accepts.
@@ -506,44 +548,12 @@ Section TraceEquivalence.
     case EE: _ _ / =>//.
     by apply/paco2_fold; constructor.
   + move=> a P0 P1 t subj dostep [upaco | //] Htype.
-    case: a subj dostep=> [a from to l T]/=.
-    move: (unroll_preserves_type (prec_depth P0) Htype).
-    rewrite {2}(same_red_depth Htype).
-    move=> Htype' T0 eqp EQ.
-    rewrite erase_tr_next /=. apply /paco2_fold.
-    apply sl_accepts_roll.
-    move: (punroll _ _ )  (lunroll _ _ )  Htype' EQ=> PP LL.
-    Print of_lt.
-    case =>//.
-Print of_lt.
-    apply: (@slt_next _ _ _ _ L)=>//.
-    rewrite /do_act_l_ty.
-    
-
-
-SearchAbout prec_depth.
-    move: (preservation Htype dostep)=>Htype1.
-    move
-    apply/paco2_fold; move: dostep Htype1; rewrite/do_step_proc.
-    case: a subj=>[a from to l T]/= subj=>/eqP eqp.
-    case epun: (punroll (prec_depth P0) P0)=>[| | |q AA | q ll]//=.
-    - case: ifP=>//=/andP[/eqP aeq /eqP eqq].
-      case efind: (find_alt AA l)=>[[T0 HT0]|]//= .
-      case eqP=> eqT//=.
-      have eqT': T = T0 by[].
-      move: eqT' HT0 efind eqT=><- {T0} HT0 efind eqT.
-      rewrite (eq_axiomK eqT)/=; move=> [HT0subj].
-      rewrite erase_tr_next. (*here*)
-      move=> Htype1.
-      apply: (@slt_next _ _ _ _ _ (run_act_l_ty L (mk_act a from to l T))).
-      * by rewrite eqp.
-      * apply/eqP=>/=. SearchAbout run_act_l_ty.
-  
-      
-      
- case.
-  Admitted.
-
+    move: (preservation Htype dostep)=>[L'][/eqP-do_lt_step Htype'].
+    rewrite erase_tr_next/=; apply/paco2_fold.
+    have subj': subject (erase_act a) == p by case:{dostep do_lt_step} a subj.
+    apply (slt_next subj' do_lt_step); right.
+    by apply: CIH; [apply: Htype'|].
+  Qed.
 
   Definition match_head F T TR :=
     match TR with
@@ -822,39 +832,6 @@ SearchAbout prec_depth.
         apply/paco2_fold/subtrace_skip=>//=; first by apply/negPf.
         left; apply/paco2_fold/subtrace_skip=>//=; first by apply/negPf.
         by right; apply: (CIH _ _ _ _ Hpre' Hprj Hunr).
-  Qed.
-
-  (* TODO: Lorenzo *)
-  Lemma sl_accepts_unr s L cL TRACE :
-    LUnroll L cL ->
-    sl_accepts s TRACE L ->
-    srl_accepts s TRACE cL.
-  Proof.
-    move=> H1 H2; move: (conj H1 H2)=>{H1 H2}.
-    move=>/(ex_intro (fun=>_) L)=>{L}.
-    move: TRACE cL; apply: paco2_acc=>r _.
-    move=>/(_ _ _ (ex_intro _ _ (conj _ _)))-CIH.
-    move=>TRACE cL [L] [Hunr Hacc].
-    move: Hacc Hunr; rewrite/sl_accepts/sl_lts.
-    move=>/(paco2_unfold (@sl_lts_monotone s)); case.
-    + move=> Hunr; rewrite(lunroll_end Hunr).
-      by apply/paco2_fold.
-    + move=> a t L0 L1 subj doact [upaco | //] Hunr.
-      apply/paco2_fold; move: doact; rewrite/do_act_l_ty.
-      case: a subj=>[a p q l T]/= subj; move: Hunr=>/(LUnroll_ind (lrec_depth L0)).
-      case E: (lunroll (lrec_depth L0) L0)=> [|||a0 r0 Ks]//=.
-      move=>/(paco2_unfold l_unroll_monotone).
-      rewrite -E; move=> lunr; move: lunr E; case=>//=.
-      move=> a1 r1 Ks' C samed rall [eq1 eq2 eq3].
-      move: samed rall; rewrite eq1 eq2 eq3; move=>samed rall.
-      case E: (find_cont Ks l)=>[[T0 Lp]|//].
-      case: ifP=>// /andP[/andP[]]/eqP-{}eq1/eqP-{}eq2/eqP-{}eq3/eqP[eq4].
-      move: E; rewrite -eq1 -eq2 -eq3 eq4; move=> E.
-      move: (samed l T); elim; elim; [|by exists L1].
-      move=> cL1 Cl _; apply: (@srlt_next _ _ _ _ _ cL1)=>//=.
-      - by rewrite /do_act_lt Cl; rewrite !eq_refl.
-      - right; apply: (CIH _ _ L1)=>//=.
-        by move: (rall _ _ _ _ E Cl); elim.
   Qed.
 
   Lemma proj_all_in G iPe p ps :
