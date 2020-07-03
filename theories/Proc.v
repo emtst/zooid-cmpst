@@ -910,16 +910,12 @@ Section TraceEquivalence.
     forall PTRACE,
       p_accepts p PTRACE P ->
       exists TRACE, (* constructed with the build function *)
-        lty_accepts TRACE iPe /\ subtrace p (erase PTRACE) TRACE.
+        gty_accepts TRACE G /\ subtrace p (erase PTRACE) TRACE.
   Proof.
     move=>/eqP-Hproj [L][Hoft] Hunr PTRACE Hpacc.
-    have WF: well_formed G by rewrite /well_formed; move: Hproj=>->.
-    have iPe_prj: project_env WF = iPe
-      by move: WF;rewrite /well_formed/project_env Hproj.
     move: Hproj; rewrite /eproject; case: ifP=>//Hpre Hproj.
     have NE: non_empty_cont G by move: Hpre=>/andP-[].
-    exists (build_trace (erase PTRACE) G); split;
-      first by rewrite -iPe_prj; apply/IndTraceEquiv/build_accepts.
+    exists (build_trace (erase PTRACE) G); split; first by apply/build_accepts.
     case: (boolP (p \in participants G)).
     - move=>/(fun H => proj_all_in H Hproj).
       move: (ilook iPe p) Hunr=>iL Hunr /eqP-{}Hproj.
@@ -936,6 +932,23 @@ Section TraceEquivalence.
       by move=>_; apply/subtrace_end.
   Qed.
 
+  Corollary process_traces_are_local_types G p iPe P :
+    eproject G == Some iPe ->
+    of_lt_unr p P iPe ->
+    forall PTRACE,
+      p_accepts p PTRACE P ->
+      exists TRACE,
+        lty_accepts TRACE iPe /\ subtrace p (erase PTRACE) TRACE.
+  Proof.
+    move=> Hproj Hunr PTRACE Hacc.
+    have WF: well_formed G by rewrite /well_formed; move: Hproj=>/eqP->.
+    have iPe_prj: project_env WF = iPe
+      by move: WF;rewrite /well_formed/project_env (eqP Hproj).
+    case: (process_traces_are_global_types Hproj Hunr Hacc)=>[TRACE][GTR]SUB.
+    by exists TRACE; split=>//; rewrite -iPe_prj -IndTraceEquiv.
+  Qed.
+
   Print Assumptions process_traces_are_global_types.
+  Print Assumptions process_traces_are_local_types.
 
 End TraceEquivalence.
