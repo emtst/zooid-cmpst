@@ -620,9 +620,6 @@ Section TraceEquivalence.
     by case: (select_alt (match_head F T TR) C).
   Qed.
 
-  Definition env_unroll (iPe :  {fmap role -> l_ty})(Pe :  {fmap role -> rl_ty}) : Prop :=
-    forall p, LUnroll (ilook iPe p) (look Pe p).
-
   (* this is a silly definition, but coercions drive me nuts *)
   Definition eproject_eq_some G iPe :
     eproject G == Some iPe -> eproject G.
@@ -722,7 +719,7 @@ Section TraceEquivalence.
     g_precond G.
   Proof.
     rewrite /g_precond/g_closed/==>/andP-[/andP-[]].
-    move=>/fsetUs_fset0/member_map-cG.
+    move=>/flatten_eq_nil/member_map-cG.
     move=>/forallbP/forall_member-gG.
     move=>/andP-[_ /forallbP/forall_member/member_map-NE].
     move=> H; move: (find_member H)=>{}H.
@@ -792,7 +789,7 @@ Section TraceEquivalence.
     - move=>[<-] _ _ /lunroll_end-EQ; move: EQ Hacc=>-> {cL CIH L' n2}.
       case: TR1=>[_|h TR]; first by apply/paco2_fold; constructor.
       by move=>/not_srl_accepts_end.
-    - by move=> V _; rewrite /g_precond/g_closed/= -cardfs_eq0 cardfs1.
+    - by move=> V _; rewrite /g_precond/g_closed/=.
     - by move=> G' _ _ /(_ G')/eqP.
     - move=>F T C; rewrite -/(prj_all _ _).
       case Hprj: prj_all=>[Ks|]//; case: ifP=>//.
@@ -841,10 +838,10 @@ Section TraceEquivalence.
   Proof.
     elim: ps=>[|q ps Ih]//= in iPe *; case: (boolP (p == q))=>[/eqP<-{Ih}|].
     - move=> _; case: project=>// L; case: project_all=>// iPe'[<-].
-      by rewrite /ilook fnd_set eq_refl.
+      by rewrite/ilook/=/extend eq_refl.
     - move=> NE IN; move: IN NE; rewrite in_cons=>/orP-[->|IN NE]//.
       case: project=>// L; case Hprj: project_all=>[iPe'|]//.
-      by move: Hprj=>/(Ih _ IN)-> [<-]; rewrite /ilook fnd_set (negPf NE).
+      by move: Hprj=>/(Ih _ IN)-> [<-]; rewrite /ilook/=/extend eq_sym (negPf NE).
   Qed.
 
   Lemma proj_all_notin G iPe p ps :
@@ -853,9 +850,9 @@ Section TraceEquivalence.
     ilook iPe p = l_end.
   Proof.
     elim: ps=>[|q ps Ih]/= in iPe *.
-    - by move=>[<-] _; rewrite /ilook not_fnd.
+    - by move=>[<-] _.
     - case: project=>// L; case Hprj: project_all=>[iPe'|]// [<-].
-      rewrite in_cons negb_or /ilook fnd_set=>/andP-[/negPf->].
+      rewrite in_cons negb_or /ilook/=/extend eq_sym=>/andP-[/negPf->].
       by apply: Ih.
   Qed.
 
@@ -916,7 +913,7 @@ Section TraceEquivalence.
     move: Hproj; rewrite /eproject; case: ifP=>//Hpre Hproj.
     have NE: non_empty_cont G by move: Hpre=>/andP-[].
     exists (build_trace (erase PTRACE) G); split; first by apply/build_accepts.
-    case: (boolP (p \in participants G)).
+    case: (boolP (p \in participants G)); rewrite -mem_undup.
     - move=>/(fun H => proj_all_in H Hproj).
       move: (ilook iPe p) Hunr=>iL Hunr /eqP-{}Hproj.
       move: Hpacc=>/(local_type_accepts_process_trace Hoft)/(sl_accepts_unr Hunr).
@@ -929,7 +926,7 @@ Section TraceEquivalence.
       move: Hpacc=>/(local_type_accepts_process_trace Hoft)/(sl_accepts_unr Hunr).
       rewrite (trace_unr (erase PTRACE))/=.
       case: PTRACE=>[|h t]; last by move=>/not_srl_accepts_end.
-      by move=>_; apply/subtrace_end.
+      by move=>_; apply subtrace_end; rewrite -mem_undup.
   Qed.
 
   Corollary process_traces_are_local_types G p iPe P :

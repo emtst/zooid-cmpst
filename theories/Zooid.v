@@ -129,7 +129,7 @@ Definition typed_proc := {L : l_ty & wt_proc L}.
 Notation "[ 'proc' p ]" := (existT (fun L => wt_proc L) _ p) (at level 200) : proc_scope.
 
 (* Smart constructor and helpers for send *)
-Lemma find_cont_sing l T (L : l_ty)
+Lemma find_cont_sing (l : nat_eqType) (T : mty) (L : l_ty)
   : find_cont [:: (l, (T, L))] l == Some (T, L).
 Proof. by rewrite /find_cont/extend eq_refl. Qed.
 
@@ -355,7 +355,7 @@ Notation "pr '\skipR' a"
 
 Section Examples.
 Open Scope proc_scope.
-Let p := roleid.mk_atom 0.
+Let p : role := 0.
 Definition test1 b1 b2 :=
   [proc
      \select p
@@ -373,7 +373,7 @@ Eval compute in fun b1 b2 => get_proc (projT2 (test1 b1 b2)).
 
 Definition test : typed_proc
   := [proc
-        \branch (roleid.mk_atom 0)
+        \branch p
         [alts
         | \lbl 0, x : T_bool; if x then wt_end else wt_end
         | \lbl 1, x : T_nat ; wt_end
@@ -382,9 +382,31 @@ Definition test : typed_proc
 Eval compute in projT1 test.
 Eval compute in get_proc (projT2 test).
 
+(*** PING PONG protocols
+ *)
 Definition Bye := 0.
 Definition Ping := 1.
 Definition Pong := 1.
+
+Definition pp_server := 0.
+Definition pp_client := 1.
+
+Definition ping_pong :=
+  g_rec (
+      g_msg pp_client pp_server
+            [::
+               (Bye, (T_unit, g_end));
+               (Ping,
+                (T_nat,
+                 g_msg pp_server pp_client [:: (Pong, (T_nat, g_var 0))]))
+            ]
+    ).
+
+Definition pp_env := @project_env ping_pong is_true_true.
+
+Definition pp_server_lt := find_cont pp_env pp_server.
+Eval compute in pp_server_lt.
+
 
 Definition ping_pong_server p :=
   [proc

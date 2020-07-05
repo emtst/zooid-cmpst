@@ -1193,8 +1193,8 @@ Section InductiveTrace.
 
   Definition well_formed g : bool := eproject g.
 
-  Definition project_env g : well_formed g -> {fmap role -> l_ty}%fmap
-    := match eproject g as eg return isSome eg -> {fmap role -> l_ty} with
+  Definition project_env g : well_formed g -> seq (role * l_ty)
+    := match eproject g as eg return isSome eg -> seq (role * l_ty) with
        | Some e => fun=>e
        | None => fun pf => False_rect _ (not_false_is_true pf)
        end.

@@ -212,28 +212,16 @@ Section Syntax.
     (x \notin fsetUs l) = all (fun s => x \notin s) l.
   Proof. by rewrite in_fold_has -all_predC. Qed.
   Hint Rewrite notin_fold_all: mpst.
-
-  Fixpoint g_fidx (d : nat) (G : g_ty) : {fset nat} :=
-    match G with
-    | g_var v => if v >= d then [fset v - d] else fset0
-    | g_rec G => g_fidx d.+1 G
-    | g_msg p q Ks => fsetUs [seq g_fidx d K.cnt | K <- Ks]
-    | g_end => fset0
-    end.
-
-  Definition g_lc (G : g_ty) := g_fidx 0 G = fset0.
-
-  Definition g_closed (G : g_ty) := g_fidx 0 G == fset0.
-
-  Fixpoint g_free_index (d : nat) (G : g_ty) : seq nat
-    :=
-    match G with
-    | g_end => [::]
-    | g_var v => if v >= d then [:: v - d] else [::]
-    | g_rec G => g_free_index d.+1 G
-    | g_msg p q Ks => flatten [seq g_free_index d K.cnt | K <- Ks]
-    end.
   Close Scope fset_scope.
+
+  Fixpoint g_fidx (d : nat) (G : g_ty) : seq nat :=
+    match G with
+    | g_var v => if v >= d then [:: v - d] else [::]
+    | g_rec G => g_fidx d.+1 G
+    | g_msg p q Ks => flatten [seq g_fidx d K.cnt | K <- Ks]
+    | g_end => [::]
+    end.
+  Definition g_closed (G : g_ty) := g_fidx 0 G == [::].
 
   Lemma gfbvar_next n G :
     g_fidx n G == fset0 ->
@@ -241,10 +229,10 @@ Section Syntax.
   Proof.
     elim: G n=>[//|v|G Ih|p q Ks Ih] n/=.
     - case: v=>//= m H; case: ifP=>// n_m; move: H.
-      by move: (leq_trans (leqnSn n) n_m)=>->; rewrite -cardfs_eq0 cardfs1.
+      by move: (leq_trans (leqnSn n) n_m)=>->.
     - by apply: Ih.
-    - rewrite fsetUs_fset0 member_map=>H; apply/eqP.
-      by rewrite fsetUs_fset0 member_map=> K M; move: (Ih K M n (H K M))=>->.
+    - rewrite flatten_eq_nil member_map=>H; apply/eqP.
+      by rewrite flatten_eq_nil member_map=> K M; move: (Ih K M n (H K M))=>->.
   Qed.
 
   Fixpoint guarded d G :=
@@ -429,10 +417,10 @@ Section Syntax.
 
   Lemma guarded_depth_gt n dG dG' G :
     n <= dG' ->
-    guarded dG' G -> g_fidx n G == fset0 -> guarded dG G.
+    guarded dG' G -> g_fidx n G == [::] -> guarded dG G.
   Proof.
     elim: G =>[|m|G Ih|p q Ks Ih]// in n dG dG' *.
-    - by move=> /leq_trans-H /= /H->; rewrite -cardfs_eq0 cardfs1.
+    - by move=> /leq_trans-H /= /H->.
     - by move=>/= LE; apply/Ih.
   Qed.
 
@@ -444,12 +432,11 @@ Section Syntax.
      move: (g_rec G) => G' G'0.
      elim: G 0 G'0 G_fbv=>[//|v|G Ih|p q Ks Ih] n G'0/=.
      - move=> H; case: ifP=>[//|/=]; case: ifP=>//; move: H.
-       case: ifP=>//; first by rewrite -cardfs_eq0 cardfs1//.
-       rewrite ltn_neqAle =>/(rwP negPf); rewrite negb_and negbK eq_sym.
-       by move=>/orP-[->//|/negPf->].
+       case: ifP=>//; rewrite ltn_neqAle =>/(rwP negPf).
+       rewrite negb_and negbK eq_sym; by move=>/orP-[->//|/negPf->].
      - by apply: (Ih n.+1); rewrite gfbvar_next.
-     - rewrite -map_comp/comp/=; move=>/fsetUs_fset0/member_map-H.
-       by apply/fsetUs_fset0/member_map=>K M; apply: Ih=>//; apply: H.
+     - rewrite -map_comp/comp/=; move=>/flatten_eq_nil/member_map-H.
+       by apply/flatten_eq_nil/member_map=>K M; apply: Ih=>//; apply: H.
    Qed.
 
   Lemma closed_not_var G :
@@ -849,7 +836,7 @@ Section Semantics.
         * by exists (g_expand L0).
         * by exists L0.
       + move=> l Ty G CG FND; rewrite FND=>[][<-]; right.
-        move: cG; rewrite /g_closed/==>/fsetUs_fset0/member_map-cG.
+        move: cG; rewrite /g_closed/==>/flatten_eq_nil/member_map-cG.
         move: gG; rewrite /==>/forallbP/forall_member-gG.
         move: NE=>/==>/andP-[NE_C]/forallbP/forall_member/member_map-NE.
         move: (find_member FND)=>MEM.

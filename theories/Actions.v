@@ -128,6 +128,24 @@ Qed.
 Hint Rewrite fsetUs_cons : mpst.
 
 
+Lemma cat_eq_nil (A : eqType) (K1 K2 : seq A)
+  : K1 ++ K2 == [::] <-> K1 == [::] /\ K2 == [::].
+Proof.
+  split.
+  - by move=>/eqP; case: K1=>//=->.
+  - by move=>[/eqP->/eqP->].
+Qed.
+
+Lemma flatten_eq_nil (A : eqType) (Ks : seq (seq A)) :
+  flatten Ks == [::] <-> forall K, member K Ks -> K == [::].
+Proof.
+  split.
+  - by elim: Ks=>//= K Ks Ih /cat_eq_nil-[/eqP-> /Ih-H {}K [->|/H]].
+  - elim: Ks=>//= K Ks Ih H; apply/cat_eq_nil;split; first by apply/H; left.
+      by apply/Ih=>K' H'; apply/H; right.
+Qed.
+
+
 Lemma member_map A B (P : B -> Prop) (f : A -> B) L :
   (forall x, member x [seq f x | x <- L] -> P x) <->
   (forall x, member x L -> P (f x)).
@@ -169,12 +187,12 @@ Reserved Notation "x '/->' y" (at level 99, right associativity, y at level 200)
 Notation "x '/->' y" := (x -> option y) : mpst_scope.
 
 Open Scope mpst_scope.
-Definition empty A : (lbl /-> mty * A) := fun=> None.
+Definition empty A : (lbl /-> A) := fun=> None.
 Definition extend A (L : lbl) (X : A) f :=
   fun L' => if L == L' then Some X else f L'.
 
-Fixpoint find_cont A (c : seq (lbl * (mty * A)))
-  : lbl -> option (mty * A)
+Fixpoint find_cont A (c : seq (lbl * A))
+  : lbl -> option A
   := match c with
      | [::] => empty A
      | (k, v) :: c => extend k v (find_cont c)

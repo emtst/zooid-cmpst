@@ -7,8 +7,9 @@ Import Prenex Implicits.
 Require Import MPST.Atom.
 Require Import MPST.LNVar.
 
-Module roleid := NewAtom def_atom.
-Notation role:=roleid.t.
+(* Module roleid := NewAtom def_atom. *)
+(* Notation role:=roleid.t. *)
+Notation role:=nat_eqType.
 
 Module avar := NewAtom def_atom.
 Notation atom:=avar.t.
@@ -17,7 +18,7 @@ Notation rvar := (lnvar atom).
 
 (* Module Lbl := NewAtom def_atom. *)
 (* Notation lbl := Lbl.t. *)
-Definition lbl := nat.
+Definition lbl := nat_eqType.
 (* Notation mk_lbl := Lbl.mk_atom. *)
 
 (* Supported messages *)

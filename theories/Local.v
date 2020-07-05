@@ -20,7 +20,7 @@ Section Syntax.
   | l_msg (a : l_act) (r : role) (Ks : seq (lbl * (mty * l_ty)))
   .
 
-  Definition ilook (E : {fmap role -> l_ty}) p := odflt l_end E.[? p]%fmap.
+  Definition ilook (E : seq (role * l_ty)) p := odflt l_end (find_cont E p).
 
   Open Scope mpst_scope.
 
@@ -161,12 +161,12 @@ Section Syntax.
     zip (unzip1 K) [seq f x | x <- unzip2 K] = [seq (x.1, f x.2) | x <- K].
   Proof. by rewrite unzip2_lift (unzip1_map2 f) zip_unzip. Qed.
 
-  Fixpoint l_fidx (d : nat) (L : l_ty) : {fset nat} :=
+  Fixpoint l_fidx (d : nat) (L : l_ty) : seq nat :=
     match L with
-    | l_end => fset0
-    | l_var v => if v >= d then [fset v - d]%fset else fset0
+    | l_end => [::]
+    | l_var v => if v >= d then [:: v - d] else [::]
     | l_rec L => l_fidx d.+1 L
-    | l_msg _ _ K => fsetUs [seq l_fidx d lL.cnt | lL <- K]
+    | l_msg _ _ K => flatten [seq l_fidx d lL.cnt | lL <- K]
     end.
 
   Lemma lty_ind2 :
@@ -187,18 +187,18 @@ Section Syntax.
         by apply: Ih.
   Qed.
 
-  Definition l_closed (L : l_ty) := l_fidx 0 L == fset0.
+  Definition l_closed (L : l_ty) := l_fidx 0 L == [::].
 
   Lemma lfbvar_next n G :
-    l_fidx n G == fset0 ->
-    l_fidx n.+1 G = fset0.
+    l_fidx n G == [::] ->
+    l_fidx n.+1 G = [::].
   Proof.
     elim/lty_ind2: G n=>[//|v|G Ih|p q Ks Ih] n/=.
     - case: v=>//= m H; case: ifP=>// n_m; move: H.
-      by move: (leq_trans (leqnSn n) n_m)=>->; rewrite -cardfs_eq0 cardfs1.
+      by move: (leq_trans (leqnSn n) n_m)=>->.
     - by apply: Ih.
-    - rewrite fsetUs_fset0 member_map=>H; apply/eqP.
-      rewrite fsetUs_fset0 member_map=> K /memberP-M.
+    - rewrite flatten_eq_nil member_map=>H; apply/eqP.
+      rewrite flatten_eq_nil member_map=> K /memberP-M.
       by move: M (Ih K M n)=>/memberP-M /(_ (H K M))=>->.
   Qed.
 
@@ -219,13 +219,13 @@ Section Syntax.
   Proof.
     elim/lty_ind2: G=> [| v | L Ih | a p Ks Ih]//= in d *.
     { (* var *)
-      by case: ifP=>//; rewrite -cardfs_eq0 cardfs1.
+      by case: ifP=>//.
     }
     { (* rec *)
       by move=>H; congr l_rec; apply/Ih.
     }
     { (* msg *)
-      move=>/fsetUs_fset0/member_map/(_ _ ((rwP (memberP _ _)).2 _))-H.
+      move=>/flatten_eq_nil/member_map/(_ _ ((rwP (memberP _ _)).2 _))-H.
       congr l_msg; rewrite -{2}(map_id Ks); apply/eq_in_map=>K IN.
       by rewrite (Ih _ IN _ (H _ IN)) -!surjective_pairing.
     }
@@ -243,11 +243,10 @@ Section Syntax.
       + move=> _; rewrite (lshift_closed n G'0); apply/eqP.
         by move: G'0; apply/lfbvar_gt.
       + case: ifP=>// LE /(rwP negPf)-NE; move: (conj NE LE)=>/andP.
-        rewrite eq_sym -ltn_neqAle=>LT; move: H; rewrite LT.
-        by rewrite -cardfs_eq0 cardfs1.
+        by rewrite eq_sym -ltn_neqAle=>LT; move: H; rewrite LT.
     - by apply: (Ih n.+1); rewrite lfbvar_next.
-    - rewrite -map_comp/comp/=; move=>/fsetUs_fset0/member_map-H.
-      apply/fsetUs_fset0/member_map=>K /memberP-M.
+    - rewrite -map_comp/comp/=; move=>/flatten_eq_nil/member_map-H.
+      apply/flatten_eq_nil/member_map=>K /memberP-M.
       by apply: Ih=>//; apply: H; apply/memberP.
   Qed.
 
@@ -341,7 +340,7 @@ Section Syntax.
   Proof.
     rewrite /l_closed=> H H'; move: 0 (leq0n dG') H H'.
     elim/lty_ind2: G =>[|n|G Ih|p q Ks Ih]// in dG dG' *.
-    - by move=> m /leq_trans-H /= /H->; rewrite -cardfs_eq0 cardfs1.
+    - by move=> m /leq_trans-H /= /H->.
     - by move=> n ndG' /=; apply/Ih.
   Qed.
 
@@ -350,7 +349,7 @@ Section Syntax.
     forall v, G != l_var v.
   Proof.
     rewrite /l_closed.
-    by case: G=>//= v; rewrite -cardfs_eq0 cardfs1.
+    by case: G=>//= v.
   Qed.
 
   Lemma lopen_not_var d G G' :
@@ -426,10 +425,9 @@ Section Syntax.
     -> l_binds n L = false.
   Proof.
   elim: L m n; rewrite //=.
-  + move=> v m n le; case: ifP;
-      [by rewrite -cardfs_eq0 cardfs1 //=
-      | by move=> lefalse; elim; apply: ltn_eqF;
-      apply: (leq_trans _ le); move: (negbT lefalse); rewrite-ltnNge //=].
+  + move=> v m n le; case: ifP=>//.
+    by move=> lefalse; elim; apply: ltn_eqF;
+      apply: (leq_trans _ le); move: (negbT lefalse); rewrite-ltnNge //=.
   + by move=> L IH m n le; apply: IH; rewrite //=.
   Qed.
 
@@ -661,7 +659,7 @@ Section Semantics.
         * by exists (l_expand L0).
         * by exists L0.
       + move=> l Ty G CG FND; rewrite FND=>[][<-]; right.
-        move: cG; rewrite /l_closed/==>/fsetUs_fset0/member_map-cG.
+        move: cG; rewrite /l_closed/==>/flatten_eq_nil/member_map-cG.
         move: gG; rewrite /==>/forallbP/forall_member-gG.
         move: NE=>/==>/andP-[NE_C]/forallbP/forall_member/member_map-NE.
         move: (find_member FND)=>MEM.
