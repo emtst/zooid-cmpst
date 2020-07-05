@@ -206,6 +206,19 @@ Proof.
   by move=> _ /Ih-H; right.
 Qed.
 
+Lemma in_cons_tail (A : eqType) B (t : seq (A * B)) (x : A) k v :
+  x <> k ->
+  x \in [seq y.1 | y <- (k, v) :: t] ->
+  x \in [seq y.1 | y <- t].
+Proof. by rewrite /= in_cons=>/eqP/negPf->. Qed.
+
+Fixpoint get_v B (ls : seq (lbl * B)) x
+  : find_cont ls x -> B
+  := match find_cont ls x as P return P -> B with
+     | Some y => fun=> y
+     | None => fun P => match not_false_is_true P with end
+     end.
+
 (*Definition same_dom T (C C' : lbl /-> mty * T) :=
   forall L Ty, (exists G, C L = Some (Ty, G)) <-> (exists G', C' L = Some (Ty, G')).*)
 

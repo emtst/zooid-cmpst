@@ -403,81 +403,108 @@ Definition ping_pong :=
     ).
 
 Definition pp_env := @project_env ping_pong is_true_true.
+Definition pp_server_lt := @get_v _ pp_env pp_server is_true_true.
+Definition pp_client_lt := @get_v _ pp_env pp_client is_true_true.
 
-Definition pp_server_lt := find_cont pp_env pp_server.
-Eval compute in pp_server_lt.
-
-
-Definition ping_pong_server p :=
+Definition ping_pong_server :=
   [proc
      loop (
-       \branch p
+       \branch pp_client
         [alts
         | \lbl Bye, _ : T_unit;
             finish
         | \lbl Ping, x : T_nat;
-            (\send p Pong x (jump 0))
+            (\send pp_client Pong x (jump 0))
         ]
      )
   ].
 
 
-Definition ping_pong_client0 p :=
+Definition to_proc p := get_proc (projT2 p).
+
+Lemma pp_s1 : of_lt_unr pp_server (to_proc ping_pong_server) pp_env.
+Proof.
+  exists pp_server_lt;split=>//.
+  apply: (projT2 (projT2 ping_pong_server)).
+  by apply: l_expand_unr.
+Qed.
+
+
+Definition ping_pong_client0 :=
   [proc
      loop (
-       \select p
+       \select pp_server
         [sel
         | \otherwise => Bye, tt \as T_unit ! finish
-        | \skip => Ping, T_nat ! l_msg l_recv p [:: (Pong, (T_nat, l_var 0))]
+        | \skip => Ping, T_nat ! l_msg l_recv pp_server [:: (Pong, (T_nat, l_var 0))]
 
         ]
      )
   ].
 
-Definition ping_pong_client1 p :=
+Lemma pp_c0 : of_lt_unr pp_client (to_proc ping_pong_client0) pp_env.
+Proof.
+  exists pp_client_lt; split.
+  - by apply: (projT2 (projT2 ping_pong_client0)).
+  - by apply: l_expand_unr.
+Qed.
+
+Definition ping_pong_client1 :=
   [proc
      loop (
-       \select p
+       \select pp_server
         [sel
         | \skip      => Bye , T_unit ! l_end
         | \otherwise => Ping, 1 \as T_nat !
-              (\recv p \lbl Pong, x : T_nat; (jump 0))
+              (\recv pp_server \lbl Pong, x : T_nat; (jump 0))
         ]
      )
   ].
 
-Definition ping_pong_client2 p :=
+Lemma pp_c1 : of_lt_unr pp_client (to_proc ping_pong_client1) pp_env.
+Proof.
+  exists pp_client_lt; split.
+  - by apply: (projT2 (projT2 ping_pong_client1)).
+  - by apply: l_expand_unr.
+Qed.
+
+Definition ping_pong_client2 :=
   [proc
-     \select p
+     \select pp_server
      [sel
      | \otherwise => Bye, tt \as T_unit ! finish
      | \skip => Ping, T_nat !
-             l_msg l_recv p
-             [:: (Pong, (T_nat, projT1 (ping_pong_client1 p)))]
+             l_msg l_recv pp_server
+             [:: (Pong, (T_nat, pp_client_lt))]
      ]
   ].
 
-Goal projT1 (ping_pong_client2 p) = lunroll 1 (projT1 (ping_pong_client1 p)).
-  by [].
+Lemma pp_c2 : of_lt_unr pp_client (to_proc ping_pong_client2) pp_env.
+Proof.
+  exists (projT1 ping_pong_client2); split.
+  - by apply: (projT2 (projT2 ping_pong_client2)).
+  - rewrite -[projT1 ping_pong_client2]/(lunroll 1 pp_client_lt).
+    by rewrite -LUnroll_ind; apply: l_expand_unr.
 Qed.
 
-Fixpoint ping_pong_client3 n p {struct n}:=
+
+Fixpoint ping_pong_client3 n {struct n}:=
   match n with
   | 0 =>
-    [proc \select p
+    [proc \select pp_server
           [sel
           | \otherwise => Bye, tt \as T_unit ! finish
           | \skip => Ping, T_nat !
-                                 l_msg l_recv p
-                                 [:: (Pong, (T_nat, projT1 (ping_pong_client1 p)))]]
+                                 l_msg l_recv pp_server
+                                 [:: (Pong, (T_nat, pp_client_lt))]]
     ]
   | m.+1 =>
-    [proc \select p
+    [proc \select pp_server
           [sel
           | \skip => Bye, T_unit ! l_end
           | \otherwise =>
             Ping, n \as T_nat !
-              (\recv p \lbl Pong, x : T_nat; projT2 (ping_pong_client3 m p))
+              (\recv pp_server \lbl Pong, x : T_nat; projT2 (ping_pong_client3 m))
           ]
     ]
   end.
@@ -488,19 +515,19 @@ Fixpoint l_unravel_n n L :=
   | _, _ => L
   end.
 
-Goal projT1 (ping_pong_client3 4 p) = l_unravel_n 9 (projT1 (ping_pong_client1 p)).
-  by [].
+Goal projT1 (ping_pong_client3 0) = l_unravel_n 1 pp_client_lt.
+    by [].
 Qed.
 
 
-Definition ping_pong_client4 p :=
-  [proc \select p
+Definition ping_pong_client4 :=
+  [proc \select pp_server
         [sel
         | \skip => Bye, T_unit ! l_end
         | \otherwise => Ping, 1 \as T_nat !
               loop(
-                \recv p \lbl Pong, x : T_nat;
-                  \select p
+                \recv pp_server \lbl Pong, x : T_nat;
+                  \select pp_server
                    [sel
                    | \case (x > 3) => Bye, tt \as T_unit ! finish
                    | \otherwise => Ping, x + 1 \as T_nat ! jump 0
@@ -508,11 +535,11 @@ Definition ping_pong_client4 p :=
               )
         ]
   ].
-Eval compute in projT1 (ping_pong_client4 p).
-Eval compute in get_proc (projT2 (ping_pong_client4 p)).
+Eval compute in projT1 ping_pong_client4.
+Eval compute in get_proc (projT2 ping_pong_client4).
 
-Goal forall Li Lc, (Li = projT1 (ping_pong_client4 p) /\
-                    Lc = l_expand (projT1 (ping_pong_client1 p))) ->
+Goal forall Li Lc, (Li = projT1 ping_pong_client4 /\
+                    Lc = l_expand pp_client_lt) ->
                    LUnroll Li Lc.
   apply/paco2_acc=> r _ /(_ _ _ (conj erefl erefl))/=-CIH Li Lr [->->].
   apply: paco2_fold; rewrite l_expand_once/=; constructor=>/=;
@@ -528,6 +555,10 @@ Goal forall Li Lc, (Li = projT1 (ping_pong_client4 p) /\
   move=> {}l {}Ty {}G {}G'/=; rewrite /extend/empty/=.
   by case: ifP=>// _ [<-<-] [<-]; right; apply/CIH.
 Qed.
+
+
+(*** Two-buyer protocol
+ *)
 
 Close Scope proc_scope.
 
