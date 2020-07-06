@@ -636,6 +636,8 @@ Definition AvailableDate i :=
   | _ => 0
   end.
 
+Parameter read_item : coq_ty T_nat.
+
 Definition seller_proc :=
   [proc
      \recv BuyerA \lbl BookId, x : T_nat;
@@ -653,12 +655,17 @@ Goal projT1 seller_proc == twob_seller_lt.
   by [].
 Qed.
 
+Parameter print_quote : forall L, coq_ty T_nat -> wt_proc L -> wt_proc L.
+Parameter read_proposal : coq_ty T_nat.
+
 Definition buyerA :=
   [proc
-     \send Seller BookId (T:=T_nat) 0 (
+     \send Seller BookId (T:=T_nat) read_item (
      \recv Seller \lbl Quote, x : T_nat;
-     \send BuyerB ProposeA (T:=T_nat) (maxn 100 (divn x 2))
-      finish
+       print_quote x (
+         \send BuyerB ProposeA (T:=T_nat) read_proposal
+          finish
+      )
   )
   ].
 
