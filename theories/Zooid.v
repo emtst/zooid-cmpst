@@ -690,26 +690,46 @@ Goal projT1 buyerB == twob_buyB_lt.
   by [].
 Qed.
 
+(*** Pipeline example
+ *)
+
+Definition Alice := 0.
+Definition Bob := 1.
+Definition Carol := 2.
+
+Definition Lbl := 1.
+
+Definition pipe :=
+  g_rec
+    (g_msg Alice Bob
+        [:: (Lbl, (T_nat,
+                   g_msg Bob Carol
+                         [:: (Lbl, (T_nat, g_var 0))]))]).
+
+Definition pipe_env := @project_env pipe is_true_true.
+Definition pp_bob_lt := @get_v _ pipe_env Bob is_true_true.
+
+Definition bob :=
+  [proc
+     loop (
+       \recv Alice \lbl Lbl, x : T_nat;
+       \send Carol Lbl (T:= T_nat) (x * 2) (jump 0)
+     )
+  ].
+
+Goal projT1 bob == pp_bob_lt.
+  by [].
+Qed.
+
 Close Scope proc_scope.
 
 End Examples.
 
-(* Code Extraction *)
-
-From Coq Require Extraction.
-Module MP.
-  Parameter t : Type -> Type.
-
-  Parameter send : forall T, role -> lbl -> T -> t unit.
-  (* Extract Constant send => "ocaml_send". *)
-
-  Parameter recv : (lbl -> t unit) -> t unit.
-  Parameter recv_one : forall T, role -> t T.
-
-  Parameter bind : forall T1 T2, t T1 -> (T1 -> t T2) -> t T2.
-
-  Parameter pure : forall T1, T1 -> t T1.
-
-  Parameter loop : forall T1, nat -> t T1 -> t T1.
-  Parameter set_current: nat -> t unit.
-End MP.
+Require Import Extraction.
+Require Import ExtrOcamlBasic.
+Require Import ExtrOcamlNatInt.
+Opaque eqn.
+Opaque addn.
+Opaque muln.
+Definition bob_mp := Eval compute in run_proc 0 (get_proc (projT2 bob)).
+Recursive Extraction bob_mp.

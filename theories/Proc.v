@@ -949,3 +949,45 @@ Section TraceEquivalence.
   Print Assumptions process_traces_are_local_types.
 
 End TraceEquivalence.
+
+Module MP.
+  Parameter t : Type -> Type.
+
+  Parameter send : forall T, role -> lbl -> T -> t unit.
+
+  Parameter recv : (lbl -> t unit) -> t unit.
+  Parameter recv_one : forall T, role -> t T.
+
+  Parameter bind : forall T1 T2, t T1 -> (T1 -> t T2) -> t T2.
+
+  Parameter pure : forall T1, T1 -> t T1.
+
+  Parameter loop : forall T1, nat -> t T1 -> t T1.
+  Parameter set_current: nat -> t unit.
+End MP.
+
+Section ProcExtraction.
+  Fixpoint run_proc (d : nat) (p : Proc) : MP.t unit :=
+    match p with
+    | Finish => MP.pure tt
+    | Jump v => MP.set_current (d - v)
+    | Loop p => MP.loop d (run_proc d.+1 p)
+    | Recv p a =>
+      MP.recv (fun l =>
+                 (fix run_alt a :=
+                    match a with
+                    | A_sing T l' k =>
+                      if l == l'
+                      then MP.bind (MP.recv_one (coq_ty T) p)
+                                   (fun x => run_proc d (k x))
+                      else MP.pure tt
+                    | A_cons T l' k a =>
+                      if l == l'
+                      then MP.bind (MP.recv_one (coq_ty T) p)
+                                   (fun x => run_proc d (k x))
+                      else run_alt a
+                    end) a)
+    | Send p T l v k =>
+      MP.bind (MP.send p l v) (fun=>run_proc d k)
+    end.
+End ProcExtraction.
