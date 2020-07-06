@@ -560,6 +560,129 @@ Qed.
 (*** Two-buyer protocol
  *)
 
+(**
+ * Message labels
+ *)
+Definition BookId := 0.
+Definition Quote := 1.
+Definition ProposeA := 2.
+Definition Buy := 3.
+Definition Cancel := 4.
+Definition Date := 5.
+
+(**
+ * Participants
+ *)
+
+Definition BuyerA := 0.
+Definition BuyerB := 1.
+Definition Seller := 2.
+
+Definition two_buyer :=
+  g_msg
+    BuyerA Seller
+    [:: (BookId,
+         (T_nat,
+          g_msg
+            Seller BuyerA
+            [:: (Quote,
+                 (T_nat,
+                  g_msg
+                    Seller BuyerB
+                    [:: (Quote,
+                         (T_nat,
+                          g_msg
+                            BuyerA BuyerB
+                            [:: (ProposeA,
+                                 (T_nat,
+                                  g_msg
+                                    BuyerB Seller
+                                    [:: (Buy,
+                                         (T_nat,
+                                          g_msg Seller BuyerB
+                                                [:: (Date, (T_nat, g_end))]
+                                        ));
+                                        (Cancel, (T_unit, g_end))
+                                    ]
+                                ))
+                            ]
+                        ))
+                    ]
+                ))
+            ]
+        ))
+    ].
+
+Definition twob_env := @project_env two_buyer is_true_true.
+Definition twob_seller_lt := @get_v _ twob_env Seller is_true_true.
+Definition twob_buyA_lt := @get_v _ twob_env BuyerA is_true_true.
+Definition twob_buyB_lt := @get_v _ twob_env BuyerB is_true_true.
+
+Eval compute in twob_seller_lt.
+
+Definition ItemTable i :=
+  match i with
+  | 0 => 300
+  | 1 => 50
+  | 2 => 75
+  | _ => 0
+  end.
+
+Definition AvailableDate i :=
+  match i with
+  | 0 => 3
+  | 1 => 1
+  | 2 => 10
+  | _ => 0
+  end.
+
+Definition seller_proc :=
+  [proc
+     \recv BuyerA \lbl BookId, x : T_nat;
+     \send BuyerA Quote (T:=T_nat) (ItemTable x) (
+     \send BuyerB Quote (T:=T_nat) (ItemTable x) (
+     \branch BuyerB
+      [alts
+      | \lbl Buy, y : T_nat; \send BuyerB Date (T:=T_nat )(AvailableDate x) finish
+      | \lbl Cancel, x : T_unit; finish
+      ]
+  ))
+  ].
+
+Goal projT1 seller_proc == twob_seller_lt.
+  by [].
+Qed.
+
+Definition buyerA :=
+  [proc
+     \send Seller BookId (T:=T_nat) 0 (
+     \recv Seller \lbl Quote, x : T_nat;
+     \send BuyerB ProposeA (T:=T_nat) (maxn 100 (divn x 2))
+      finish
+  )
+  ].
+
+Goal projT1 buyerA == twob_buyA_lt.
+  by [].
+Qed.
+
+Definition buyerB :=
+  [proc
+     \recv Seller \lbl Quote, x : T_nat;
+     \recv BuyerA \lbl ProposeA, y : T_nat;
+     \select Seller
+      [sel
+      | \case y >= divn x 3
+        => Buy, (x - y) \as T_nat ! \recv Seller \lbl Date, x : T_nat; finish
+      | \otherwise
+        => Cancel, tt \as T_unit! finish
+      ]
+  ].
+
+Goal projT1 buyerB == twob_buyB_lt.
+  by [].
+Qed.
+
 Close Scope proc_scope.
 
 End Examples.
