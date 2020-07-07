@@ -731,5 +731,10 @@ Require Import ExtrOcamlNatInt.
 Opaque eqn.
 Opaque addn.
 Opaque muln.
+Opaque subn.
+Opaque maxn.
 Definition bob_mp := Eval compute in run_proc 0 (get_proc (projT2 bob)).
 Recursive Extraction bob_mp.
+
+Definition buyer_mp := Eval compute in run_proc 0 (get_proc (projT2 buyerB)).
+Recursive Extraction buyer_mp.
