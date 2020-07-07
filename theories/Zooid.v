@@ -99,7 +99,6 @@ Definition sing_alt L1 (a : wt_alt L1) : wt_alts [:: L1]
 Definition cons_alt L1 Ls (a : wt_alt L1) (alts : wt_alts Ls)
   : wt_alts (L1 :: Ls) := wta_cons a alts.
 
-Print wt_alt.
 Declare Scope proc_scope.
 Notation " \lbl l1 , x ':' T1 ; p1"
   := (@wt_cont l1 T1 _ (fun x => p1))
@@ -287,8 +286,6 @@ Proof. by []. Qed.
 Lemma hsd_sk_false l T L
   : ~ has_single_default (sa_nil (sk_alt l T L)).
 Proof. by []. Qed.
-
-About wt_sel.
 
 Lemma hsd_cons_next L Ls (h : sel_alt L) (t : sel_alts Ls)
   : has_single_default (sa_cons h t) -> ~~ (is_dflt h) -> has_single_default t.
