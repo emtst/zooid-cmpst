@@ -350,6 +350,10 @@ Notation "pr '\skipR' a"
 
 (* Notation " 'select' b 'then' pT 'else' pF " := (wt_sel b pT pF is_true_true) (at level 200). *)
 
+Notation "\project g" := (@project_env g is_true_true) (at level 0).
+Notation "'\get' p e" := (@get_v l_ty p e is_true_true)
+                           (at level 0, no associativity, e at level 0, p at level 0).
+
 Section Examples.
 Open Scope proc_scope.
 Let p : role := 0.
@@ -399,12 +403,11 @@ Definition ping_pong :=
             ]
     ).
 
-Definition pp_env := @project_env ping_pong is_true_true.
-Definition pp_server_lt := @get_v _ pp_env pp_server is_true_true.
-Definition pp_client_lt := @get_v _ pp_env pp_client is_true_true.
+Definition pp_env := \project ping_pong.
+Definition pp_server_lt := \get pp_env pp_server.
+Definition pp_client_lt := \get pp_env pp_client.
 
-Definition ping_pong_server :=
-  [proc
+Definition ping_pong_server : wt_proc pp_server_lt :=
      loop (
        \branch pp_client
         [alts
@@ -413,22 +416,20 @@ Definition ping_pong_server :=
         | \lbl Ping, x : T_nat;
             (\send pp_client Pong x (jump 0))
         ]
-     )
-  ].
+     ).
 
 
 Definition to_proc p := get_proc (projT2 p).
 
-Lemma pp_s1 : of_lt_unr pp_server (to_proc ping_pong_server) pp_env.
+Lemma pp_s1 : of_lt_unr pp_server (get_proc ping_pong_server) pp_env.
 Proof.
   exists pp_server_lt;split=>//.
-  apply: (projT2 (projT2 ping_pong_server)).
+  apply: (projT2 ping_pong_server).
   by apply: l_expand_unr.
 Qed.
 
 
-Definition ping_pong_client0 :=
-  [proc
+Definition ping_pong_client0 : wt_proc pp_client_lt :=
      loop (
        \select pp_server
         [sel
@@ -436,18 +437,17 @@ Definition ping_pong_client0 :=
         | \skip => Ping, T_nat ! l_msg l_recv pp_server [:: (Pong, (T_nat, l_var 0))]
 
         ]
-     )
-  ].
+     ).
 
-Lemma pp_c0 : of_lt_unr pp_client (to_proc ping_pong_client0) pp_env.
+
+Lemma pp_c0 : of_lt_unr pp_client (get_proc ping_pong_client0) pp_env.
 Proof.
   exists pp_client_lt; split.
-  - by apply: (projT2 (projT2 ping_pong_client0)).
+  - by apply: (projT2 ping_pong_client0).
   - by apply: l_expand_unr.
 Qed.
 
-Definition ping_pong_client1 :=
-  [proc
+Definition ping_pong_client1 : wt_proc pp_client_lt :=
      loop (
        \select pp_server
         [sel
@@ -455,13 +455,12 @@ Definition ping_pong_client1 :=
         | \otherwise => Ping, 1 \as T_nat !
               (\recv pp_server \lbl Pong, x : T_nat; (jump 0))
         ]
-     )
-  ].
+     ).
 
-Lemma pp_c1 : of_lt_unr pp_client (to_proc ping_pong_client1) pp_env.
+Lemma pp_c1 : of_lt_unr pp_client (get_proc ping_pong_client1) pp_env.
 Proof.
   exists pp_client_lt; split.
-  - by apply: (projT2 (projT2 ping_pong_client1)).
+  - by apply: (projT2 ping_pong_client1).
   - by apply: l_expand_unr.
 Qed.
 
@@ -610,10 +609,10 @@ Definition two_buyer :=
         ))
     ].
 
-Definition twob_env := @project_env two_buyer is_true_true.
-Definition twob_seller_lt := @get_v _ twob_env Seller is_true_true.
-Definition twob_buyA_lt := @get_v _ twob_env BuyerA is_true_true.
-Definition twob_buyB_lt := @get_v _ twob_env BuyerB is_true_true.
+Definition twob_env := \project two_buyer.
+Definition twob_seller_lt := \get twob_env Seller.
+Definition twob_buyA_lt := \get twob_env BuyerA.
+Definition twob_buyB_lt := \get twob_env BuyerB.
 
 Eval compute in twob_seller_lt.
 
@@ -635,8 +634,7 @@ Definition AvailableDate i :=
 
 Parameter read_item : coq_ty T_nat.
 
-Definition seller_proc :=
-  [proc
+Definition seller_proc : wt_proc twob_seller_lt :=
      \recv BuyerA \lbl BookId, x : T_nat;
      \send BuyerA Quote (T:=T_nat) (ItemTable x) (
      \send BuyerB Quote (T:=T_nat) (ItemTable x) (
@@ -645,33 +643,21 @@ Definition seller_proc :=
       | \lbl Buy, y : T_nat; \send BuyerB Date (T:=T_nat )(AvailableDate x) finish
       | \lbl Cancel, x : T_unit; finish
       ]
-  ))
-  ].
-
-Goal projT1 seller_proc == twob_seller_lt.
-  by [].
-Qed.
+  )).
 
 Parameter print_quote : forall L, coq_ty T_nat -> wt_proc L -> wt_proc L.
 Parameter read_proposal : coq_ty T_nat.
 
-Definition buyerA :=
-  [proc
+Definition buyerA : wt_proc twob_buyA_lt :=
      \send Seller BookId (T:=T_nat) read_item (
      \recv Seller \lbl Quote, x : T_nat;
        print_quote x (
          \send BuyerB ProposeA (T:=T_nat) read_proposal
           finish
       )
-  )
-  ].
+  ).
 
-Goal projT1 buyerA == twob_buyA_lt.
-  by [].
-Qed.
-
-Definition buyerB :=
-  [proc
+Definition buyerB : wt_proc twob_buyB_lt :=
      \recv Seller \lbl Quote, x : T_nat;
      \recv BuyerA \lbl ProposeA, y : T_nat;
      \select Seller
@@ -680,12 +666,7 @@ Definition buyerB :=
         => Buy, (x - y) \as T_nat ! \recv Seller \lbl Date, x : T_nat; finish
       | \otherwise
         => Cancel, tt \as T_unit! finish
-      ]
-  ].
-
-Goal projT1 buyerB == twob_buyB_lt.
-  by [].
-Qed.
+      ].
 
 (*** Pipeline example
  *)
@@ -703,20 +684,14 @@ Definition pipe :=
                    g_msg Bob Carol
                          [:: (Lbl, (T_nat, g_var 0))]))]).
 
-Definition pipe_env := @project_env pipe is_true_true.
-Definition pp_bob_lt := @get_v _ pipe_env Bob is_true_true.
+Definition pipe_env := \project pipe.
+Definition pp_bob_lt := \get pipe_env Bob.
 
-Definition bob :=
-  [proc
+Definition bob : wt_proc pp_bob_lt :=
      loop (
        \recv Alice \lbl Lbl, x : T_nat;
        \send Carol Lbl (T:= T_nat) (x * 2) (jump 0)
-     )
-  ].
-
-Goal projT1 bob == pp_bob_lt.
-  by [].
-Qed.
+     ).
 
 Close Scope proc_scope.
 
@@ -730,8 +705,8 @@ Opaque addn.
 Opaque muln.
 Opaque subn.
 Opaque maxn.
-Definition bob_mp := Eval compute in run_proc 0 (get_proc (projT2 bob)).
-Recursive Extraction bob_mp.
+Definition bob_mp := Eval compute in run_proc 0 (get_proc bob).
+Extraction "bob.ml" bob_mp.
 
-Definition buyer_mp := Eval compute in run_proc 0 (get_proc (projT2 buyerB)).
-Recursive Extraction buyer_mp.
+Definition buyer_mp := Eval compute in run_proc 0 (get_proc buyerB).
+Extraction "buyerB.ml" bob_mp.
