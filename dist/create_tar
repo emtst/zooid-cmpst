@@ -7,6 +7,6 @@ fi
 
 # create the tar file
 
-tar czf ./cmpst/dist/cmpst.tar.gz -T ./cmpst/dist/filelist.txt
+tar czf ./cmpst/dist/cmpst.tar.gz -T ./cmpst/dist/filelist.txt --numeric-owner
 
 echo DONE
