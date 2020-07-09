@@ -1,4 +1,4 @@
-# Certified MPST -- Zooid
+# Certified MPST -- Zooid --
 
 This is the repo for MPST metatheory and Zooid a certified process descrition language.
 It's implemented in the Coq proof assistant.
@@ -7,7 +7,7 @@ It's implemented in the Coq proof assistant.
 
 We recommend installing coq and its dependencies using OPAM, please
 follow: [opam](https://opam.ocaml.org/) and
-[opam's Coq repository](http://coq.io/opam/).
+[Coq's opam repository](http://coq.io/opam/).
 
 This development requires the following libraries:
 
