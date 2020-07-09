@@ -1,0 +1,17 @@
+./theories/Zooid.v
+./theories/Atom.v
+./theories/Session.v
+./theories/WellFormed.v
+./theories/Forall.v
+./theories/Local.v
+./theories/TraceEquiv.v
+./theories/Actions.v
+./theories/QProjection.v
+./theories/Proc.v
+./theories/Projection.v
+./theories/Global.v
+./theories/LNVar.v
+./theories/AtomSets.v
+./_CoqProject
+./README.md
+./generateMakefile
