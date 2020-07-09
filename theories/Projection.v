@@ -944,8 +944,6 @@ Section CProject.
       by apply/(Ih _ M n L1' L2).
   Qed.
 
-(*FIXME: just a coq question from Lorenzo to David and Francisco*)
-
   Lemma project_g_open_comm G1 G2 r L1 L2 k:
     g_closed G1 ->
     project G1 r = Some L1 -> project G2 r = Some L2 ->

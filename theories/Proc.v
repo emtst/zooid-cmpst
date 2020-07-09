@@ -484,7 +484,6 @@ Section TraceEquivalence.
   by rewrite (trace_unr (erase _)).
   Qed.
 
-  (* TODO: Lorenzo *)
   Lemma sl_accepts_unr s L cL TRACE :
     LUnroll L cL ->
     sl_accepts s TRACE L ->
