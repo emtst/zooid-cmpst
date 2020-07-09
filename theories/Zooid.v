@@ -705,8 +705,9 @@ Opaque addn.
 Opaque muln.
 Opaque subn.
 Opaque maxn.
-Definition bob_mp := Eval compute in run_proc 0 (get_proc bob).
+
+Definition bob_mp := Eval compute in extract_proc 0 (get_proc bob).
 Extraction "bob.ml" bob_mp.
 
-Definition buyer_mp := Eval compute in run_proc 0 (get_proc buyerB).
+Definition buyer_mp := Eval compute in extract_proc 0 (get_proc buyerB).
 Extraction "buyerB.ml" bob_mp.

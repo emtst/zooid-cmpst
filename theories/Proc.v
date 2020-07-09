@@ -967,11 +967,11 @@ Module MP.
 End MP.
 
 Section ProcExtraction.
-  Fixpoint run_proc (d : nat) (p : Proc) : MP.t unit :=
+  Fixpoint extract_proc (d : nat) (p : Proc) : MP.t unit :=
     match p with
     | Finish => MP.pure tt
     | Jump v => MP.set_current (d - v)
-    | Loop p => MP.loop d (run_proc d.+1 p)
+    | Loop p => MP.loop d (extract_proc d.+1 p)
     | Recv p a =>
       MP.recv (fun l =>
                  (fix run_alt a :=
@@ -979,15 +979,15 @@ Section ProcExtraction.
                     | A_sing T l' k =>
                       if l == l'
                       then MP.bind (MP.recv_one (coq_ty T) p)
-                                   (fun x => run_proc d (k x))
+                                   (fun x => extract_proc d (k x))
                       else MP.pure tt
                     | A_cons T l' k a =>
                       if l == l'
                       then MP.bind (MP.recv_one (coq_ty T) p)
-                                   (fun x => run_proc d (k x))
+                                   (fun x => extract_proc d (k x))
                       else run_alt a
                     end) a)
     | Send p T l v k =>
-      MP.bind (MP.send p l v) (fun=>run_proc d k)
+      MP.bind (MP.send p l v) (fun=>extract_proc d k)
     end.
 End ProcExtraction.
