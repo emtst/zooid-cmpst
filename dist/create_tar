@@ -1,12 +1,12 @@
 #!/bin/zsh
 
-if [[ ! (-a ./dist/filelist.txt) ]] ; then
-    echo filelist.txt not found run from the root of the repo
+if [[ ! (-a ./cmpst/dist/filelist.txt) ]] ; then
+    echo filelist.txt not found run from outside of the root of the repo
     exit 1
 fi
 
 # create the tar file
 
-tar czf dist/cmpst.tar.gz -T dist/filelist.txt
+tar czf ./cmpst/dist/cmpst.tar.gz -T ./cmpst/dist/filelist.txt
 
 echo DONE
