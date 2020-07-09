@@ -25,8 +25,7 @@ This development requires the following libraries:
 From this repo's directory run to build the proof and examples:
    `./generateMakefile && make`
 
-After running the main make, the successful output should be similar to
-like:
+After running the main make, the successful output should be similar to:
 
 ```
 COQDEP VFILES
@@ -42,12 +41,12 @@ COQC theories/Projection.v
 COQC theories/WellFormed.v
 COQC theories/QProjection.v
 COQC theories/TraceEquiv.v
-COQC theories/Proc.v
 Closed under the global context
+COQC theories/Proc.v
 Closed under the global context
 COQC theories/Zooid.v
 ```
 
-The last three lines confirm that the main theorems do not depend on
-axioms or admitted lemmas, and Zooid contains all the definition of
-the proof language and its examples.
+The two instances of `Closed under the global context` denote that the
+trace equivalence theorem and the process correctness theorems do not
+depend on axioms or admitted lemmas.

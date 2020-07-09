@@ -945,7 +945,6 @@ Section TraceEquivalence.
   Qed.
 
   Print Assumptions process_traces_are_global_types.
-  Print Assumptions process_traces_are_local_types.
 
 End TraceEquivalence.
 

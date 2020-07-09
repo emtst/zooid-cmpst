@@ -1207,4 +1207,6 @@ Section InductiveTrace.
     by move: WF; rewrite /well_formed; case: eproject.
   Qed.
 
+  Print Assumptions IndTraceEquiv.
+
 End InductiveTrace.
