@@ -51,3 +51,12 @@ Makefile.conf
 
 # Macos files
 .DS_Store
+
+# Dist files
+
+dist/cmpst
+dist/cmpst.tar.gz
+
+# extraction artefacts
+*.ml
+*.mli
