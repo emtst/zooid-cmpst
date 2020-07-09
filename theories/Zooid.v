@@ -369,8 +369,8 @@ Definition test1 b1 b2 :=
      ]
   ].
 
-Eval compute in fun b1 b2 => projT1 (test1 b1 b2).
-Eval compute in fun b1 b2 => get_proc (projT2 (test1 b1 b2)).
+Definition test1_t1 := Eval compute in fun b1 b2 => projT1 (test1 b1 b2).
+Definition test1_t2 := Eval compute in fun b1 b2 => get_proc (projT2 (test1 b1 b2)).
 
 Definition test : typed_proc
   := [proc
@@ -380,8 +380,8 @@ Definition test : typed_proc
         | \lbl 1, x : T_nat ; wt_end
         ]
      ].
-Eval compute in projT1 test.
-Eval compute in get_proc (projT2 test).
+Definition test_t1 := Eval compute in projT1 test.
+Definition test_t2 := Eval compute in get_proc (projT2 test).
 
 (*** PING PONG protocols
  *)
@@ -531,8 +531,8 @@ Definition ping_pong_client4 :=
               )
         ]
   ].
-Eval compute in projT1 ping_pong_client4.
-Eval compute in get_proc (projT2 ping_pong_client4).
+Definition ppc4_t1 := Eval compute in projT1 ping_pong_client4.
+Definition ppc4_t2 := Eval compute in get_proc (projT2 ping_pong_client4).
 
 Goal forall Li Lc, (Li = projT1 ping_pong_client4 /\
                     Lc = l_expand pp_client_lt) ->
@@ -614,7 +614,7 @@ Definition twob_seller_lt := \get twob_env Seller.
 Definition twob_buyA_lt := \get twob_env BuyerA.
 Definition twob_buyB_lt := \get twob_env BuyerB.
 
-Eval compute in twob_seller_lt.
+(* Eval compute in twob_seller_lt. *)
 
 Definition ItemTable i :=
   match i with
