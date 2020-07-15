@@ -1,0 +1,11 @@
+version: 2.1
+
+jobs:
+  build:
+    docker:
+    - image: mathcomp/mathcomp:1.11.0-coq-8.11
+    steps:
+    - checkout
+    - run: | 
+        coq_makefile -f _CoqProject -o Makefile
+        make
