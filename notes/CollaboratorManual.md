@@ -14,7 +14,3 @@ You may also want:
 git config --global rebase.autoStash true
 git config --global pull.rebase true
 ```
-
-## Working on features
-
-Pushing to master is disabled, so instead we work on a branch and then create a pull request. Every commit will be compiled in the continous integration server and only branches that pass the test will be merged. For now, the test is just making the repository.
