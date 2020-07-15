@@ -6,6 +6,4 @@ jobs:
     - image: mathcomp/mathcomp:1.11.0-coq-8.11
     steps:
     - checkout
-    - run: | 
-        coq_makefile -f _CoqProject -o Makefile
-        make
+    - run: ls -al
