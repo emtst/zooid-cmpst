@@ -6,4 +6,19 @@ jobs:
     - image: mathcomp/mathcomp:1.11.0-coq-8.11
     steps:
     - checkout
-    - run: ls -al
+    - run:
+        name: Install finmap
+        command: |
+          eval $(opam config env)
+          opam install -y coq-mathcomp-finmap
+    - run:
+        name: Install Paco
+        command: |
+          eval $(opam config env)
+          opam install -y coq-paco
+    - run:
+        name: Compile
+        command: |
+          eval $(opam config env)
+          ./generateMakefile && make
+
