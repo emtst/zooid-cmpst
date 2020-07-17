@@ -58,5 +58,9 @@ dist/cmpst
 dist/cmpst.tar.gz
 
 # extraction artefacts
-*.ml
-*.mli
+
+theories/*.ml
+theories/*.mli
+
+/*.ml
+/*.mli
