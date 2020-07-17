@@ -21,5 +21,4 @@
    "A TCP/IP Transport and runtime for Zooid programs")
  (description
    "This is an implementation of the monadic transport module (MP) for Zooid")
-;  (depends)
 )

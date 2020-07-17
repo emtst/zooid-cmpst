@@ -3,8 +3,5 @@
 
 (*  Main file *)
 
-
-
-
-
-let _ = print_endline "Hello World"
+let () =  print_endline "Zooid Runtime" ;
+          Comm.perform()
