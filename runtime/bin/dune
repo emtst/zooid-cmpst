@@ -1,6 +1,6 @@
 (executables
  (names main)
- (libraries unix))
+ (libraries lwt unix))
 
 (install
  (section bin)

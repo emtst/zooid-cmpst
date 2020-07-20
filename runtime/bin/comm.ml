@@ -2,7 +2,6 @@
 
 open Unix (* using this TCP/IP sockets for now *)
 
-
 (* connection descriptor *)
 
 type conn_desc =
@@ -45,7 +44,8 @@ module type MP =
 let build_participant (_conn : conn_desc list) : (module MP) =
   let current_loop : int option ref = ref None in
   (module struct
-     type 'a t = M of 'a
+
+     type 'a t = 'a Lwt.t
 
      (* communication primitives *)
      let send = failwith ""
@@ -53,9 +53,9 @@ let build_participant (_conn : conn_desc list) : (module MP) =
      let recv_one = failwith ""
 
      (* monadic code *)
-     let bind am af =
-       let M a = am in af a
-     let pure x = M x
+     let bind am af = Lwt.bind am af
+
+     let pure x = Lwt.return x
 
      (* recursion *)
      let rec loop id proc =
