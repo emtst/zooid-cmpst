@@ -1,6 +1,6 @@
 (executables
  (names main)
- (libraries lwt unix))
+ (libraries lwt lwt.unix unix))
 
 (install
  (section bin)
