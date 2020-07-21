@@ -5,7 +5,10 @@ open Lwt.Infix
 
 
 type role = string
+type label = string
 type channel = Lwt_unix.file_descr
+
+let max_message_length = 8192
 
 (* connection descriptor *)
 
@@ -33,7 +36,8 @@ module type MP =
 
   val send : Equality.sort -> Equality.sort -> 'a1 -> unit t
 
-  val recv : (Equality.sort -> unit t) -> unit t
+  (* ALERT ROLE *)
+  val recv : Equality.sort -> (Equality.sort -> unit t) -> unit t
 
   val recv_one : Equality.sort -> 'a1 t
 
@@ -54,7 +58,9 @@ type ('a, 'b) dict = 'a -> 'b option
 let empty_dict _ = None
 let add_dict k v dict = fun k' -> if k' = k then Some v else dict k
 let lookup_dict k dict = dict k
-
+let or_die = function
+    | Some v -> v
+    | None -> failwith "or_die called with None"
 
 (* Comm functions *)
 
@@ -94,29 +100,55 @@ let setup_channels (conns : conn_desc list) :
 (* test for the channel setup function *)
 
 let test_channel_setup () =
+  print_endline "Testing channel setup (remove from finished code)" ;
   let cs : conn_desc list =
     [ { role_from = "A" ; role_to = "B" ; spec = Server (build_addr "127.0.0.1" 13245) }
     ; { role_from = "B" ; role_to = "A" ; spec = Client (build_addr "127.0.0.1" 13245) }
     ]
   in
   setup_channels cs >>= fun (chs, _d) ->
-  Lwt_list.iter_s (fun _ch -> Lwt_unix.close _ch >>= fun () -> Lwt.return ()) chs
+  Lwt_list.iter_s (fun _ch -> Lwt_unix.close _ch >>= fun () ->
+                              Lwt.return ()) chs >>= fun () ->
+  print_endline "Ok." ; Lwt.return ()
 
 
 let build_participant (conn : conn_desc list) : (module MP) Lwt.t =
   let current_loop : int option ref = ref None in
   setup_channels conn >>= fun (_chs, part_to_ch) ->
+  let recv' role =
+    let buff = Bytes.create max_message_length in
+    Lwt_unix.recv
+      (part_to_ch role |> or_die)
+      buff 0 max_message_length
+      [] >>= fun _l ->
+    Marshal.from_bytes buff 0 |> Lwt.return
+  in
   Lwt.return
   (module struct
 
      type 'a t = 'a Lwt.t
 
      (* communication primitives *)
-     let send = failwith ""
-     let recv = failwith ""
-     let recv_one p =
-       let _ch = part_to_ch p in
-       assert false
+     let send role lbl _payload =
+       let send' role payload =
+         let buff = Marshal.to_bytes payload [] in
+         let l = Bytes.length buff in
+         Lwt_unix.send
+           (part_to_ch role |> or_die)
+           buff 0 l
+           [] >>= fun l' ->
+         assert (l = l') ; Lwt.return l'
+       in
+       send' role lbl >>= fun _ ->
+       send' role _payload >>= fun _ ->
+       Lwt.return ()
+
+     let recv role cont =
+       recv' role >>= fun lbl' ->
+       let lbl : label  = Obj.magic lbl' in
+       cont lbl
+
+     let recv_one = recv'
 
      (* monadic code *)
      let bind am af = Lwt.(>>=) am af
