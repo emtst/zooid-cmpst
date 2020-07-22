@@ -145,8 +145,7 @@ let build_participant (conn : conn_desc list) : (module MP) Lwt.t =
 
      let recv role cont =
        recv' role >>= fun lbl' ->
-       let lbl : label  = Obj.magic lbl' in
-       cont lbl
+       cont lbl'
 
      let recv_one = recv'
 
@@ -158,7 +157,7 @@ let build_participant (conn : conn_desc list) : (module MP) Lwt.t =
      let rec loop id proc =
        bind proc (fun x ->
            if !current_loop = Some id
-           then loop id proc
+           then (current_loop := None ; loop id proc)
            else pure x)
 
      let set_current id =
