@@ -9,7 +9,7 @@ Require Import MPST.LNVar.
 
 (* Module roleid := NewAtom def_atom. *)
 (* Notation role:=roleid.t. *)
-Notation role := nat.
+Definition role := nat.
 
 Module avar := NewAtom def_atom.
 Notation atom:=avar.t.
