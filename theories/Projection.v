@@ -757,7 +757,7 @@ Section CProject.
   Definition Project p CG CL := paco2 (Proj_ p) bot2 CG CL.
 
   Lemma Project_inv (p : role) (G : rg_ty) (L : rl_ty)
-        (P : (let (sort, _) := role in sort) -> rg_ty -> rl_ty -> Prop) :
+        (P : role -> rg_ty -> rl_ty -> Prop) :
     (forall G0, G0 = G -> rl_end = L -> ~ part_of p G0 -> WF G0 -> P p G0 rl_end) ->
     (forall q CG CL,
        rg_msg p q CG = G -> rl_msg l_send q CL = L ->

@@ -550,17 +550,18 @@ Section Semantics.
                ].
   Defined.
 
+
   Fixpoint find_partsc p G (H : part_of_all p G) {struct H}
     : part_of_allT p G
     :=
     match G as G0 return G = G0 -> part_of_allT p G0 with
     | rg_msg F T C => fun EQ =>
-                        match @eqP role F p with
+                        match @eqP _ F p with
                         | ReflectT pF => match EQ, pF with
                                          | erefl, erefl => pallT_from F T C
                                          end
                         | ReflectF pF =>
-                          match @eqP role T p with
+                          match @eqP _ T p with
                           | ReflectT pT => match EQ, pT with
                                            | erefl, erefl => pallT_to F T C
                                            end

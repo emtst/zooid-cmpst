@@ -9,17 +9,14 @@ Require Import MPST.LNVar.
 
 (* Module roleid := NewAtom def_atom. *)
 (* Notation role:=roleid.t. *)
-Notation role:=nat_eqType.
+Notation role := nat.
 
 Module avar := NewAtom def_atom.
 Notation atom:=avar.t.
 
 Notation rvar := (lnvar atom).
 
-(* Module Lbl := NewAtom def_atom. *)
-(* Notation lbl := Lbl.t. *)
-Definition lbl := nat. (* _eqType. *)
-(* Notation mk_lbl := Lbl.mk_atom. *)
+Definition lbl := nat.
 
 (* Supported messages *)
 Inductive mty : Type :=
