@@ -18,7 +18,7 @@ Notation rvar := (lnvar atom).
 
 (* Module Lbl := NewAtom def_atom. *)
 (* Notation lbl := Lbl.t. *)
-Definition lbl := nat_eqType.
+Definition lbl := nat. (* _eqType. *)
 (* Notation mk_lbl := Lbl.mk_atom. *)
 
 (* Supported messages *)
