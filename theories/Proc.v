@@ -953,7 +953,7 @@ Module MP.
 
   Parameter send : forall T, role -> lbl -> T -> t unit.
 
-  Parameter recv : (lbl -> t unit) -> t unit.
+  Parameter recv : role -> (lbl -> t unit) -> t unit.
   Parameter recv_one : forall T, role -> t T.
 
   Parameter bind : forall T1 T2, t T1 -> (T1 -> t T2) -> t T2.
@@ -971,7 +971,7 @@ Section ProcExtraction.
     | Jump v => MP.set_current (d - v)
     | Loop p => MP.loop d (extract_proc d.+1 p)
     | Recv p a =>
-      MP.recv (fun l =>
+      MP.recv p (fun l =>
                  (fix run_alt a :=
                     match a with
                     | A_sing T l' k =>
