@@ -40,4 +40,9 @@
 
 ## TraceEquiv.v
 
+* `Proj_None_next` uses `IProj_mrg_inv` and the fact that `Merge` is defined with an "extensional" equality on continuations (`EqL`)
+* everything should work up to `samedom_unr` included. Remark: in `iproj_end`, `Merge` appears in a case analysis, however it looks like that such a property will hold easily for every merge relation we pick
+
+
+
 
