@@ -41,8 +41,13 @@
 ## TraceEquiv.v
 
 * `Proj_None_next` uses `IProj_mrg_inv` and the fact that `Merge` is defined with an "extensional" equality on continuations (`EqL`)
-* everything should work up to `samedom_unr` included. Remark: in `iproj_end`, `Merge` appears in a case analysis, however it looks like that such a property will hold easily for every merge relation we pick
+* In `iproj_end`, `Merge` appears in a case analysis, however it looks like that such a property will hold easily for every merge relation we pick
+* In `iproj_unr`, `Merge` appears in the 4th induction case, but only `iprj_mrg` (constructor for `IProj`) is used; this would be defined the same way, but with the generic merge.
+* In `Projection_send` a case is solved by calling `EqL_IProj` with the hypothesis of `Merge something something`; this directly exploits the fact that `Merge` is defined via extensional equality. We might need some lemma that substitutes `EqL_IProj`... something like `Merge C L -> Merge C L' -> IProj G L -> IProj G L'`.
+* up to `Projection_runnable` excluded
 
+ 
+* all other lemmas and definitions should mantain the same statement, proofs should work mutatis mutandis 
 
 
 
