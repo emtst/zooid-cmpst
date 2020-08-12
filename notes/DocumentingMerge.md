@@ -42,12 +42,16 @@
 
 * `Proj_None_next` uses `IProj_mrg_inv` and the fact that `Merge` is defined with an "extensional" equality on continuations (`EqL`)
 * In `iproj_end`, `Merge` appears in a case analysis, however it looks like that such a property will hold easily for every merge relation we pick
-* In `iproj_unr`, `Merge` appears in the 4th induction case, but only `iprj_mrg` (constructor for `IProj`) is used; this would be defined the same way, but with the generic merge.
+* In `IProj_unr`, `Merge` appears in the 4th induction case, but only `iprj_mrg` (constructor for `IProj`) is used; this would be defined the same way, but with the generic merge.
 * In `Projection_send` a case is solved by calling `EqL_IProj` with the hypothesis of `Merge something something`; this directly exploits the fact that `Merge` is defined via extensional equality. We might need some lemma that substitutes `EqL_IProj`... something like `Merge C L -> Merge C L' -> IProj G L -> IProj G L'`.
-* up to `Projection_runnable` excluded
-
- 
-* all other lemmas and definitions should mantain the same statement, proofs should work mutatis mutandis 
+* `Projection_unr` call IProj_unr and uses `Merge`. Everything should work also with a different merge. 
+* `Proj_recv_undo` call prj_mrg and uses `Merge`. Everything should work also with a different merge.
+* `runstep_proj` uses `Proj_recv_undo` (see above).
+* `Project_gstep_proj` uses `runstep_proj` (see above).
+* In `CProj_step`, while proving an intermediate goal, again we use directly the fact that `Merge` is defined as `EqL` of the continuations; that is needed for `EqL_Project`, similar to `EqL_IProj`, about a possible approach for the solution see above the comment about `Projection_send`.
+* In `Project_gstep`, while proving an intermediate goal, again we use directly the fact that `Merge` is defined as `EqL` of the continuations; that is needed `EqL_IProj`, about a possible approach for the solution see above the comment about `Projection_send`.
+* The final main theorem for step soundness, step completeness and trace equivalence rely on `Merge`, only via the results already mentioned; it should be possible to keep the current statements
+* all non-mentioned lemmas and definitions should work smoothly
 
 
 
