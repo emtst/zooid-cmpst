@@ -15,7 +15,7 @@
 ```
 * the generic merge will be a parameter
 * the generic merge should have the same type as `merge_all` (`TyMerge := A : eqType -> seq A -> A`), or maybe, since the idea was of a relation see below `Merge`, for coinductive projection
-* the fundamental definitions `parial_proj` and project involve `merge_all`, hence all the proofs of lemmas involving those must be adapted accordingly. This will help us identifying the properties to ask to our generic merge.
+* the fundamental definitions `partial_proj` and project involve `merge_all`, hence all the proofs of lemmas involving those must be adapted accordingly. This will help us identifying the properties to ask to our generic merge.
 * the statement of lemma `prjall_merge` currently depends on the specific definition of merge; here I see two ways:
   1. we decide that this lemma cannot be rendered gerenric, hence we state and prove it again and again for each instance of the generic merge, or
   2. we identify a property that has to hold for all possible generic merges, that relates the continuation and its merge (maybe something like subtyping); however in this case the lemma would be an "axiom" (we would need to ask that the generic merge has the property).
@@ -43,7 +43,7 @@
 * `Proj_None_next` uses `IProj_mrg_inv` and the fact that `Merge` is defined with an "extensional" equality on continuations (`EqL`)
 * In `iproj_end`, `Merge` appears in a case analysis, however it looks like that such a property will hold easily for every merge relation we pick
 * In `IProj_unr`, `Merge` appears in the 4th induction case, but only `iprj_mrg` (constructor for `IProj`) is used; this would be defined the same way, but with the generic merge.
-* In `Projection_send` a case is solved by calling `EqL_IProj` with the hypothesis of `Merge something something`; this directly exploits the fact that `Merge` is defined via extensional equality. We might need some lemma that substitutes `EqL_IProj`... something like `Merge C L -> Merge C L' -> IProj G L -> IProj G L'`.
+* In `Projection_send` a case is solved by calling `EqL_IProj` with the hypothesis of `Merge something something`; this directly exploits the fact that `Merge` is defined via extensional equality. We might need some lemma that substitutes `EqL_IProj`... something like `Merge C L -> Merge C L' -> IProj G L -> IProj G L'`. For many definitions of `Merge` I guess that more will hold: that `Merge C L -> Merge C L' -> EqL L L'` that we will be able to directly compose with `EqL_IProj`.
 * `Projection_unr` call IProj_unr and uses `Merge`. Everything should work also with a different merge. 
 * `Proj_recv_undo` call prj_mrg and uses `Merge`. Everything should work also with a different merge.
 * `runstep_proj` uses `Proj_recv_undo` (see above).
