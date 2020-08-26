@@ -15,13 +15,13 @@
 ```
 * the generic merge will be a parameter
 * the generic merge should have the same type as `merge_all` (`TyMerge := A : eqType -> seq A -> A`), or maybe, since the idea was of a relation see below `Merge`, for coinductive projection
-* the fundamental definitions `partial_proj` and project involve `merge_all`, hence all the proofs of lemmas involving those must be adapted accordingly. This will help us identifying the properties to ask to our generic merge.
+* the fundamental definitions `partial_proj` and `project` involve `merge_all`, hence all the proofs of lemmas involving those must be adapted accordingly. This will help us identifying the properties to ask to our generic merge.
 * the statement of lemma `prjall_merge` currently depends on the specific definition of merge; here I see two ways:
   1. we decide that this lemma cannot be rendered gerenric, hence we state and prove it again and again for each instance of the generic merge, or
   2. we identify a property that has to hold for all possible generic merges, that relates the continuation and its merge (maybe something like subtyping); however in this case the lemma would be an "axiom" (we would need to ask that the generic merge has the property).
 * Same as for `prjall_merge`: `projectmsg_var`, `pprojall_merge`
 * `pprojall_some`: this is very specific, maybe just erase this
-* again, other lemmas should work mutatis mutandis
+* again, other lemmas should work mutatis mutandis. NOTE: most of the times `prjall_merge` is used only in proofs for properties about, e.g., the presence of participants in some type; while rewriting the proofs with the generic merge, we will identify such properties.
 
 ### Coinductive projection
 ```
