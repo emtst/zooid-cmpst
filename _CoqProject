@@ -12,6 +12,6 @@ theories/Session.v
 theories/Projection.v
 theories/WellFormed.v
 theories/QProjection.v
-theories/TraceEquiv.v
-theories/Proc.v
-theories/Zooid.v
+#theories/TraceEquiv.v
+#theories/Proc.v
+#theories/Zooid.v
