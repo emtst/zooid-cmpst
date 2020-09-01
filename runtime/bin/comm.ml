@@ -170,3 +170,23 @@ let perform () =
   "Host: " ^ gethostname () ^ " IPs: " ^ String.concat ", " addrs
   |> print_endline ;
   test_channel_setup () |> Lwt_main.run
+
+
+(* let toto = Pervasives.succ
+ *
+ * let run_something conn =
+ *   build_participant conn >>= fun mp ->
+ *   let (module MP) = mp in
+ *   let _bob_mp =
+ *     MP.loop 0
+ *       (MP.recv 0 (fun l ->
+ *            if eqn l (Pervasives.succ 0)
+ *            then MP.bind (MP.recv_one 0) (fun x ->
+ *                     MP.bind
+ *                       (MP.send (Pervasives.succ (Pervasives.succ 0))
+ *                          (Pervasives.succ 0)
+ *                          (muln x (Pervasives.succ (Pervasives.succ 0)))) (fun _ ->
+ *                         MP.set_current (subn (Pervasives.succ 0) 0)))
+ *            else MP.pure ()))
+ *   in
+ *   Lwt.return () *)
