@@ -22,7 +22,12 @@ Require Import MPST.Atom.
   as in New Merge Comment
 *)
   Variables (merge : forall (A: eqType), A -> seq A -> option A).
-
+  Axiom merge_nil: forall (A: eqType) (a: A), merge a [::] = Some a.
+  Axiom merge_cons: forall (A: eqType) (a a0: A) aa, merge a (a0::aa) = 
+    match merge a [:: a0] with
+    | Some am => merge am aa
+    | _ => None
+    end.
 Section IProject.
 
   Open Scope mpst_scope.
@@ -255,24 +260,28 @@ Section IProject.
     exists Ks', pprj_all Ks p = Some Ks' /\
                   merge_all [seq K.cnt | K <- Ks'] = Some S.
 
+(*NMC the lemmas below will not hold for any function.
+  I believe that the class of functions preserving merge will 
+  depend on the specific merge.
+
   Lemma fun_mergeall (A B : eqType) (f : A -> B) (Ks : seq (lbl * (mty * A))) X
     : injective f ->
       merge_all [seq f x.cnt | x <- Ks] == Some (f X) ->
       merge_all [seq x.cnt | x <- Ks] == Some X.
-  (*Proof.
+  Proof.
     case: Ks=>[//|K Ks/=] I; elim: Ks=>[|K' Ks]//=.
     - by move=>/eqP-[/I->].
     - by move=> Ih; case: ifP=>///eqP-[/I->]; rewrite eq_refl=>/Ih.
-  Qed.*) Admitted.
+  Qed. Admitted.
 
   Lemma mergeall_fun (A B : eqType) (f : A -> B) (Ks : seq (lbl * (mty * A))) X:
     merge_all [seq x.cnt | x <- Ks] == Some X
     -> merge_all [seq f x.cnt | x <- Ks] == Some (f X).
-  (*Proof.
+  Proof.
     case: Ks=>[//|K Ks/=]; elim: Ks=>[|K' Ks]//=.
     - by move=>/eqP-[->].
     - by move=> Ih; case: ifP=>///eqP-[->]; rewrite eq_refl=>/Ih.
-  Qed.*) Admitted.
+  Qed. Admitted.*)
 
   Lemma dualproj_all Ks p q Ks0 Ks1 S S' s a :
     (forall s s0 : seq (lbl * (mty * s_ty)),
@@ -295,9 +304,9 @@ Section IProject.
     move: Ksqp=>/eqP-Ksqp  L'S'.
     move: (mergeall_pprj Ksqp L'S')=>[Ks' [/eqP-Ks1p /eqP-H]]; move: H EqS.
     rewrite (Ih Ks0' Ks' ) /fullproj_all ?Ksp ?Kspq ?Ksq//.
-    rewrite -map_comp /comp/= -{1}(dualK S').
-    by move=>/(fun_mergeall dualI)/eqP-> /eqP-[<-]; rewrite dualK.
-  Qed.
+    rewrite -map_comp /comp/= -{1}(dualK S'). Admitted.
+(*    by move=>/(fun_mergeall dualI)/eqP-> /eqP-[<-]; rewrite dualK.
+  Qed.*)
 
   Lemma dualproj_all2 Ks p q Ks0 Ks1 S S' s a :
     (forall s s0 : seq (lbl * (mty * s_ty)),
@@ -320,10 +329,10 @@ Section IProject.
     move: Ksqp=>/eqP-Ksqp  L'S'.
     move: (mergeall_pprj Ksqp L'S')=>[Ks' [/eqP-Ks1p /eqP-H]]; move: H.
     rewrite (Ih Ks' Ks0' ) /fullproj_all ?Ksp ?Ksq ?Kspq//.
-    rewrite -map_comp /comp/= -{1}(dualK S').
-    move=>H1 /(fun_mergeall dualI)/eqP-H2; move: H2 H1.
+    rewrite -map_comp /comp/= -{1}(dualK S'). Admitted.
+(*    move=>H1 /(fun_mergeall dualI)/eqP-H2; move: H2 H1.
     by move=>->/eqP-[<-]; rewrite dualK.
-  Qed.
+  Qed.*)
 
   Lemma fprojall_eq Ks p q Ks0 Ks1
     : (forall K, member K Ks ->
@@ -711,9 +720,9 @@ Section IProject.
         move: (mergeall_pprj M_Ks0 L'S)=>[Ks' [/eqP-Ks0q /eqP-H]]; move: H.
         move: (mergeall_pprj M_Ks1 LS')=>[Ks'' [/eqP-Ks1p /eqP-H]]; move: H.
         rewrite (Ih Ks' Ks'') /fullproj_all ?Ksp ?Ksq // -map_comp/comp/=.
-        rewrite -{1}(dualK S'); move=>/(fun_mergeall dualI)/eqP->/eqP-[<-].
+(*        rewrite -{1}(dualK S'); move=>/(fun_mergeall dualI)/eqP->/eqP-[<-].
         by rewrite dualK.
-  Qed.
+  Qed.*) Admitted.
 End IProject.
 
 Section CProject.
@@ -1008,10 +1017,10 @@ Section CProject.
         + by [].
       - rewrite (rwP eqP); move=> mer; rewrite project_msg; rewrite (@prjall_open r k G1 L1 CONT K).
         + move: partdiff =>->; move: FROMr =>->; move: TOr =>-> //=.
-          by rewrite <-map_comp; rewrite (rwP eqP); apply mergeall_fun.
+(*          by rewrite <-map_comp; rewrite (rwP eqP); apply mergeall_fun.
         + by move=> p mem loc; rewrite <-(rwP eqP); move=> prS; apply IH; rewrite //=.
         + by [].
-  Qed.
+  Qed.*) Admitted.
 
   Lemma project_open L G r
     : l_binds 0 L == false -> g_closed (g_rec G) ->
@@ -1057,10 +1066,10 @@ Section CProject.
         + by [].
       - rewrite (rwP eqP); move=> mer; rewrite project_msg; rewrite (@prjall_open r k G1 l_end CONT K).
         + move: FROMTO =>->; move: FROMr =>->; move: TOr =>-> //=.
-          by rewrite <-map_comp; rewrite (rwP eqP); apply mergeall_fun.
+(*          by rewrite <-map_comp; rewrite (rwP eqP); apply mergeall_fun.
         + by move=> p mem loc; rewrite <-(rwP eqP); move=> prS; apply Ih; rewrite //=.
         + by [].
-  Qed.
+  Qed.*) Admitted.
 
   Lemma project_open_end L G r : l_binds 0 L -> project G r = Some L
     -> project (unroll G) r = Some (l_open 0 l_end L).
