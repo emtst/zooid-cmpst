@@ -948,7 +948,7 @@ Section TraceEquivalence.
 
 End TraceEquivalence.
 
-Module MP.
+Module Type ProcessMonad.
   Parameter t : Type -> Type.
 
   Parameter send : forall T, role -> lbl -> T -> t unit.
@@ -962,9 +962,9 @@ Module MP.
 
   Parameter loop : forall T1, nat -> t T1 -> t T1.
   Parameter set_current: nat -> t unit.
-End MP.
+End ProcessMonad.
 
-Section ProcExtraction.
+Module ProcExtraction (MP : ProcessMonad).
   Fixpoint extract_proc (d : nat) (p : Proc) : MP.t unit :=
     match p with
     | Finish => MP.pure tt
