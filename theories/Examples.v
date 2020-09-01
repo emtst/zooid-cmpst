@@ -372,9 +372,10 @@ Opaque muln.
 Opaque subn.
 Opaque maxn.
 
-Module  BOB (MP : ProcessMonad).
+
+Module  BOB (MP : ProcessMonad) : Process(MP).
   Module PE := ProcExtraction(MP).
-  Definition bob_mp := Eval compute in PE.extract_proc 0 (get_proc bob).
+  Definition proc := Eval compute in PE.extract_proc 0 (get_proc bob).
 End BOB.
 
 Separate Extraction BOB.

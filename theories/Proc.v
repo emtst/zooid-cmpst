@@ -948,6 +948,7 @@ Section TraceEquivalence.
 
 End TraceEquivalence.
 
+(* the type of the ambient monad to run processes *)
 Module Type ProcessMonad.
   Parameter t : Type -> Type.
 
@@ -964,6 +965,12 @@ Module Type ProcessMonad.
   Parameter set_current: nat -> t unit.
 End ProcessMonad.
 
+(* The type of modules to describe the implementation of process *)
+Module Type Process (MP: ProcessMonad).
+  Parameter proc : MP.t unit.
+End Process.
+
+(* The process extraction monad *)
 Module ProcExtraction (MP : ProcessMonad).
   Fixpoint extract_proc (d : nat) (p : Proc) : MP.t unit :=
     match p with
