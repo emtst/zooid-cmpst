@@ -383,5 +383,5 @@ Separate Extraction BOB.
 Module  BUYER (MP : ProcessMonad).
   Module PE := ProcExtraction(MP).
   Definition buyer_mp := Eval compute in PE.extract_proc 0 (get_proc buyerB).
-  Extraction "buyerB.ml" buyer_mp.
+  (* Extraction "buyerB.ml" buyer_mp. *)
 End BUYER.
