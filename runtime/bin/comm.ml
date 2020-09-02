@@ -3,9 +3,10 @@
 open Unix (* using this TCP/IP sockets for now *)
 open Lwt.Infix
 
+type role = int
+type lbl = int
 
-type role = string
-type label = string
+
 type channel = Lwt_unix.file_descr
 
 let max_message_length = 8192
@@ -25,30 +26,31 @@ let get_my_addresses () =
   hi.h_addr_list |> Array.to_list
 
 (* Zooid Monadic Runtime *)
-module Equality =
-  struct
-  type sort = role
- end
+(* module Equality =
+ *   struct
+ *   type sort = role
+ *  end *)
+
+
 
 module type MP =
- sig
-  type 'a t
+  sig
+    type 'a t
 
-  val send : Equality.sort -> Equality.sort -> 'a1 -> unit t
+    val send : role -> lbl -> 'a1 -> unit t
 
-  (* ALERT ROLE *)
-  val recv : Equality.sort -> (Equality.sort -> unit t) -> unit t
+    val recv : role -> (lbl -> unit t) -> unit t
 
-  val recv_one : Equality.sort -> 'a1 t
+    val recv_one : role -> 'a1 t
 
-  val bind : 'a1 t -> ('a1 -> 'a2 t) -> 'a2 t
+    val bind : 'a1 t -> ('a1 -> 'a2 t) -> 'a2 t
 
-  val pure : 'a1 -> 'a1 t
+    val pure : 'a1 -> 'a1 t
 
-  val loop : int -> 'a1 t -> 'a1 t
+    val loop : int -> 'a1 t -> 'a1 t
 
-  val set_current : int -> unit t
- end
+    val set_current : int -> unit t
+  end
 
 
 (* simple dictionary *)
@@ -101,9 +103,11 @@ let setup_channels (conns : conn_desc list) :
 
 let test_channel_setup () =
   print_endline "Testing channel setup (remove from finished code)" ;
-  let cs : conn_desc list =
-    [ { role_from = "A" ; role_to = "B" ; spec = Server (build_addr "127.0.0.1" 13245) }
-    ; { role_from = "B" ; role_to = "A" ; spec = Client (build_addr "127.0.0.1" 13245) }
+  let role_a : role = 0 in
+  let role_b : role = 1 in
+  let cs : conn_desc list =     (* TODO: role as ints, consider moving to strings or variables *)
+    [ { role_from = role_a ; role_to = role_b ; spec = Server (build_addr "127.0.0.1" 13245) }
+    ; { role_from = role_b ; role_to = role_a ; spec = Client (build_addr "127.0.0.1" 13245) }
     ]
   in
   setup_channels cs >>= fun (chs, _d) ->
