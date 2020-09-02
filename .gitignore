@@ -64,3 +64,6 @@ theories/*.mli
 
 /*.ml
 /*.mli
+
+examples/**/*.ml
+examples/**/*.mli

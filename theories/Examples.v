@@ -334,14 +334,13 @@ Definition buyerB : wt_proc twob_buyB_lt :=
         => Cancel, tt \as T_unit! finish
       ].
 
-(*** Pipeline example
- *)
+(*m    Pipeline example *)
 
-Definition Alice := 0.
-Definition Bob := 1.
-Definition Carol := 2.
+Definition Alice := 0. Opaque Alice.
+Definition Bob := 1. Opaque Bob.
+Definition Carol := 2. Opaque Carol.
 
-Definition Lbl := 1.
+Definition Lbl := 1. Opaque Lbl.
 
 Definition pipe :=
   g_rec
@@ -360,29 +359,3 @@ Definition bob : wt_proc pp_bob_lt :=
      ).
 
 Close Scope proc_scope.
-
-(* Extraction examples *)
-
-Require Import Extraction.
-Require Import ExtrOcamlBasic.
-Require Import ExtrOcamlNatInt.
-Opaque eqn.
-Opaque addn.
-Opaque muln.
-Opaque subn.
-Opaque maxn.
-
-
-Module  BOB (MP : ProcessMonad) : Process(MP).
-  Module PE := ProcExtraction(MP).
-  Definition proc := Eval compute in PE.extract_proc 0 (get_proc bob).
-End BOB.
-
-Separate Extraction BOB.
-
-
-Module  BUYER (MP : ProcessMonad).
-  Module PE := ProcExtraction(MP).
-  Definition buyer_mp := Eval compute in PE.extract_proc 0 (get_proc buyerB).
-  (* Extraction "buyerB.ml" buyer_mp. *)
-End BUYER.
