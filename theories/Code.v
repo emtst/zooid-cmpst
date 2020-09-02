@@ -21,7 +21,7 @@ Unset Strict Implicit.
 Import Prenex Implicits.
 
 
-Cd "./examples".
+Cd "./runtime/examples".
 
 
 (* Extraction examples *)
@@ -52,4 +52,4 @@ Cd "..".
 
 
 (* leave this at the end, it needs to stay in the same directory it started *)
-Cd "..".
+Cd "../..".
