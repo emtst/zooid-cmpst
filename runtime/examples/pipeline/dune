@@ -1,0 +1,9 @@
+(executables
+ (names main)
+ (libraries lwt lwt.unix unix))
+
+(install
+ (section bin)
+ (files
+  (main.exe as pipelineBob))
+ (package zooidrt))
