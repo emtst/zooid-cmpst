@@ -1,0 +1,4 @@
+(library
+ (flags
+  (:standard -w +A-39-4-42-33))
+ (name pipelineLib))
