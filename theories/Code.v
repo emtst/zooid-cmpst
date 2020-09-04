@@ -43,7 +43,7 @@ Module  BOB (MP : ProcessMonad) : Process(MP).
   Definition proc := Eval compute in PE.extract_proc 0 (get_proc bob).
 End BOB.
 
-Cd "./pipeline".
+Cd "./pipeline/generated".
 
 Separate Extraction BOB.
 
@@ -52,4 +52,4 @@ Cd "..".
 
 
 (* leave this at the end, it needs to stay in the same directory it started *)
-Cd "../..".
+Cd "../../..".
