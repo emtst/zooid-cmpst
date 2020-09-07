@@ -1,7 +1,5 @@
+(* Main file *)
 
-
-
-(*  Main file *)
-
-let () =  print_endline "Zooid Runtime" ;
-          Comm.perform()
+let () =
+  print_endline "Zooid Runtime";
+  Comm.perform ()
