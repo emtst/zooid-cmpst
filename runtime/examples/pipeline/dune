@@ -1,3 +1,7 @@
+; this is a bit of a hack, but it takes the implementation of comm to
+; this directory in the build system
+(copy_files ../../bin/comm.ml)
+
 (executables
  (names main)
  (libraries lwt lwt.unix unix))
