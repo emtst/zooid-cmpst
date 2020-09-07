@@ -34,3 +34,24 @@ let test_functor =
   let (module M : TEST) = m in
   let (module F : FUNCTOR_RESULT) = (module TestFunctor (M)) in
   string_of_int F.result |> print_endline
+
+
+(* new experiment *)
+
+module type PAR = sig
+  type t
+end
+
+module type FUNC = functor (P : PAR) -> sig
+                     val id : P.t -> P.t
+                   end
+
+module Par : PAR = struct type t = string end
+
+module Func : FUNC = functor (P: PAR) -> struct
+  let id x = x
+end
+
+(* let test_func_par =
+ *   let _x = (module Func(Par)) in
+ *   () *)
