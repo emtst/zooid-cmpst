@@ -32,12 +32,6 @@ Section IProject.
 
   Open Scope mpst_scope.
 
-
-
-
-
-
-
   Fixpoint merge_old (A: eqType) (oL : A) (K : seq A) :=
     match K with
     | [::] => Some oL
@@ -262,7 +256,8 @@ Section IProject.
 
 (*NMC the lemmas below will not hold for any function.
   I believe that the class of functions preserving merge will 
-  depend on the specific merge.
+  depend on the specific merge. I'd leave these commented for now,
+  rather than admitted.
 
   Lemma fun_mergeall (A B : eqType) (f : A -> B) (Ks : seq (lbl * (mty * A))) X
     : injective f ->
@@ -381,6 +376,58 @@ Section IProject.
     elim: Ks=>//=K Ks Ih H; rewrite mem_cat negb_or (H _ (or_introl erefl)) Ih//.
     by move=> K0 M; apply/H; right.
   Qed.
+
+  Lemma flatten_notin (A: eqType) (p : A) Ks :
+    p \notin flatten Ks ->
+    (forall K, member K Ks -> p \notin K).
+  Proof.
+    elim: Ks=>//=K Ks Ih; rewrite mem_cat negb_or=>/andP-[pK pKs] K' [->//|].
+    by move: K'; apply/Ih.
+  Qed.
+
+  Axiom merge_partsL_ax:
+    forall lK0 lKs p L,
+    (forall lK, member lK lKs -> p \notin partsL lK) ->
+    p \notin partsL lK0 -> merge lK0 lKs = Some L -> 
+    p \notin partsL L.
+
+
+  Lemma merge_all_partsL:
+    forall lKs p L,
+    (forall lK, member lK lKs -> p \notin partsL lK) ->
+    merge_all lKs = Some L -> p \notin partsL L.
+  Proof.
+  elim; [by []| move=> lK0 lKs IH p L hp mer].
+  apply (@merge_partsL_ax lK0 lKs p L).
+  + by move=> lK mem; apply hp; right.
+  + by apply hp; left.
+  + by [].
+  Qed.
+
+(**)
+
+  Lemma notin_parts_project Lp p G
+       (Ep : project G p = Some Lp)
+       (NIN : p \notin participants G)
+    : p \notin partsL Lp.
+  Proof.
+  elim: G=>[|v|G Ih|q r Ks Ih] in Lp NIN Ep *; move: Ep=>[].
+  - by move<-.
+  - by move<-.
+  - move=>/=; case Ep: project=>[Lp'|//]; case: ifP=>//; first by move=>_[<-].
+      by move=> _ [<-]/=; apply/Ih.
+  - rewrite project_msg; case Ep:prj_all=>[Ks'|//]; case:ifP=>//Npq.
+    move: NIN=>/=; rewrite !in_cons !negb_or=>/andP-[N1 /andP-[N2 NIN]].
+    rewrite eq_sym (negPf N1) eq_sym (negPf N2) => M.
+    have [K MK]: (exists K, member K Ks).
+    + case: Ks Ep {Ih NIN}=>[[E]|K Ks _]//=; last (by exists K; left).
+      by move: E M=><-.
+    + move: Ep M=>/eqP-Ep M. (* /eqP-M; move: (prjall_merge Ep M)=>H.
+      move: NIN=>/flatten_notin/member_map-H' {Ep M N1 N2 Npq Ks'}.
+         by apply/(Ih _ MK); first (by apply/H'); apply/eqP/H. *)
+  (* Qed. *)
+      apply: (@merge_all_partsL _ _ _ _ M).
+  Admitted.
 
   Lemma l_binds_notin Lp p G
         (Ep : project G p = Some Lp)
@@ -525,34 +572,9 @@ Section IProject.
       by apply: Ih.
   Qed.*)Admitted.
 
-  Lemma flatten_notin (A: eqType) (p : A) Ks :
-    p \notin flatten Ks ->
-    (forall K, member K Ks -> p \notin K).
-  Proof.
-    elim: Ks=>//=K Ks Ih; rewrite mem_cat negb_or=>/andP-[pK pKs] K' [->//|].
-    by move: K'; apply/Ih.
-  Qed.
 
-  (* Lemma notin_parts_project Lp p G *)
-  (*       (Ep : project G p = Some Lp) *)
-  (*       (NIN : p \notin participants G) *)
-  (*   : p \notin partsL Lp. *)
-  (* Proof. *)
-  (*   elim: G=>[|v|G Ih|q r Ks Ih] in Lp NIN Ep *; move: Ep=>[]. *)
-  (*   - by move<-. *)
-  (*   - by move<-. *)
-  (*   - move=>/=; case Ep: project=>[Lp'|//]; case: ifP=>//; first by move=>_[<-]. *)
-  (*     by move=> _ [<-]/=; apply/Ih. *)
-  (*   - rewrite project_msg; case Ep:prj_all=>[Ks'|//]; case:ifP=>//Npq. *)
-  (*     move: NIN=>/=; rewrite !in_cons !negb_or=>/andP-[N1 /andP-[N2 NIN]]. *)
-  (*     rewrite eq_sym (negPf N1) eq_sym (negPf N2) => M. *)
-  (*     have [K MK]: (exists K, member K Ks). *)
-  (*     + case: Ks Ep {Ih NIN}=>[[E]|K Ks _]//=; last (by exists K; left). *)
-  (*       by move: E M=><-. *)
-  (*     move: Ep M=>/eqP-Ep /eqP-M; move: (prjall_merge Ep M)=>H. *)
-  (*     move: NIN=>/flatten_notin/member_map-H' {Ep M N1 N2 Npq Ks'}. *)
-  (*     by apply/(Ih _ MK); first (by apply/H'); apply/eqP/H. *)
-  (* Qed. *)
+
+
 
   (* Lemma binds_project_isin n G L p : *)
   (*   project G p = Some L -> *)
