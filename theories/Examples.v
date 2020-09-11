@@ -350,12 +350,26 @@ Definition pipe :=
                          [:: (Lbl, (T_nat, g_var 0))]))]).
 
 Definition pipe_env := \project pipe.
+Definition pp_alice_lt := \get pipe_env Alice.
 Definition pp_bob_lt := \get pipe_env Bob.
+Definition pp_carol_lt := \get pipe_env Carol.
+
+Definition alice : wt_proc pp_alice_lt :=
+     loop (
+          \send Bob Lbl (T:=T_nat) 3 (jump 0)
+       ).
 
 Definition bob : wt_proc pp_bob_lt :=
      loop (
        \recv Alice \lbl Lbl, x : T_nat;
        \send Carol Lbl (T:= T_nat) (x * 2) (jump 0)
      ).
+
+Definition carol : wt_proc pp_carol_lt :=
+     loop (
+       \recv Bob \lbl Lbl, x : T_nat;
+        (jump 0)
+     ).
+
 
 Close Scope proc_scope.
