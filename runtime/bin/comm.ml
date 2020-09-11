@@ -31,6 +31,8 @@ let get_my_addresses () =
 module type MP = sig
   type 'a t
 
+  val run : 'a1 t -> 'a1
+
   val send : role -> lbl -> 'a1 -> unit t
 
   val recv : role -> (lbl -> unit t) -> unit t
@@ -127,6 +129,8 @@ let build_participant (conn : conn_desc list) : (module MP) Lwt.t =
   Lwt.return
     ( module struct
       type 'a t = 'a Lwt.t
+
+      let run = Lwt_main.run
 
       (* communication primitives *)
       let send role lbl _payload =

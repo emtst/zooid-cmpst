@@ -9,14 +9,13 @@ module type PROCESS =
     val proc : unit PM.t
 end
 
-let experiment () =
-  let participants : Comm.conn_desc list = [] in
+let experiment (participants : Comm.conn_desc list) : unit Lwt.t =
   Comm.build_participant participants >>= fun mp ->
   let (module IMP) = mp in
   let (module Proc) = (module BOB (IMP) : PROCESS) in
-  let _ = Proc.proc in Lwt.return ()
-
-
+  let result = Proc.PM.run Proc.proc in
+  Lwt.return result
 
 let () = print_endline "here we will have the implementation of pipeline"
-       ; Comm.perform ()
+       ; (* let _ = experiment [] in *)
+         Comm.perform ()
