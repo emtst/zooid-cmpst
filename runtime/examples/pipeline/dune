@@ -3,11 +3,13 @@
 (copy_files ../../bin/comm.ml)
 
 (executables
- (names main)
+ (names malice mbob mcarol)
  (libraries lwt lwt.unix unix pipelineLib))
 
 (install
  (section bin)
  (files
-  (main.exe as pipelineBob))
+  (malice.exe as malice)
+  (mbob.exe as mbob)
+  (mcarol.exe as mcarol))
  (package zooidrt))
