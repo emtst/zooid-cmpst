@@ -1,20 +1,21 @@
-(* open PipelineLib.Code *)
+open PipelineLib.Code
 
 open Lwt.Infix
 
 
-module type Process = functor (MP : PipelineLib.Proc.ProcessMonad) -> sig
-  val proc : unit MP.t
+module type PROCESS =
+  sig
+    module PM : PipelineLib.Proc.ProcessMonad
+    val proc : unit PM.t
 end
 
 let experiment () =
   let participants : Comm.conn_desc list = [] in
-   Comm.build_participant participants >>= fun mp ->
-   let (module IMP) = mp in
-   (* let (module A) = (module Process (IMP)) in *)
-   (* let _b : (module (type Process(IMP))) = (module BOB) in
-    * let _a = (module BOB (IMP)) in *)
-   assert false
+  Comm.build_participant participants >>= fun mp ->
+  let (module IMP) = mp in
+  let (module Proc) = (module BOB (IMP) : PROCESS) in
+  let _ = Proc.proc in Lwt.return ()
+
 
 
 let () = print_endline "here we will have the implementation of pipeline"
