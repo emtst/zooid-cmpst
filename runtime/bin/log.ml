@@ -46,7 +46,7 @@ let log_str (msg: string) : unit =
   try
     match !log_channel with
     | Some ch ->
-       let msg = !log_name ^ " : " ^ get_now() ^ "::" ^ msg ^ "\n" in
+       let msg = !log_name ^ " : " ^ get_now() ^ " :: " ^ msg ^ "\n" in
        output_string ch msg ; flush ch
     | _ -> ()
   with _ ->
