@@ -65,13 +65,7 @@ end
 
 (* simple dictionary *)
 
-type ('a, 'b) dict = 'a -> 'b option
-
-let empty_dict _ = None
-
-let add_dict k v dict k' = if k' = k then Some v else dict k
-
-let lookup_dict k dict = dict k
+module Dict = Map.Make(Int)
 
 let or_die = function Some v -> v | None -> failwith "or_die called with None"
 
@@ -99,7 +93,7 @@ let client_request addr =
 
 (* Function that sets up the connection and implements the monad *)
 let setup_channels (conns : conn_desc list) :
-    (channel list * (role, channel) dict) Lwt.t =
+    (channel list * channel Dict.t) Lwt.t =
   let conn_desc_to_ch (conn : conn_desc) : (role * channel) Lwt.t =
     ( match conn.spec with
     | Server addr ->
@@ -111,8 +105,8 @@ let setup_channels (conns : conn_desc list) :
   Log.log_str ("about to start connections: " ^ show_conn_descs conns) ;
   List.map conn_desc_to_ch conns |> Lwt.all >>= fun cs ->
   Lwt_list.fold_left_s
-    (fun (chs, dict) (role, ch) -> Lwt.return (ch :: chs, add_dict role ch dict))
-    ([], empty_dict) cs
+    (fun (chs, dict) (role, ch) -> Lwt.return (ch :: chs, Dict.add role ch dict))
+    ([], Dict.empty) cs
 
 (* test for the channel setup function *)
 
@@ -151,7 +145,8 @@ let build_participant (conn : conn_desc list) : (module MP) Lwt.t =
   Log.log_str "channels setup" ;
   let recv' role =
     let buff = Bytes.create max_message_length in
-    Lwt_unix.recv (part_to_ch role |> or_die) buff 0 max_message_length []
+    Log.log_str "about to recv" ;
+    Lwt_unix.recv (Dict.find role part_to_ch) buff 0 max_message_length []
     >>= fun _l -> Marshal.from_bytes buff 0 |> Lwt.return
   in
   Lwt.return
@@ -165,7 +160,8 @@ let build_participant (conn : conn_desc list) : (module MP) Lwt.t =
         let send' role payload =
           let buff = Marshal.to_bytes payload [] in
           let l = Bytes.length buff in
-          Lwt_unix.send (part_to_ch role |> or_die) buff 0 l [] >>= fun l' ->
+          Log.log_str ("about to send: " ^ string_of_int role) ;
+          Lwt_unix.send (Dict.find role part_to_ch) buff 0 l [] >>= fun l' ->
           assert (l = l');
           Lwt.return l'
         in
