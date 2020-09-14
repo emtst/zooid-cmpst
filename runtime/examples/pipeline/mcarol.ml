@@ -12,7 +12,7 @@ end
 let experiment (participants : Comm.conn_desc list) : unit Lwt.t =
   Comm.build_participant participants >>= fun mp ->
   let (module IMP) = mp in
-  let (module Proc) = (module BOB (IMP) : PROCESS) in
+  let (module Proc) = (module CAROL (IMP) : PROCESS) in
   let result = Proc.PM.run Proc.proc in
   Lwt.return result
 

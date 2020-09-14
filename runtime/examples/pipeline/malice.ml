@@ -10,12 +10,13 @@ module type PROCESS =
 end
 
 let experiment (participants : conn_desc list) : unit Lwt.t =
-  print_endline "VOO1" ;
+  Log.log_str "starting" ;
   Comm.build_participant participants >>= fun mp ->
+  Log.log_str "connections established" ;
   let (module IMP) = mp in
-  let (module Proc) = (module BOB (IMP) : PROCESS) in
+  let (module Proc) = (module ALICE (IMP) : PROCESS) in
   let result = Proc.PM.run Proc.proc in
-  print_endline "VOO2" ;
+  Log.log_str "ending" ;
   Lwt.return result
 
 let ralice = 0

@@ -16,7 +16,22 @@ let max_message_length = 8192
 
 type connection_spec = Server of sockaddr | Client of sockaddr
 
+let show_sockaddr = function
+  | ADDR_UNIX s -> "Unix: "^ s
+  | ADDR_INET (ip, port) -> string_of_inet_addr ip ^ ":" ^ string_of_int port
+
+let show_connection = function
+  | Server sa -> "Server " ^ show_sockaddr sa
+  | Client sa -> "Client " ^ show_sockaddr sa
+
 type conn_desc = { role_from : role; role_to : role; spec : connection_spec }
+
+let show_conn_desc c =
+  "(" ^ string_of_int c.role_from
+  ^ "|" ^ string_of_int c.role_to
+  ^ "|" ^ show_connection c.spec ^ ")"
+
+let show_conn_descs cs = List.map show_conn_desc cs |> String.concat "**"
 
 let get_my_addresses () =
   let hi = gethostname () |> gethostbyname in
@@ -66,10 +81,15 @@ let build_addr ip port = ADDR_INET (inet_addr_of_string ip, port)
 
 (* server accepts a connection *)
 let server_accept (sa : sockaddr) =
+  Log.log_str "creating socket" ;
   let socket = Lwt_unix.socket PF_INET SOCK_STREAM 0 in
+  Log.log_str "binding socket" ;
   Lwt_unix.bind socket sa >>= fun () ->
+  Log.log_str "listening socket" ;
   Lwt_unix.listen socket 0;
+  Log.log_str "accepting socket" ;
   Lwt_unix.accept socket >>= fun (ch, _) ->
+  Log.log_str "closing socket" ;
   Lwt_unix.close socket >>= fun () -> Lwt.return ch
 
 (* client requests a connection *)
@@ -82,10 +102,13 @@ let setup_channels (conns : conn_desc list) :
     (channel list * (role, channel) dict) Lwt.t =
   let conn_desc_to_ch (conn : conn_desc) : (role * channel) Lwt.t =
     ( match conn.spec with
-    | Server addr -> server_accept addr
+    | Server addr ->
+       Log.log_str "setting up a server connection" ;
+       Lwt_unix.handle_unix_error server_accept addr
     | Client addr -> client_request addr )
     >>= fun s -> Lwt.return (conn.role_to, s)
   in
+  Log.log_str ("about to start connections: " ^ show_conn_descs conns) ;
   List.map conn_desc_to_ch conns |> Lwt.all >>= fun cs ->
   Lwt_list.fold_left_s
     (fun (chs, dict) (role, ch) -> Lwt.return (ch :: chs, add_dict role ch dict))
@@ -123,7 +146,9 @@ let test_channel_setup () =
 
 let build_participant (conn : conn_desc list) : (module MP) Lwt.t =
   let current_loop : int option ref = ref None in
+  Log.log_str "about to setup channels" ;
   setup_channels conn >>= fun (_chs, part_to_ch) ->
+  Log.log_str "channels setup" ;
   let recv' role =
     let buff = Bytes.create max_message_length in
     Lwt_unix.recv (part_to_ch role |> or_die) buff 0 max_message_length []

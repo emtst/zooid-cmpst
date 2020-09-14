@@ -58,7 +58,7 @@ End CAROL.
 
 Cd "./pipeline/generated".
 
-Separate Extraction BOB.
+Separate Extraction ALICE BOB CAROL.
 
 Cd "..".
 

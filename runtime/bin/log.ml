@@ -33,12 +33,20 @@ let create_log (name : string) : bool =
   at_exit close_log ;
   is_log_on ()
 
+let get_now () : string =
+  let tod = Unix.gettimeofday () |> Unix.gmtime in
+  string_of_int (1900 + tod.tm_year) ^ "/"
+  ^ string_of_int tod.tm_mon ^ "/"
+  ^ string_of_int tod.tm_mday ^ " "
+  ^ string_of_int tod.tm_hour ^ ":"
+  ^ string_of_int tod.tm_min ^ ":"
+  ^ string_of_int tod.tm_sec
 
 let log_str (msg: string) : unit =
   try
     match !log_channel with
     | Some ch ->
-       let msg = !log_name ^ " : " ^ msg ^ "\n" in
+       let msg = !log_name ^ " : " ^ get_now() ^ "::" ^ msg ^ "\n" in
        output_string ch msg ; flush ch
     | _ -> ()
   with _ ->
