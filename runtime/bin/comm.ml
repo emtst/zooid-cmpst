@@ -130,7 +130,7 @@ let build_participant (conn : conn_desc list) : (module MP) Lwt.t =
     ( module struct
       type 'a t = 'a Lwt.t
 
-      let run = Lwt_main.run
+      let run = Log.log_str "running main" ; Lwt_main.run
 
       (* communication primitives *)
       let send role lbl _payload =
