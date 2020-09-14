@@ -21,8 +21,8 @@ let rbob = 1
 let rcarol = 2
 
 let participants = [
-    { role_from = rbob
-    ; role_to = ralice
+    { role_from = rcarol
+    ; role_to = rbob
     ; spec =   Client(build_addr "127.0.0.1" 10002)
   }]
 

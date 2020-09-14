@@ -142,7 +142,10 @@ let build_participant (conn : conn_desc list) : (module MP) Lwt.t =
   let current_loop : int option ref = ref None in
   Log.log_str "about to setup channels" ;
   setup_channels conn >>= fun (_chs, part_to_ch) ->
-  Log.log_str "channels setup" ;
+  let ch_str = Seq.fold_left
+                 (fun xs (x, _) -> string_of_int x ^ ", " ^ xs ) ""  (Dict.to_seq part_to_ch)
+  in
+  Log.log_str ("channels setup:" ^ ch_str);
   let recv' role =
     let buff = Bytes.create max_message_length in
     Log.log_str "about to recv" ;
