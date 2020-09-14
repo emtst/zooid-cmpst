@@ -5,18 +5,18 @@ open Comm
 module type PROCESS =
   sig
     module PM : PipelineLib.Proc.ProcessMonad
-    val proc : unit PM.t
+    val proc : unit -> unit
 end
 
 let experiment (participants : conn_desc list) : unit =
   Log.log_str "starting" ;
-  let mp = Lwt_main.run (Comm.build_participant participants) in
+  let mp = Comm.build_participant participants in
   Log.log_str "connections established" ;
   let (module IMP) = mp in
   let (module Proc) = (module ALICE (IMP) : PROCESS) in
   Log.log_str "running proc" ;
-  (* Proc.PM.run Proc.proc *)
-  ()
+  Proc.proc ()
+
 
 
 

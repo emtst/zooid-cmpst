@@ -46,7 +46,7 @@ let get_my_addresses () =
 module type MP = sig
   type 'a t
 
-  val run : 'a1 t -> 'a1
+  val run : (unit -> 'a1 t) -> 'a1
 
   val send : role -> lbl -> 'a1 -> unit t
 
@@ -58,7 +58,7 @@ module type MP = sig
 
   val pure : 'a1 -> 'a1 t
 
-  val loop : int -> 'a1 t -> 'a1 t
+  val loop : int -> (unit -> 'a1 t) -> 'a1 t
 
   val set_current : int -> unit t
 end
@@ -76,99 +76,98 @@ let build_addr ip port = ADDR_INET (inet_addr_of_string ip, port)
 (* server accepts a connection *)
 let server_accept (sa : sockaddr) =
   Log.log_str "creating socket" ;
-  let socket = Lwt_unix.socket PF_INET SOCK_STREAM 0 in
+  let socket = Unix.socket PF_INET SOCK_STREAM 0 in
   Log.log_str "binding socket" ;
-  Lwt_unix.bind socket sa >>= fun () ->
+  Unix.bind socket sa ;
   Log.log_str "listening socket" ;
-  Lwt_unix.listen socket 0;
+  Unix.listen socket 0;
   Log.log_str "accepting socket" ;
-  Lwt_unix.accept socket >>= fun (ch, _) ->
+  let (ch, _) = Unix.accept socket in
   Log.log_str "closing socket" ;
-  Lwt_unix.close socket >>= fun () -> Lwt.return ch
+  Unix.close socket ; ch
 
 (* client requests a connection *)
 let client_request addr =
-  let socket = Lwt_unix.socket PF_INET SOCK_STREAM 0 in
-  Lwt_unix.connect socket addr >>= fun () -> Lwt.return socket
+  let socket = Unix.socket PF_INET SOCK_STREAM 0 in
+  Unix.connect socket addr ; socket
 
 (* Function that sets up the connection and implements the monad *)
 let setup_channels (conns : conn_desc list) :
-    channel Dict.t Lwt.t =
-  let conn_desc_to_ch (conn : conn_desc) : (role * channel) Lwt.t =
-    ( match conn.spec with
+    channel Dict.t =
+  let conn_desc_to_ch (conn : conn_desc) : (role * Unix.file_descr)=
+    let s  = match conn.spec with
     | Server addr ->
        Log.log_str "setting up a server connection" ;
-       Lwt_unix.handle_unix_error server_accept addr
-    | Client addr -> client_request addr )
-    >>= fun s -> Lwt.return (conn.role_to, s)
+       server_accept addr
+    | Client addr -> client_request addr
+    in  (conn.role_to, s)
   in
   Log.log_str ("about to start connections: " ^ show_conn_descs conns) ;
-  List.map conn_desc_to_ch conns |> Lwt.all >>= fun cs ->
-  Lwt_list.fold_left_s
-    (fun  dict (role, ch) -> Dict.add role ch dict|> Lwt.return)
+  let cs = List.map conn_desc_to_ch conns in
+  List.fold_left
+    (fun dict (role, ch) -> Dict.add role (Lwt_unix.of_unix_file_descr ch) dict)
     Dict.empty cs
 
 (* test for the channel setup function *)
 
-let test_channel_setup () =
-  print_endline "Testing channel setup (remove from finished code)";
-  Log.log_str "Testing channel setup" ;
-  let role_a : role = 0 in
-  let role_b : role = 1 in
-  let cs : conn_desc list =
-    (* TODO: role as ints, consider moving to strings or variables *)
-    [
-      {
-        role_from = role_a;
-        role_to = role_b;
-        spec = Server (build_addr "127.0.0.1" 13245);
-      };
-      {
-        role_from = role_b;
-        role_to = role_a;
-        spec = Client (build_addr "127.0.0.1" 13245);
-      };
-    ]
-  in
-  setup_channels cs >>= fun _d ->
-  Log.log_str "channels setup successfully" ;
-  let chs = assert false in (* collect al the channels in the dict *)
-  Lwt_list.iter_s (fun _ch -> Lwt_unix.close _ch >>= fun () -> Lwt.return ()) chs
-  >>= fun () ->
-  Log.log_str "channels closed" ;
-  print_endline "Ok.";
-  Lwt.return ()
+(* let test_channel_setup () =
+ *   print_endline "Testing channel setup (remove from finished code)";
+ *   Log.log_str "Testing channel setup" ;
+ *   let role_a : role = 0 in
+ *   let role_b : role = 1 in
+ *   let cs : conn_desc list =
+ *     (\* TODO: role as ints, consider moving to strings or variables *\)
+ *     [
+ *       {
+ *         role_from = role_a;
+ *         role_to = role_b;
+ *         spec = Server (build_addr "127.0.0.1" 13245);
+ *       };
+ *       {
+ *         role_from = role_b;
+ *         role_to = role_a;
+ *         spec = Client (build_addr "127.0.0.1" 13245);
+ *       };
+ *     ]
+ *   in
+ *   let _d = setup_channels cs in
+ *   Log.log_str "channels setup successfully" ;
+ *   let chs = assert false in (\* collect al the channels in the dict *\)
+ *   List.iter (fun _ch -> Lwt_unix.close _ch >>= fun () -> Lwt.return ()) chs
+ *   >>= fun () ->
+ *   Log.log_str "channels closed" ;
+ *   print_endline "Ok.";
+ *   Lwt.return () *)
 
-let build_participant (conn : conn_desc list) : (module MP) Lwt.t =
+let build_participant (conn : conn_desc list) : (module MP) =
   let current_loop : int option ref = ref None in
   Log.log_str "about to setup channels" ;
-  setup_channels conn >>= fun part_to_ch ->
+  let part_to_ch = setup_channels conn in
   let ch_str = Seq.fold_left
                  (fun xs (x, _) -> string_of_int x ^ ", " ^ xs ) ""  (Dict.to_seq part_to_ch)
   in
   Log.log_str ("channels setup:" ^ ch_str);
+  let send' role payload =
+    let buff = Marshal.to_bytes payload [] in
+    let l = Bytes.length buff in
+    Log.log_str ("about to send: " ^ string_of_int role) ;
+    Lwt_unix.send (Dict.find role part_to_ch) buff 0 l [] >>= fun l' ->
+    assert (l = l');
+    Lwt.return l'
+  in
   let recv' role =
     let buff = Bytes.create max_message_length in
     Log.log_str "about to recv" ;
     Lwt_unix.recv (Dict.find role part_to_ch) buff 0 max_message_length []
     >>= fun _l -> Marshal.from_bytes buff 0 |> Lwt.return
   in
-  Lwt.return
-    ( module struct
+     (module struct
       type 'a t = 'a Lwt.t
 
-      let run = Log.log_str "running main" ; Lwt_main.run
+      let run p = Log.log_str "running main" ; Unix.sleep 5 ; Lwt_main.run (p ())
 
       (* communication primitives *)
       let send role lbl _payload =
-        let send' role payload =
-          let buff = Marshal.to_bytes payload [] in
-          let l = Bytes.length buff in
-          Log.log_str ("about to send: " ^ string_of_int role) ;
-          Lwt_unix.send (Dict.find role part_to_ch) buff 0 l [] >>= fun l' ->
-          assert (l = l');
-          Lwt.return l'
-        in
         send' role lbl >>= fun _ ->
         send' role _payload >>= fun _ -> Lwt.return ()
 
@@ -188,7 +187,7 @@ let build_participant (conn : conn_desc list) : (module MP) Lwt.t =
 
       (* recursion *)
       let rec loop id proc =
-        bind (Log.log_str "about to proc" ; proc) (fun x ->
+        bind (Log.log_str "about to proc" ; proc ()) (fun x ->
             Log.log_str ("curent_loop: " ^ string_of_current ()) ;
             Log.log_str ("new loop: " ^ string_of_int id) ;
             if !current_loop = Some id then (
@@ -201,12 +200,12 @@ let build_participant (conn : conn_desc list) : (module MP) Lwt.t =
         "set_current: " ^ string_of_int id  |> Log.log_str ;
         current_loop := Some id;
         pure ()
-    end : MP )
+    end : MP)
 
 let perform () =
   let addrs = get_my_addresses () |> List.map string_of_inet_addr in
   "Host: " ^ gethostname () ^ " IPs: " ^ String.concat ", " addrs |> print_endline;
-  test_channel_setup () |> Lwt_main.run
+  (* test_channel_setup () |> Lwt_main.run *) ()
 
 (* let toto = Pervasives.succ
  *

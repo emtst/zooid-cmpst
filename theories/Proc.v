@@ -952,7 +952,7 @@ End TraceEquivalence.
 Module Type ProcessMonad.
   Parameter t : Type -> Type.
 
-  Parameter run : forall A, t A -> A.
+  Parameter run : forall A, (unit -> t A) -> A.
 
   Parameter send : forall T, role -> lbl -> T -> t unit.
 
@@ -963,14 +963,14 @@ Module Type ProcessMonad.
 
   Parameter pure : forall T1, T1 -> t T1.
 
-  Parameter loop : forall T1, nat -> t T1 -> t T1.
+  Parameter loop : forall T1, nat -> (unit -> t T1) -> t T1.
   Parameter set_current: nat -> t unit.
 End ProcessMonad.
 
 (* The type of modules to describe the implementation of process *)
 Module Type Process (MP: ProcessMonad).
   Module PM := MP.
-  Parameter proc : MP.t unit.
+  Parameter proc : unit -> unit.
 End Process.
 
 (* The process extraction monad *)
@@ -979,7 +979,7 @@ Module ProcExtraction (MP : ProcessMonad).
     match p with
     | Finish => MP.pure tt
     | Jump v => MP.set_current (d - v.+1)
-    | Loop p => MP.loop d (extract_proc d.+1 p)
+    | Loop p => MP.loop d (fun _ => extract_proc d.+1 p)
     | Recv p a =>
       MP.recv p (fun l =>
                  (fix run_alt a :=
