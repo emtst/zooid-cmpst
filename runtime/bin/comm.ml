@@ -95,6 +95,7 @@ let setup_channels (conns : conn_desc list) :
 
 let test_channel_setup () =
   print_endline "Testing channel setup (remove from finished code)";
+  Log.log_str "Testing channel setup" ;
   let role_a : role = 0 in
   let role_b : role = 1 in
   let cs : conn_desc list =
@@ -113,8 +114,10 @@ let test_channel_setup () =
     ]
   in
   setup_channels cs >>= fun (chs, _d) ->
+  Log.log_str "channels setup successfully" ;
   Lwt_list.iter_s (fun _ch -> Lwt_unix.close _ch >>= fun () -> Lwt.return ()) chs
   >>= fun () ->
+  Log.log_str "channels closed" ;
   print_endline "Ok.";
   Lwt.return ()
 
