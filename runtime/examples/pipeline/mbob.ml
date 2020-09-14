@@ -33,5 +33,5 @@ let participants =
 
 
 let () = print_endline "here we will have the implementation of pipeline"
-       ; let _ = experiment participants in
+       ; let _ = Lwt_main.run (experiment participants) in
          Comm.perform ()

@@ -32,4 +32,4 @@ let participants = [
 
 let () = print_endline "Implementation for the role of alice in the pipeline"
        ; if Log.create_log "Alice" then print_endline "Logging." else ()
-       ; let _ = experiment participants in ()
+       ; let _ = Lwt_main.run (experiment participants) in ()
