@@ -93,7 +93,7 @@ let client_request addr =
 
 (* Function that sets up the connection and implements the monad *)
 let setup_channels (conns : conn_desc list) :
-    (channel list * channel Dict.t) Lwt.t =
+    channel Dict.t Lwt.t =
   let conn_desc_to_ch (conn : conn_desc) : (role * channel) Lwt.t =
     ( match conn.spec with
     | Server addr ->
@@ -105,8 +105,8 @@ let setup_channels (conns : conn_desc list) :
   Log.log_str ("about to start connections: " ^ show_conn_descs conns) ;
   List.map conn_desc_to_ch conns |> Lwt.all >>= fun cs ->
   Lwt_list.fold_left_s
-    (fun (chs, dict) (role, ch) -> Lwt.return (ch :: chs, Dict.add role ch dict))
-    ([], Dict.empty) cs
+    (fun  dict (role, ch) -> Dict.add role ch dict|> Lwt.return)
+    Dict.empty cs
 
 (* test for the channel setup function *)
 
@@ -130,8 +130,9 @@ let test_channel_setup () =
       };
     ]
   in
-  setup_channels cs >>= fun (chs, _d) ->
+  setup_channels cs >>= fun _d ->
   Log.log_str "channels setup successfully" ;
+  let chs = assert false in (* collect al the channels in the dict *)
   Lwt_list.iter_s (fun _ch -> Lwt_unix.close _ch >>= fun () -> Lwt.return ()) chs
   >>= fun () ->
   Log.log_str "channels closed" ;
@@ -141,7 +142,7 @@ let test_channel_setup () =
 let build_participant (conn : conn_desc list) : (module MP) Lwt.t =
   let current_loop : int option ref = ref None in
   Log.log_str "about to setup channels" ;
-  setup_channels conn >>= fun (_chs, part_to_ch) ->
+  setup_channels conn >>= fun part_to_ch ->
   let ch_str = Seq.fold_left
                  (fun xs (x, _) -> string_of_int x ^ ", " ^ xs ) ""  (Dict.to_seq part_to_ch)
   in
@@ -180,15 +181,24 @@ let build_participant (conn : conn_desc list) : (module MP) Lwt.t =
 
       let pure x = Lwt.return x
 
+      let string_of_current () =
+        match !current_loop with
+        | Some x -> string_of_int x
+        | None -> "none"
+
       (* recursion *)
       let rec loop id proc =
-        bind proc (fun x ->
+        bind (Log.log_str "about to proc" ; proc) (fun x ->
+            Log.log_str ("curent_loop: " ^ string_of_current ()) ;
+            Log.log_str ("new loop: " ^ string_of_int id) ;
             if !current_loop = Some id then (
               current_loop := None;
+              Log.log_str "about to loop again" ;
               loop id proc )
             else pure x)
 
       let set_current id =
+        "set_current: " ^ string_of_int id  |> Log.log_str ;
         current_loop := Some id;
         pure ()
     end : MP )

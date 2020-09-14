@@ -1,4 +1,9 @@
+(copy_files ../../../bin/log.ml)
+(copy_files ../../../bin/log.mli)
+
+
 (library
+        (libraries unix)
  (flags
   (:standard -w +A-39-4-42-33))
  (name pipelineLib))

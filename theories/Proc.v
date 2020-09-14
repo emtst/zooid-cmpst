@@ -978,7 +978,7 @@ Module ProcExtraction (MP : ProcessMonad).
   Fixpoint extract_proc (d : nat) (p : Proc) : MP.t unit :=
     match p with
     | Finish => MP.pure tt
-    | Jump v => MP.set_current (d - v)
+    | Jump v => MP.set_current (d - v.+1)
     | Loop p => MP.loop d (extract_proc d.+1 p)
     | Recv p a =>
       MP.recv p (fun l =>

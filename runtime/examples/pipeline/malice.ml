@@ -1,6 +1,5 @@
 open PipelineLib.Code
 
-open Lwt.Infix
 open Comm
 
 module type PROCESS =
@@ -9,15 +8,17 @@ module type PROCESS =
     val proc : unit PM.t
 end
 
-let experiment (participants : conn_desc list) : unit Lwt.t =
+let experiment (participants : conn_desc list) : unit =
   Log.log_str "starting" ;
-  Comm.build_participant participants >>= fun mp ->
+  let mp = Lwt_main.run (Comm.build_participant participants) in
   Log.log_str "connections established" ;
   let (module IMP) = mp in
   let (module Proc) = (module ALICE (IMP) : PROCESS) in
-  let result = Proc.PM.run Proc.proc in
-  Log.log_str "ending" ;
-  Lwt.return result
+  Log.log_str "running proc" ;
+  (* Proc.PM.run Proc.proc *)
+  ()
+
+
 
 let ralice = 0
 let rbob = 1
@@ -32,4 +33,4 @@ let participants = [
 
 let () = print_endline "Implementation for the role of alice in the pipeline"
        ; if Log.create_log "Alice" then print_endline "Logging." else ()
-       ; let _ = Lwt_main.run (experiment participants) in ()
+       ; let _ = experiment participants in ()
