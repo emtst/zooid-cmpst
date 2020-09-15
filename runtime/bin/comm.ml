@@ -111,37 +111,6 @@ let setup_channels (conns : conn_desc list) :
     (fun dict (role, ch) -> Dict.add role (Lwt_unix.of_unix_file_descr ch) dict)
     Dict.empty cs
 
-(* test for the channel setup function *)
-
-(* let test_channel_setup () =
- *   print_endline "Testing channel setup (remove from finished code)";
- *   Log.log_str "Testing channel setup" ;
- *   let role_a : role = 0 in
- *   let role_b : role = 1 in
- *   let cs : conn_desc list =
- *     (\* TODO: role as ints, consider moving to strings or variables *\)
- *     [
- *       {
- *         role_from = role_a;
- *         role_to = role_b;
- *         spec = Server (build_addr "127.0.0.1" 13245);
- *       };
- *       {
- *         role_from = role_b;
- *         role_to = role_a;
- *         spec = Client (build_addr "127.0.0.1" 13245);
- *       };
- *     ]
- *   in
- *   let _d = setup_channels cs in
- *   Log.log_str "channels setup successfully" ;
- *   let chs = assert false in (\* collect al the channels in the dict *\)
- *   List.iter (fun _ch -> Lwt_unix.close _ch >>= fun () -> Lwt.return ()) chs
- *   >>= fun () ->
- *   Log.log_str "channels closed" ;
- *   print_endline "Ok.";
- *   Lwt.return () *)
-
 let build_participant (conn : conn_desc list) : (module MP) =
   let current_loop : int option ref = ref None in
   Log.log_str "about to setup channels" ;
@@ -206,25 +175,6 @@ let build_participant (conn : conn_desc list) : (module MP) =
     end : MP)
 
 let perform () =
+  print_endline "Zooid runtime: no processes implemented" ;
   let addrs = get_my_addresses () |> List.map string_of_inet_addr in
-  "Host: " ^ gethostname () ^ " IPs: " ^ String.concat ", " addrs |> print_endline;
-  (* test_channel_setup () |> Lwt_main.run *) ()
-
-(* let toto = Pervasives.succ
- *
- * let run_something conn =
- *   build_participant conn >>= fun mp ->
- *   let (module MP) = mp in
- *   let _bob_mp =
- *     MP.loop 0
- *       (MP.recv 0 (fun l ->
- *            if eqn l (Pervasives.succ 0)
- *            then MP.bind (MP.recv_one 0) (fun x ->
- *                     MP.bind
- *                       (MP.send (Pervasives.succ (Pervasives.succ 0))
- *                          (Pervasives.succ 0)
- *                          (muln x (Pervasives.succ (Pervasives.succ 0)))) (fun _ ->
- *                         MP.set_current (subn (Pervasives.succ 0) 0)))
- *            else MP.pure ()))
- *   in
- *   Lwt.return () *)
+  "Host: " ^ gethostname () ^ " IPs: " ^ String.concat ", " addrs |> print_endline
