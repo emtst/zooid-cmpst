@@ -21,30 +21,37 @@ Require Import MPST.Atom.
    NMC ,
   as in New Merge Comment
 *)
-  Variables (merge : forall (A: eqType), A -> seq A -> option A).
-  Axiom merge_nil: forall (A: eqType) (a: A), merge a [::] = Some a.
+
+(*  Axiom merge_nil: forall (A: eqType) (a: A), merge a [::] = Some a.
   Axiom merge_cons: forall (A: eqType) (a a0: A) aa, merge a (a0::aa) = 
     match merge a [:: a0] with
     | Some am => merge am aa
     | _ => None
-    end.
+    end.*)
 Section IProject.
 
   Open Scope mpst_scope.
 
-  Fixpoint merge_old (A: eqType) (oL : A) (K : seq A) :=
-    match K with
-    | [::] => Some oL
-    | h::t => if h == oL then merge_old oL t
-              else None
-    end.
+  Variables (merge : l_ty -> seq l_ty -> option l_ty).
 
-  Definition merge_all (A : eqType) (K : seq A) :=
+  Definition merge_all (K : seq l_ty) :=
     match K with
     | h :: t => merge h t
     | _ => None
     end.
 
+  Fixpoint merge_s  (oL : s_ty) (K : seq s_ty) :=
+    match K with
+    | [::] => Some oL
+    | h::t => if h == oL then merge_s oL t
+              else None
+    end.
+
+  Definition merge_all_s (K : seq s_ty) :=
+    match K with
+    | h :: t => merge_s h t
+    | _ => None
+    end.
 
   Fixpoint partial_proj (l : l_ty) (r : role) : option s_ty :=
     match l with
@@ -433,6 +440,21 @@ Section IProject.
       by move: (flatten_notin NIN); rewrite member_map => it; apply it.
   Qed.
 
+(*NMC: adding an axiom, but it is up for discussion*)
+  Axiom lbinds_merge_ax: forall K Ks L n,
+    merge K Ks = Some L -> l_binds n L ->
+    l_binds n K /\ (forall Ka, member Ka Ks -> l_binds n Ka).
+
+  Lemma lbinds_mergeall Ks L n:
+    merge_all Ks = Some L -> l_binds n L ->
+    (forall K, member K Ks -> l_binds n K).
+  Proof.
+  case: Ks; [by[]|move=>K Ks mer lbi].
+  move: (lbinds_merge_ax mer lbi); elim=> hp1 hp2 K0.
+  elim; [by move=>->| by move=>hp; apply hp2].
+  Qed.
+
+
   Lemma l_binds_notin Lp p G
         (Ep : project G p = Some Lp)
         (BLp : l_binds 0 Lp)
@@ -449,6 +471,7 @@ Section IProject.
       case: ifP=>Erp; first by move=> [E]; move: E BLp=><-.
       rewrite !in_cons eq_sym Eqp eq_sym Erp /==>M.
       apply/notin_flatten/member_map=> K Mm; apply/(Ih _ Mm _ _ BLp).
+
 (*      by move: Prj M=>/eqP-Prj /eqP-M; move: (prjall_merge Prj M)=>/(_ _ Mm)/eqP.
   Qed.*)Admitted.
 
