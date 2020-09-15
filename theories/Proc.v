@@ -968,10 +968,15 @@ Module Type ProcessMonad.
 End ProcessMonad.
 
 (* The type of modules to describe the implementation of process *)
-Module Type Process (MP: ProcessMonad).
+Module Type PROCESS.
+  Declare Module PM : ProcessMonad.
+  Parameter proc : PM.t unit.
+End PROCESS.
+
+Module Type PROCESS_FUNCTOR (MP: ProcessMonad) <: PROCESS.
   Module PM := MP.
-  Parameter proc : unit -> PM.t unit.
-End Process.
+  Parameter proc : PM.t unit.
+End PROCESS_FUNCTOR.
 
 (* The process extraction monad *)
 Module ProcExtraction (MP : ProcessMonad).

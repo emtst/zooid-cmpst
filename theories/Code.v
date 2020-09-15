@@ -38,22 +38,22 @@ Opaque maxn.
 
 (* pipeline example *)
 
-Module  ALICE (MP : ProcessMonad) : Process(MP).
+Module  ALICE (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
   Module PE := ProcExtraction(MP).
   Module PM := MP.
-  Definition proc (_ : unit) := Eval compute in PE.extract_proc 0 (get_proc alice).
+  Definition proc := Eval compute in PE.extract_proc 0 (get_proc alice).
 End ALICE.
 
-Module  BOB (MP : ProcessMonad) : Process(MP).
+Module  BOB (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
   Module PE := ProcExtraction(MP).
   Module PM := MP.
-  Definition proc (_ : unit) := Eval compute in PE.extract_proc 0 (get_proc bob).
+  Definition proc := Eval compute in PE.extract_proc 0 (get_proc bob).
 End BOB.
 
-Module  CAROL (MP : ProcessMonad) : Process(MP).
+Module  CAROL (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
   Module PE := ProcExtraction(MP).
   Module PM := MP.
-  Definition proc (_ : unit):= Eval compute in PE.extract_proc 0 (get_proc carol).
+  Definition proc := Eval compute in PE.extract_proc 0 (get_proc carol).
 End CAROL.
 
 Cd "./pipeline/generated".
