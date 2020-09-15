@@ -46,7 +46,7 @@ let get_my_addresses () =
 module type MP = sig
   type 'a t
 
-  val run : (unit -> 'a1 t) -> 'a1
+  val run : 'a1 t -> 'a1
 
   val send : role -> lbl -> 'a1 -> unit t
 
@@ -164,7 +164,7 @@ let build_participant (conn : conn_desc list) : (module MP) =
      (module struct
       type 'a t = 'a Lwt.t
 
-      let run p = Log.log_str "running main" ; Unix.sleep 5 ; Lwt_main.run (p ())
+      let run p = Log.log_str "running main" ; Lwt_main.run p
 
       (* communication primitives *)
       let send role lbl _payload =

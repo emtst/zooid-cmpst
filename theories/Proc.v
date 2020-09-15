@@ -952,7 +952,7 @@ End TraceEquivalence.
 Module Type ProcessMonad.
   Parameter t : Type -> Type.
 
-  Parameter run : forall A, (unit -> t A) -> A.
+  Parameter run : forall A, t A -> A.
 
   Parameter send : forall T, role -> lbl -> T -> t unit.
 
