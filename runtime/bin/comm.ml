@@ -38,10 +38,6 @@ let get_my_addresses () =
   hi.h_addr_list |> Array.to_list
 
 (* Zooid Monadic Runtime *)
-(* module Equality =
- *   struct
- *   type sort = role
- *  end *)
 
 module type MP = sig
   type 'a t
@@ -62,6 +58,13 @@ module type MP = sig
 
   val set_current : int -> unit t
 end
+
+module type PROCESS =
+  sig
+    module PM : MP
+    val proc : unit PM.t
+end
+
 
 (* simple dictionary *)
 
