@@ -422,12 +422,16 @@ Section IProject.
     have [K MK]: (exists K, member K Ks).
     + case: Ks Ep {Ih NIN}=>[[E]|K Ks _]//=; last (by exists K; left).
       by move: E M=><-.
-    + move: Ep M=>/eqP-Ep M. (* /eqP-M; move: (prjall_merge Ep M)=>H.
+    + move: Ep M=>/eqP-Ep M.
+ (* /eqP-M; move: (prjall_merge Ep M)=>H.
       move: NIN=>/flatten_notin/member_map-H' {Ep M N1 N2 Npq Ks'}.
          by apply/(Ih _ MK); first (by apply/H'); apply/eqP/H. *)
   (* Qed. *)
-      apply: (@merge_all_partsL _ _ _ _ M).
-  Admitted.
+      apply: (@merge_all_partsL _ _ _ _ M); rewrite member_map.
+      move=> lK memlK; move: (prjall_some2 Ep memlK).
+      elim=> Gp; elim=> memGp prjGp. apply /(Ih _ memGp _ _  prjGp).
+      by move: (flatten_notin NIN); rewrite member_map => it; apply it.
+  Qed.
 
   Lemma l_binds_notin Lp p G
         (Ep : project G p = Some Lp)
