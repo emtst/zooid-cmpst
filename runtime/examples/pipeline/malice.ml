@@ -5,7 +5,7 @@ open Comm
 module type PROCESS =
   sig
     module PM : PipelineLib.Proc.ProcessMonad
-    val proc : unit -> unit
+    val proc : unit -> unit PM.t
 end
 
 let experiment (participants : conn_desc list) : unit =
@@ -15,7 +15,7 @@ let experiment (participants : conn_desc list) : unit =
   let (module IMP) = mp in
   let (module Proc) = (module ALICE (IMP) : PROCESS) in
   Log.log_str "running proc" ;
-  Proc.proc ()
+  Proc.proc () |> Proc.PM.run
 
 
 

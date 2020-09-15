@@ -970,7 +970,7 @@ End ProcessMonad.
 (* The type of modules to describe the implementation of process *)
 Module Type Process (MP: ProcessMonad).
   Module PM := MP.
-  Parameter proc : unit -> unit.
+  Parameter proc : unit -> PM.t unit.
 End Process.
 
 (* The process extraction monad *)
