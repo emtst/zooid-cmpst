@@ -33,7 +33,9 @@ let create_log (name : string) : bool =
   at_exit close_log ;
   is_log_on ()
 
+
 let get_now () : string =
+  let open Unix in
   let tod = Unix.gettimeofday () |> Unix.gmtime in
   string_of_int (1900 + tod.tm_year) ^ "/"
   ^ string_of_int tod.tm_mon ^ "/"
