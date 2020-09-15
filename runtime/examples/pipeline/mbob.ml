@@ -18,5 +18,5 @@ let participants =
 
 
 let () = print_endline "here we will have the implementation of pipeline"
-       (* ; if Log.create_log "Bob" then print_endline "Logging." else () *)
+       (* ; if Log.create_log "bob" then print_endline "Logging." else () *)
        ; Common.execute_process participants (module BOB)
