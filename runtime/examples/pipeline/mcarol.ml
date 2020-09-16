@@ -12,6 +12,6 @@ let participants = [
   }]
 
 
-let () = print_endline "here we will have the implementation of pipeline"
+let () = print_endline "Implementation for the role of carol in the pipeline"
        ; if Log.create_log "carol" then print_endline "Logging." else ()
-       ; Common.execute_process participants (module CAROL)
+       ; execute_extracted_process participants (module CAROL)

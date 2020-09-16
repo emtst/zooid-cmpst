@@ -1,5 +1,7 @@
 (* TCP/IP implementation of the communications module *)
 
+open  PipelineLib.Proc
+
 open Unix (* using this TCP/IP sockets for now *)
 
 open Lwt.Infix
@@ -33,37 +35,30 @@ let show_conn_desc c =
 
 let show_conn_descs cs = List.map show_conn_desc cs |> String.concat "**"
 
-let get_my_addresses () =
-  let hi = gethostname () |> gethostbyname in
-  hi.h_addr_list |> Array.to_list
-
 (* Zooid Monadic Runtime *)
-
-module type MP = sig
-  type 'a t
-
-  val run : 'a1 t -> 'a1
-
-  val send : role -> lbl -> 'a1 -> unit t
-
-  val recv : role -> (lbl -> unit t) -> unit t
-
-  val recv_one : role -> 'a1 t
-
-  val bind : 'a1 t -> ('a1 -> 'a2 t) -> 'a2 t
-
-  val pure : 'a1 -> 'a1 t
-
-  val loop : int -> (unit -> 'a1 t) -> 'a1 t
-
-  val set_current : int -> unit t
-end
 
 module type PROCESS =
   sig
-    module PM : MP
+    module PM : ProcessMonad
     val proc : unit PM.t
 end
+
+module type PROCESS_FUNCTOR =  functor (MP : ProcessMonad) ->
+    sig
+      module PM :
+        sig
+          type 'x t = 'x MP.t
+          val run : 'a1 t -> 'a1
+          val send : role -> role -> 'a1 -> unit t
+          val recv : role -> (role -> unit t) -> unit t
+          val recv_one : role -> 'a1 t
+          val bind : 'a1 t -> ('a1 -> 'a2 t) -> 'a2 t
+          val pure : 'a1 -> 'a1 t
+          val loop : role -> (unit -> 'a1 t) -> 'a1 t
+          val set_current : role -> unit t
+        end
+      val proc : unit MP.t
+    end
 
 
 (* simple dictionary *)
@@ -111,7 +106,7 @@ let setup_channels (conns : conn_desc list) :
     (fun dict (role, ch) -> Dict.add role (Lwt_unix.of_unix_file_descr ch) dict)
     Dict.empty cs
 
-let build_participant (conn : conn_desc list) : (module MP) =
+let build_participant (conn : conn_desc list) : (module ProcessMonad) =
   let size_buffer_len = 4 in
   let current_loop : int option ref = ref None in
   Log.log_str "about to setup channels" ;
@@ -187,9 +182,15 @@ let build_participant (conn : conn_desc list) : (module MP) =
         "set_current: " ^ string_of_int id  |> Log.log_str ;
         current_loop := Some id;
         pure ()
-    end : MP)
+    end : ProcessMonad)
 
-let perform () =
-  print_endline "Zooid runtime: no processes implemented" ;
-  let addrs = get_my_addresses () |> List.map string_of_inet_addr in
-  "Host: " ^ gethostname () ^ " IPs: " ^ String.concat ", " addrs |> print_endline
+
+let execute_extracted_process (participants : conn_desc list) mpart : unit =
+  Log.log_str "starting" ;
+  let mp = build_participant participants in
+  let (module Part : PROCESS_FUNCTOR) = mpart in
+  Log.log_str "connections established" ;
+  let (module IMP) = mp in
+  let (module Proc) = (module Part (IMP) : PROCESS) in
+  Log.log_str "running proc" ;
+  Proc.proc |> Proc.PM.run

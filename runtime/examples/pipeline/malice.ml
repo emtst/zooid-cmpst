@@ -13,4 +13,4 @@ let participants = [
 
 let () = print_endline "Implementation for the role of alice in the pipeline"
        ; if Log.create_log "alice" then print_endline "Logging." else ()
-       ; Common.execute_process participants (module ALICE)
+       ; execute_extracted_process participants (module ALICE)
