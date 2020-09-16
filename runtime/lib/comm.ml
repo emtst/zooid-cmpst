@@ -26,11 +26,10 @@ let show_connection = function
   | Server sa -> "Server " ^ show_sockaddr sa
   | Client sa -> "Client " ^ show_sockaddr sa
 
-type conn_desc = { role_from : role; role_to : role; spec : connection_spec }
+type conn_desc = { role_to : role; spec : connection_spec }
 
 let show_conn_desc c =
-  "(" ^ string_of_int c.role_from
-  ^ "|" ^ string_of_int c.role_to
+  "(" ^ string_of_int c.role_to
   ^ "|" ^ show_connection c.spec ^ ")"
 
 let show_conn_descs cs = List.map show_conn_desc cs |> String.concat "**"

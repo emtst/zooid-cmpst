@@ -6,8 +6,7 @@ let rbob = 1
 let rcarol = 2
 
 let participants = [
-    { role_from = ralice
-    ; role_to = rbob
+    { role_to = rbob
     ; spec =   Server(build_addr "127.0.0.1" 10001)
   }]
 
