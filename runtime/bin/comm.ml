@@ -10,7 +10,7 @@ type lbl = int
 
 type channel = Lwt_unix.file_descr
 
-let max_message_length = 8192
+let max_message_length = 1024 * 1024 * 8 (* 8 MB *)
 
 (* connection descriptor *)
 
@@ -112,6 +112,7 @@ let setup_channels (conns : conn_desc list) :
     Dict.empty cs
 
 let build_participant (conn : conn_desc list) : (module MP) =
+  let size_buffer_len = 4 in
   let current_loop : int option ref = ref None in
   Log.log_str "about to setup channels" ;
   let part_to_ch = setup_channels conn in
@@ -120,18 +121,32 @@ let build_participant (conn : conn_desc list) : (module MP) =
   in
   Log.log_str ("channels setup:" ^ ch_str);
   let send' role payload =
+    let size_buff = Bytes.create size_buffer_len in
     let buff = Marshal.to_bytes payload [] in
     let l = Bytes.length buff in
-    Log.log_str ("about to send: " ^ string_of_int role) ;
+    "about to send to: " ^ string_of_int role ^ " size: " ^ string_of_int l |> Log.log_str ;
+
+    Bytes.set_int32_be size_buff 0 (Int32.of_int l) ;
+    Lwt_unix.send (Dict.find role part_to_ch) size_buff 0 size_buffer_len [] >>= fun l' ->
+    assert (l' = size_buffer_len) ;
+
+    "sending payload" |> Log.log_str ;
     Lwt_unix.send (Dict.find role part_to_ch) buff 0 l [] >>= fun l' ->
     assert (l = l');
     Lwt.return l'
   in
   let recv' role =
+    let size_buff = Bytes.create size_buffer_len in
     let buff = Bytes.create max_message_length in
-    Log.log_str "about to recv" ;
-    Lwt_unix.recv (Dict.find role part_to_ch) buff 0 max_message_length []
-    >>= fun _l -> Marshal.from_bytes buff 0 |> Lwt.return
+    "about to recv size" |> Log.log_str;
+    Lwt_unix.recv (Dict.find role part_to_ch) size_buff 0 size_buffer_len []
+    >>= fun l -> assert (l = size_buffer_len) ;
+    let msg_size = Bytes.get_int32_be size_buff 0 |> Int32.to_int in
+    "expecting a message size: " ^ string_of_int msg_size |> Log.log_str ;
+    Lwt_unix.recv (Dict.find role part_to_ch) buff 0 msg_size []
+    >>= fun l ->
+    "recv' with length:" ^ string_of_int l |> Log.log_str ;
+    Marshal.from_bytes buff 0 |> Lwt.return
   in
      (module struct
       type 'a t = 'a Lwt.t
