@@ -5,5 +5,5 @@
 (install
  (section bin)
  (files
-  (main.exe as zooidrt))
+  (main.exe as iphelper))
  (package zooidrt))

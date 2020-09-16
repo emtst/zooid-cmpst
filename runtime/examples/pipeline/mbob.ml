@@ -16,7 +16,6 @@ let participants =
     }
   ]
 
-
 let () = print_endline "Implementation for the role of bob in the pipeline"
        ; if Log.create_log "bob" then print_endline "Logging." else ()
        ; execute_extracted_process participants (module BOB)
