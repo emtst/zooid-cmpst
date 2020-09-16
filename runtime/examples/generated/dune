@@ -3,7 +3,7 @@
 
 
 (library
-        (libraries unix)
+        (libraries unix twoBuyerLib)
  (flags
   (:standard -w +A-39-4-42-33))
  (name generatedLib))

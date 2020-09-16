@@ -3,6 +3,8 @@
 From mathcomp Require Import all_ssreflect seq.
 From mathcomp Require Import finmap.
 
+Require Import Extraction.
+
 From Paco Require Import paco paco2.
 
 Require Import MPST.Actions.
@@ -300,6 +302,7 @@ Definition AvailableDate i :=
   end.
 
 Parameter read_item : coq_ty T_nat.
+Extract Constant read_item => "TwoBuyerLib.Implementation.read_item".
 
 Definition seller_proc : wt_proc twob_seller_lt :=
      \recv BuyerA \lbl BookId, x : T_nat;
@@ -314,6 +317,9 @@ Definition seller_proc : wt_proc twob_seller_lt :=
 
 Parameter print_quote : forall L, coq_ty T_nat -> wt_proc L -> wt_proc L.
 Parameter read_proposal : coq_ty T_nat.
+
+Extract Constant print_quote => "TwoBuyerLib.Implementation.print_quote".
+Extract Constant read_proposal => "TwoBuyerLib.Implementation.read_proposal".
 
 Definition buyerA : wt_proc twob_buyA_lt :=
      \send Seller BookId (T:=T_nat) read_item (
@@ -335,7 +341,7 @@ Definition buyerB : wt_proc twob_buyB_lt :=
         => Cancel, tt \as T_unit! finish
       ].
 
-(*m    Pipeline example *)
+(* Pipeline example *)
 
 Definition Alice := 0. Opaque Alice.
 Definition Bob := 1. Opaque Bob.

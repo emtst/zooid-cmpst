@@ -99,9 +99,32 @@ Module  PPCLIENT4 (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
   Definition proc := Eval compute in PE.extract_proc 0 (get_proc (projT2 ping_pong_client4)).
 End PPCLIENT4.
 
+(* two buyer example *)
+
+Module  SELLER (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
+  Module PE := ProcExtraction(MP).
+  Module PM := MP.
+  Definition proc := Eval compute in PE.extract_proc 0 (get_proc seller_proc).
+End SELLER.
+
+Module  BUYERA (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
+  Module PE := ProcExtraction(MP).
+  Module PM := MP.
+  Definition proc := Eval compute in PE.extract_proc 0 (get_proc buyerA).
+End BUYERA.
+
+Module  BUYERB (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
+  Module PE := ProcExtraction(MP).
+  Module PM := MP.
+  Definition proc := Eval compute in PE.extract_proc 0 (get_proc buyerB).
+End BUYERB.
+
+
+(* code extraction from all the examples *)
 
 Separate Extraction
-         ALICE BOB CAROL
-         PPSERVER PPCLIENT0 PPCLIENT1 PPCLIENT2 PPCLIENT3 PPCLIENT4.
+         ALICE BOB CAROL (* pipeline *)
+         PPSERVER PPCLIENT0 PPCLIENT1 PPCLIENT2 PPCLIENT3 PPCLIENT4 (* ping pong *)
+         SELLER BUYERA BUYERB. (* two buyers *)
 (* leave this at the end, it needs to stay in the same directory it started *)
 Cd "../../..".
