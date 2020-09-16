@@ -50,7 +50,7 @@ Makefile.conf
 *.dpd
 
 # Macos files
-.DS_Store
+*.DS_Store
 
 # Dist files
 
