@@ -1,6 +1,6 @@
 (* TCP/IP implementation of the communications module *)
 
-open  PipelineLib.Proc
+open  GeneratedLib.Proc
 
 open Unix (* using this TCP/IP sockets for now *)
 

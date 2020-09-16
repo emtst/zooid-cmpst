@@ -141,6 +141,7 @@ Definition ping_pong_client2 :=
      ]
   ].
 
+
 Lemma pp_c2 : of_lt_unr pp_client (to_proc ping_pong_client2) pp_env.
 Proof.
   exists (projT1 ping_pong_client2); split.

@@ -21,7 +21,7 @@ Unset Strict Implicit.
 Import Prenex Implicits.
 
 
-Cd "./runtime/examples".
+Cd "./runtime/examples/generated".
 
 
 (* Extraction examples *)
@@ -56,13 +56,52 @@ Module  CAROL (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
   Definition proc := Eval compute in PE.extract_proc 0 (get_proc carol).
 End CAROL.
 
-Cd "./pipeline/generated".
+(* ping pong example *)
 
-Separate Extraction ALICE BOB CAROL.
+Module  PPSERVER (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
+  Module PE := ProcExtraction(MP).
+  Module PM := MP.
+  Definition proc := Eval compute in PE.extract_proc 0 (get_proc ping_pong_server).
+End PPSERVER.
 
-Cd "..".
+(* never pings, justs quits *)
+Module  PPCLIENT0 (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
+  Module PE := ProcExtraction(MP).
+  Module PM := MP.
+  Definition proc := Eval compute in PE.extract_proc 0 (get_proc ping_pong_client0).
+End PPCLIENT0.
+
+(* always pings, never quits *)
+Module  PPCLIENT1 (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
+  Module PE := ProcExtraction(MP).
+  Module PM := MP.
+  Definition proc := Eval compute in PE.extract_proc 0 (get_proc ping_pong_client1).
+End PPCLIENT1.
+
+(* confused, similar to 0? *)
+Module  PPCLIENT2 (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
+  Module PE := ProcExtraction(MP).
+  Module PM := MP.
+  Definition proc := Eval compute in PE.extract_proc 0 (get_proc (projT2 ping_pong_client2)).
+End PPCLIENT2.
+
+(* pings 2 times and then quits *)
+Module  PPCLIENT3 (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
+  Module PE := ProcExtraction(MP).
+  Module PM := MP.
+  Definition proc := Eval compute in PE.extract_proc 0 (get_proc (projT2 (ping_pong_client3 2))).
+End PPCLIENT3.
+
+(* pings until a pong provides more than 3 *)
+Module  PPCLIENT4 (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
+  Module PE := ProcExtraction(MP).
+  Module PM := MP.
+  Definition proc := Eval compute in PE.extract_proc 0 (get_proc (projT2 ping_pong_client4)).
+End PPCLIENT4.
 
 
-
+Separate Extraction
+         ALICE BOB CAROL
+         PPSERVER PPCLIENT0 PPCLIENT1 PPCLIENT2 PPCLIENT3 PPCLIENT4.
 (* leave this at the end, it needs to stay in the same directory it started *)
 Cd "../../..".

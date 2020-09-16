@@ -5,13 +5,16 @@
 (copy_files ../../lib/log.mli)
 
 (executables
- (names malice mbob mcarol)
+ (names ppsvr ppc0 ppc1 ppc2 ppc3 ppc4)
  (libraries lwt lwt.unix unix generatedLib))
 
 (install
  (section bin)
  (files
-  (malice.exe as malice)
-  (mbob.exe as mbob)
-  (mcarol.exe as mcarol))
+  (ppsvr.exe as ppsvr)
+  (ppc0.exe as ppc0)
+  (ppc1.exe as ppc1)
+  (ppc2.exe as ppc2)
+  (ppc3.exe as ppc3)
+  (ppc4.exe as ppc4))
  (package zooidrt))
