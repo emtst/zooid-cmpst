@@ -18,10 +18,13 @@ theories/Local/Syntax.v
 theories/Local/Tree.v
 theories/Local/Unravel.v
 theories/Local.v
+theories/Session/Syntax.v
 theories/Session.v
-theories/Projection.v
-theories/WellFormed.v
-theories/QProjection.v
+theories/Projection/IProject.v
+theories/Projection/CProject.v
+theories/Projection/PartialProj.v
+theories/Projection/Correctness.v
+theories/Projection/Compat.v
 #theories/TraceEquiv.v
 #theories/Proc.v
 #theories/Zooid.v

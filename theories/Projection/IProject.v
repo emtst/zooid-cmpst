@@ -18,15 +18,17 @@ Require Import MPST.Local.
   as in New Merge Comment
 *)
 
+
+Definition merge_all A (merge : A -> seq A -> option A) (K : seq A) :=
+  match K with
+  | h :: t => merge h t
+  | _ => None
+  end.
+
 Section IProject_defs.
 
   Variables (merge : l_ty -> seq l_ty -> option l_ty).
-
-  Definition merge_all (K : seq l_ty) :=
-    match K with
-    | h :: t => merge h t
-    | _ => None
-    end.
+  Notation merge_all := (merge_all merge).
 
   Fixpoint project (g : g_ty) (r : role) : option l_ty :=
     match g with
