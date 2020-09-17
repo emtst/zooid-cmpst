@@ -1,25 +1,10 @@
-From mathcomp.ssreflect Require Import all_ssreflect seq.
-From mathcomp Require Import finmap.
+From mathcomp.ssreflect Require Import all_ssreflect.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Require Import MPST.Atom.
-Require Import MPST.LNVar.
-
-(* Module roleid := NewAtom def_atom. *)
-(* Notation role:=roleid.t. *)
 Notation role:=nat_eqType.
-
-Module avar := NewAtom def_atom.
-Notation atom:=avar.t.
-
-Notation rvar := (lnvar atom).
-
-(* Module Lbl := NewAtom def_atom. *)
-(* Notation lbl := Lbl.t. *)
 Definition lbl := nat_eqType.
-(* Notation mk_lbl := Lbl.mk_atom. *)
 
 (* Supported messages *)
 Inductive mty : Type :=
@@ -109,5 +94,3 @@ Definition eq_coq_ty {T1 T2} : coq_ty T1 -> coq_ty T2 -> bool :=
   | ReflectF _ =>
     fun _ _ => false
   end.
-
-Definition g_prefix := ((role * role) * mty)%type.

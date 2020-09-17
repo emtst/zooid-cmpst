@@ -75,28 +75,3 @@ Qed.
 Lemma forallbP T (f : T -> bool) l :
   reflect (Forall f l) (all f l).
 Proof. by apply: forallP=>x; apply: idP. Qed.
-
-Fixpoint member A (x : A) l :=
-  match l with
-  | [::] => False
-  | h::t => x = h \/ member x t
-  end.
-
-Lemma forall_member A P (l : seq A) : Forall P l <-> forall x, member x l -> P x.
-Proof.
-  elim l=>// x {l}l [IhL IhR] /=; split.
-  + by move=>[Px /IhL-Pl] x0 [->|/Pl]//.
-  + move=> H; split.
-    - by apply: H; left.
-    - by apply: IhR=>x0 x0_l; apply: H; right.
-Qed.
-
-Lemma memberP (A : eqType) (x : A) l : reflect (member x l) (x \in l).
-Proof.
-  elim l; first by apply: ReflectF.
-  move=> a {l}l Ih/=; rewrite in_cons; case: eqP=>[->|x_aF].
-  + by apply: ReflectT; left.
-  + case: Ih=>[x_l|x_lF].
-    - by apply: ReflectT; right.
-    - by apply: ReflectF=>[[x_a|x_l]].
-Qed.

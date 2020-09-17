@@ -1,12 +1,22 @@
 -Q theories/ MPST
 -arg -w
 -arg none
-theories/Forall.v
-theories/Atom.v
-theories/LNVar.v
-theories/AtomSets.v
-theories/Actions.v
+theories/Common/Forall.v
+theories/Common/Member.v
+theories/Common/AtomSets.v
+theories/Common/Actions.v
+theories/Common/Queue.v
+theories/Common/Alt.v
+theories/Common.v
+theories/Global/Semantics.v
+theories/Global/Syntax.v
+theories/Global/Tree.v
+theories/Global/Unravel.v
 theories/Global.v
+theories/Local/Semantics.v
+theories/Local/Syntax.v
+theories/Local/Tree.v
+theories/Local/Unravel.v
 theories/Local.v
 theories/Session.v
 theories/Projection.v
