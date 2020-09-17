@@ -21,6 +21,10 @@ Makefile.conf
 \#*#
 .#*
 
+# vim files
+
+*.swp
+
 # OCaml build files
 
 **/_build/*

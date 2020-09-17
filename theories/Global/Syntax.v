@@ -9,6 +9,7 @@ Import Prenex Implicits.
 
 Require Import MPST.Common.
 
+Section Syntax.
 Unset Elimination Schemes.
 (**
  * Global Types
@@ -451,3 +452,5 @@ Proof.
   - by move=> G Ih n /=; apply/Ih.
   - by move=> p q Ks _ n  _ _; left.
 Qed.
+
+End Syntax.

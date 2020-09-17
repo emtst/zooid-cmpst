@@ -8,8 +8,8 @@ Unset Strict Implicit.
 Import Prenex Implicits.
 
 Require Import MPST.Common.
-Require Import MPST.Global.Tree.
-Require Import MPST.Local.Tree.
+Require Import MPST.Global.
+Require Import MPST.Local.
 
 Section CProject.
   Definition Merge (F : lbl -> option (mty * rl_ty)) (L : rl_ty) : Prop :=
@@ -344,11 +344,8 @@ Section CProject.
       move: (samed L Ty); elim=> sam _; move: sam.
       elim; [move=> lTT lCL | by exists G0].
       by apply: (Ih _ _ _ _ CL lCL) (EqL_trans (mer _ _ _ lCL) eqL).
-    * move=> Ln Tn lTn sdc; move: (same_dom_const_some sdc) =>-> //=.
-      by apply: EqL_refl.
+    * by move=> Ln Tn lTn sdc; move: (same_dom_const_some sdc) =>->.
   Qed.
-
-  Definition look (E : {fmap role -> rl_ty}) p := odflt rl_end E.[? p]%fmap.
 
   Definition eProject (G: ig_ty) (E : {fmap role -> rl_ty}) : Prop :=
     forall p, IProj p G (look E p).

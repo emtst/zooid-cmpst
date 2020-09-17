@@ -3,12 +3,10 @@ From mathcomp Require Import finmap.
 
 From Paco Require Import paco paco2.
 
-Require Import MPST.Actions.
-Require Import MPST.AtomSets.
-Require Import MPST.Forall.
+Require Import MPST.Common.
 Require Import MPST.Global.
-Require Import MPST.Projection.
 Require Import MPST.Local.
+Require Import MPST.Projection.
 Require Import MPST.TraceEquiv.
 
 Set Implicit Arguments.
@@ -621,7 +619,7 @@ Section TraceEquivalence.
 
   (* this is a silly definition, but coercions drive me nuts *)
   Definition eproject_eq_some G iPe :
-    eproject G == Some iPe -> eproject G.
+    eproject simple_merge G == Some iPe -> eproject simple_merge G.
       by move/eqP=>->.
   Defined.
 
@@ -743,7 +741,7 @@ Section TraceEquivalence.
   Lemma member_find A (K : lbl * (mty * A)) C :
     member K C -> exists K', find_cont C K'.1 = Some K'.2.
   Proof.
-    elim: C=>// K' C Ih [<-|];
+    elim: C=>// K' C Ih [->|];
       first (by exists K=>{Ih}; case: K=>l/= Pl; rewrite /extend eq_refl).
     move=>/Ih-[[l [T a]]]/= {}Ih; case: K'=>[l' [T' a']].
     case: (boolP (l == l'))=>[/eqP<-|/negPf-NE].
@@ -768,7 +766,7 @@ Section TraceEquivalence.
     (ex_intro (fun=> _) X (ex_intro (fun=>_) Y (ex_intro (fun=>_) Z H))).
   Lemma build_subtrace p TR G L cL :
     g_precond G ->
-    project G p == Some L ->
+    project simple_merge G p == Some L ->
     LUnroll L cL ->
     srl_accepts p TR cL ->
     subtrace p TR (build_trace TR G).
@@ -832,8 +830,8 @@ Section TraceEquivalence.
 
   Lemma proj_all_in G iPe p ps :
     (p \in ps) ->
-    project_all ps G = Some iPe ->
-    project G p = Some (ilook iPe p).
+    project_all simple_merge ps G = Some iPe ->
+    project simple_merge G p = Some (ilook iPe p).
   Proof.
     elim: ps=>[|q ps Ih]//= in iPe *; case: (boolP (p == q))=>[/eqP<-{Ih}|].
     - move=> _; case: project=>// L; case: project_all=>// iPe'[<-].
@@ -844,7 +842,7 @@ Section TraceEquivalence.
   Qed.
 
   Lemma proj_all_notin G iPe p ps :
-    project_all ps G = Some iPe ->
+    project_all simple_merge ps G = Some iPe ->
     (p \notin ps) ->
     ilook iPe p = l_end.
   Proof.
@@ -901,7 +899,7 @@ Section TraceEquivalence.
     exists L, of_lt P L /\ LUnroll L (l_expand (ilook iPe p)).
 
   Theorem process_traces_are_global_types G p iPe P :
-    eproject G == Some iPe ->
+    eproject simple_merge G == Some iPe ->
     of_lt_unr p P iPe ->
     forall PTRACE,
       p_accepts p PTRACE P ->
@@ -929,7 +927,7 @@ Section TraceEquivalence.
   Qed.
 
   Corollary process_traces_are_local_types G p iPe P :
-    eproject G == Some iPe ->
+    eproject simple_merge G == Some iPe ->
     of_lt_unr p P iPe ->
     forall PTRACE,
       p_accepts p PTRACE P ->

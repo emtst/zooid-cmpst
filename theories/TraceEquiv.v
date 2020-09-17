@@ -6,26 +6,15 @@ Import Prenex Implicits.
 
 From Paco Require Import paco paco2.
 
-Require Import MPST.Atom.
-Require Import MPST.AtomSets.
-Require Import MPST.Forall.
-Require Import MPST.LNVar.
-Require Import MPST.Global.
+Require Import MPST.Common.
 Require Import MPST.Local.
-Require Import MPST.Actions.
-Require Import MPST.Projection.
-Require Import MPST.WellFormed.
-Require Import MPST.QProjection.
+Require Import MPST.Global.
 Require Import MPST.Projection.
 
 Section TraceEquiv.
 
-
-  Open Scope mpst_scope.
   Open Scope fset.
   Open Scope fmap.
-
-  Definition Projection G P := eProject G P.1 /\ qProject G P.2.
 
   Lemma doact_other p E A L :
     subject A != p -> match do_act E A with
@@ -223,7 +212,8 @@ Section TraceEquiv.
         by case: (C l)=>//[][Ty' _] [_<-]; apply/paco2_fold; constructor.
   Qed.
 
-  Lemma samedom_unr A (CG0 : lbl /-> mty * rg_ty) (CL : lbl /-> mty * A)  :
+  Lemma samedom_unr A
+        (CG0 : lbl -> option (mty * rg_ty)) (CL : lbl -> option (mty * A)) :
     same_dom CG0 CL ->
     same_dom (fun lbl : lbl => match CG0 lbl with
                                | Some (t, G) => Some (t, ig_end G)
@@ -265,7 +255,7 @@ Section TraceEquiv.
     qProject (ig_end CG) Q -> qProject (rg_unr CG) Q.
   Proof.
     move=>/qProject_end_inv=>->.
-    case: CG=>//=; first by constructor.
+    case: CG=>//=.
     move=> F T C; constructor; last by apply/not_fnd.
     move=>l Ty G; case: (C l)=>//[[Ty' G']]-[_ <-].
     by apply: qprj_end.
@@ -542,7 +532,7 @@ Section TraceEquiv.
     run_step A (run_step A' P) = run_step A' (run_step A P).
   Proof.
     rewrite /run_step;
-    case PA': (do_act P.lbl A')=>[E'|]/=; case PA: (do_act P.1 A)=>[E|]//=;
+    case PA': (do_act P.1 A')=>[E'|]/=; case PA: (do_act P.1 A)=>[E|]//=;
     rewrite ?PA' ?PA // => SUBJ.
     - move: (do_actC SUBJ PA PA')=> [E3] [->->] COND.
       by rewrite do_queueC.
@@ -574,7 +564,7 @@ Section TraceEquiv.
   Qed.
 
 
-  Definition PAll (C : lbl /-> mty * ig_ty) P
+  Definition PAll (C : lbl -> option (mty * ig_ty)) P
     := forall l Ty G, C l = Some (Ty, G) -> Projection G (P l Ty).
 
   Definition send_recv F T L Ty P :=
@@ -602,7 +592,7 @@ Section TraceEquiv.
       + by rewrite fnd_set xpair_eqE andbC eq_sym (negPf pT).
   Qed.
 
-  Definition buildC (C : lbl /-> mty * ig_ty) E p :=
+  Definition buildC (C : lbl -> option (mty * ig_ty)) E p :=
     fun l => match C l with
              | Some (Ty, _) => Some (Ty, look E p)
              | None => None
@@ -722,7 +712,8 @@ Section TraceEquiv.
   *)
 
   Definition R_all_except (l' : lbl) (R : ig_ty -> rl_ty -> Prop)
-             (C : lbl /-> mty * ig_ty) (lC : lbl /-> mty * rl_ty) :=
+             (C : lbl -> option (mty * ig_ty))
+             (lC : lbl -> option (mty * rl_ty)) :=
     forall l Ty G L,
       l' != l -> C l = Some (Ty, G) -> lC l = Some (Ty, L) -> R G L.
 
@@ -746,7 +737,7 @@ Section TraceEquiv.
   Lemma Proj_recv_undo l F T C lCT Ty P G Q' :
     F != T ->
     C l = Some (Ty, G) ->
-    look P.lbl T = rl_msg l_recv F lCT ->
+    look P.1 T = rl_msg l_recv F lCT ->
     same_dom C lCT ->
     R_all_except l (IProj T) C lCT ->
     deq P.2 (F, T) = Some (l, Ty, Q') ->
@@ -865,11 +856,11 @@ Section TraceEquiv.
   Qed.
 
   Lemma step_look_notend P P' A :
-    lstep A P P' -> look P.lbl (subject A) = rl_end -> False.
+    lstep A P P' -> look P.1 (subject A) = rl_end -> False.
   Proof. by elim/lstep_inv=>//= _ Ty F T l E E' Q Q' _; case: look. Qed.
 
   Lemma step_look_cont P P' A a p C :
-    lstep A P P' -> look P.lbl (subject A) = rl_msg a p C ->
+    lstep A P P' -> look P.1 (subject A) = rl_msg a p C ->
     match_fst (payload A).2 (C (payload A).1) /\ act_ty A = a /\ object A = p.
   Proof.
     by elim/lstep_inv=>//= _ Ty F T l E E' Q Q' _; case: look=>// a' p' C';
@@ -1191,10 +1182,12 @@ Section InductiveTrace.
   Definition gty_accepts TRACE g := g_lts TRACE (ig_end (g_expand g)).
   Definition lty_accepts TRACE e := l_lts TRACE (expand_env e, [fmap]%fmap).
 
-  Definition well_formed g : bool := eproject g.
+  Definition well_formed g : bool := eproject simple_merge g.
 
   Definition project_env g : well_formed g -> seq (role * l_ty)
-    := match eproject g as eg return isSome eg -> seq (role * l_ty) with
+    := match eproject simple_merge g as eg
+             return isSome eg -> seq (role * l_ty)
+       with
        | Some e => fun=>e
        | None => fun pf => False_rect _ (not_false_is_true pf)
        end.

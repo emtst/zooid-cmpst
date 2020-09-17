@@ -8,6 +8,7 @@ Import Prenex Implicits.
 
 Require Import MPST.Common.
 
+Section Syntax.
 Unset Elimination Schemes.
 Inductive l_ty :=
 | l_end
@@ -530,3 +531,5 @@ Proof.
   elim: m=> [|m Ih]//= in r *; first by rewrite addn0 ltnNge=>/negPf->.
   by rewrite addnS -addSn/==>/Ih->.
 Qed.
+
+End Syntax.
