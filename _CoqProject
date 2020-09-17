@@ -22,9 +22,11 @@ theories/Session/Syntax.v
 theories/Session.v
 theories/Projection/IProject.v
 theories/Projection/CProject.v
+theories/Projection/QProject.v
 theories/Projection/PartialProj.v
 theories/Projection/Correctness.v
 theories/Projection/Compat.v
+theories/Projection.v
 theories/TraceEquiv.v
 theories/Proc.v
 theories/Zooid.v
