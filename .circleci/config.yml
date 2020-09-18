@@ -21,14 +21,14 @@ jobs:
         command: |
           eval $(opam config env)
           ./generateMakefile && make
-    - run:
-        name: Install LWT
-        command: |
-          eval $(opam config env)
-          opam install -y lwt
+    # - run:
+    #     name: Install LWT
+    #     command: |
+    #       eval $(opam config env)
+    #       opam install -y lwt
 
-    - run:
-        name: Build the runtime and examples
-        command: |
-          eval $(opam config env)
-          ./scripts/updateDeprecated.sh && cd runtime && dune build
+    # - run:
+    #     name: Build the runtime and examples
+    #     command: |
+    #       eval $(opam config env)
+    #       ./scripts/updateDeprecated.sh && cd runtime && dune build
