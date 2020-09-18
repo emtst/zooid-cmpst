@@ -54,7 +54,7 @@ Makefile.conf
 *.dpd
 
 # Macos files
-.DS_Store
+*.DS_Store
 
 # Dist files
 
@@ -62,5 +62,12 @@ dist/cmpst
 dist/cmpst.tar.gz
 
 # extraction artefacts
-*.ml
-*.mli
+
+theories/*.ml
+theories/*.mli
+
+/*.ml
+/*.mli
+
+runtime/examples/generated/*.ml
+runtime/examples/generated/*.mli

@@ -1,0 +1,17 @@
+; this is a bit of a hack, but it takes the implementation of comm to
+; this directory in the build system
+(copy_files ../../lib/comm.ml)
+(copy_files ../../lib/log.ml)
+(copy_files ../../lib/log.mli)
+
+(executables
+ (names malice mbob mcarol)
+ (libraries lwt lwt.unix unix generatedLib))
+
+(install
+ (section bin)
+ (files
+  (malice.exe as malice)
+  (mbob.exe as mbob)
+  (mcarol.exe as mcarol))
+ (package zooidrt))

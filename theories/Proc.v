@@ -23,6 +23,11 @@ Inductive Proc :=
 | Recv (p : role) of Alts
 | Send (p : role) T (l : lbl) : coq_ty T -> Proc -> Proc
 
+(* external actions *)
+(* | FromCtx T : (unit -> coq_ty T) -> (coq_ty T -> Proc) -> Proc *)
+(* | ToCtx T : (coq_ty T -> unit) -> Proc -> Proc *)
+
+
 with Alts :=
 | A_sing {T} (l : lbl) : (coq_ty T -> Proc) -> Alts
 | A_cons {T} (l : lbl) : (coq_ty T -> Proc) -> Alts -> Alts
@@ -55,6 +60,9 @@ Fixpoint p_shift (n d : nat) (P : Proc) : Proc :=
   | Loop P => Loop (p_shift n d.+1 P)
   | Recv p alts => Recv p (alt_shift n d alts)
   | Send p _ l t P => Send p l t (p_shift n d P)
+
+  (* | FromCtx _ act dproc => FromCtx act (fun t => p_shift n d (dproc t)) *)
+  (* | ToCtx _ act P => ToCtx act (p_shift n d P) *)
   end
 with alt_shift (n d : nat) (alts : Alts) : Alts :=
        match alts with
@@ -141,6 +149,10 @@ Inductive of_lt : Proc -> l_ty -> Prop :=
     of_lt K L ->
     find_cont a l == Some (T, L) ->
     of_lt (Send p l payload K) (l_msg l_send p a)
+
+(* | t_ToCtx T (act : coq_ty T -> unit) L P: *)
+(*     of_lt P L -> *)
+(*     of_lt (ToCtx act P) L *)
 .
 
 Section OperationalSemantics.
@@ -946,30 +958,45 @@ Section TraceEquivalence.
 
 End TraceEquivalence.
 
-Module MP.
+(* the type of the ambient monad to run processes *)
+Module Type ProcessMonad.
   Parameter t : Type -> Type.
+
+  Parameter run : forall A, t A -> A.
 
   Parameter send : forall T, role -> lbl -> T -> t unit.
 
-  Parameter recv : (lbl -> t unit) -> t unit.
+  Parameter recv : role -> (lbl -> t unit) -> t unit.
   Parameter recv_one : forall T, role -> t T.
 
   Parameter bind : forall T1 T2, t T1 -> (T1 -> t T2) -> t T2.
 
   Parameter pure : forall T1, T1 -> t T1.
 
-  Parameter loop : forall T1, nat -> t T1 -> t T1.
+  Parameter loop : forall T1, nat -> (unit -> t T1) -> t T1.
   Parameter set_current: nat -> t unit.
-End MP.
+End ProcessMonad.
 
-Section ProcExtraction.
+(* The type of modules to describe the implementation of process *)
+Module Type PROCESS.
+  Declare Module PM : ProcessMonad.
+  Parameter proc : PM.t unit.
+End PROCESS.
+
+Module Type PROCESS_FUNCTOR (MP: ProcessMonad) <: PROCESS.
+  Module PM := MP.
+  Parameter proc : PM.t unit.
+End PROCESS_FUNCTOR.
+
+(* The process extraction monad *)
+Module ProcExtraction (MP : ProcessMonad).
   Fixpoint extract_proc (d : nat) (p : Proc) : MP.t unit :=
     match p with
     | Finish => MP.pure tt
-    | Jump v => MP.set_current (d - v)
-    | Loop p => MP.loop d (extract_proc d.+1 p)
+    | Jump v => MP.set_current (d - v.+1)
+    | Loop p => MP.loop d (fun _ => extract_proc d.+1 p)
     | Recv p a =>
-      MP.recv (fun l =>
+      MP.recv p (fun l =>
                  (fix run_alt a :=
                     match a with
                     | A_sing T l' k =>

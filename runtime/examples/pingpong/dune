@@ -1,0 +1,20 @@
+; this is a bit of a hack, but it takes the implementation of comm to
+; this directory in the build system
+(copy_files ../../lib/comm.ml)
+(copy_files ../../lib/log.ml)
+(copy_files ../../lib/log.mli)
+
+(executables
+ (names ppsvr ppc0 ppc1 ppc2 ppc3 ppc4)
+ (libraries lwt lwt.unix unix generatedLib))
+
+(install
+ (section bin)
+ (files
+  (ppsvr.exe as ppsvr)
+  (ppc0.exe as ppc0)
+  (ppc1.exe as ppc1)
+  (ppc2.exe as ppc2)
+  (ppc3.exe as ppc3)
+  (ppc4.exe as ppc4))
+ (package zooidrt))

@@ -1,0 +1,17 @@
+; this is a bit of a hack, but it takes the implementation of comm to
+; this directory in the build system
+(copy_files ../../lib/comm.ml)
+(copy_files ../../lib/log.ml)
+(copy_files ../../lib/log.mli)
+
+(executables
+ (names seller buyerA buyerB)
+ (libraries lwt lwt.unix unix generatedLib))
+
+(install
+ (section bin)
+ (files
+  (seller.exe as seller)
+  (buyerA.exe as buyerA)
+  (buyerB.exe as buyerB))
+ (package zooidrt))

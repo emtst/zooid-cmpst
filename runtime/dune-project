@@ -1,0 +1,24 @@
+(lang dune 2.0)
+
+(name zooidrt)
+
+(generate_opam_files false)
+
+(source
+ (github emtst/cmpst))
+
+(license GPL-3.0-or-later)
+
+(authors "NN-1" "NN-2" "NN-3" "NN-4")
+
+(maintainers "NN")
+
+(homepage "not yet")
+
+(package
+ (name zooidrt)
+ (synopsis
+   "A TCP/IP Transport and runtime for Zooid programs")
+ (description
+   "This is an implementation of the monadic transport module (MP) for Zooid")
+)

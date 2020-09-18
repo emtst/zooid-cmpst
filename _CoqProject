@@ -30,3 +30,5 @@ theories/Projection.v
 theories/TraceEquiv.v
 theories/Proc.v
 theories/Zooid.v
+theories/Examples.v
+theories/Code.v
