@@ -17,8 +17,18 @@ jobs:
           eval $(opam config env)
           opam install -y coq-paco
     - run:
-        name: Compile
+        name: Proof Check
         command: |
           eval $(opam config env)
-          ./generateMakefile && make
+          ./generateMakefile && make &&
+    - run:
+        name: Install LWT
+        command: |
+          eval $(opam config env)
+          opam install -y lwt
 
+    - run:
+        name: Build the runtime and examples
+        command: |
+          eval $(opam config env)
+          ./scripts/updateDeprecated.sh && cd runtime && dune build
