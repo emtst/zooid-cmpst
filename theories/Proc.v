@@ -25,6 +25,11 @@ Inductive Proc :=
 | Recv (p : role) of Alts
 | Send (p : role) T (l : lbl) : coq_ty T -> Proc -> Proc
 
+(* external actions *)
+(* | FromCtx T : (unit -> coq_ty T) -> (coq_ty T -> Proc) -> Proc *)
+(* | ToCtx T : (coq_ty T -> unit) -> Proc -> Proc *)
+
+
 with Alts :=
 | A_sing {T} (l : lbl) : (coq_ty T -> Proc) -> Alts
 | A_cons {T} (l : lbl) : (coq_ty T -> Proc) -> Alts -> Alts
@@ -57,6 +62,9 @@ Fixpoint p_shift (n d : nat) (P : Proc) : Proc :=
   | Loop P => Loop (p_shift n d.+1 P)
   | Recv p alts => Recv p (alt_shift n d alts)
   | Send p _ l t P => Send p l t (p_shift n d P)
+
+  (* | FromCtx _ act dproc => FromCtx act (fun t => p_shift n d (dproc t)) *)
+  (* | ToCtx _ act P => ToCtx act (p_shift n d P) *)
   end
 with alt_shift (n d : nat) (alts : Alts) : Alts :=
        match alts with
@@ -143,6 +151,10 @@ Inductive of_lt : Proc -> l_ty -> Prop :=
     of_lt K L ->
     find_cont a l == Some (T, L) ->
     of_lt (Send p l payload K) (l_msg l_send p a)
+
+(* | t_ToCtx T (act : coq_ty T -> unit) L P: *)
+(*     of_lt P L -> *)
+(*     of_lt (ToCtx act P) L *)
 .
 
 Section OperationalSemantics.
