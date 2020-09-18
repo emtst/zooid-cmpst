@@ -3,8 +3,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Notation role:=nat_eqType.
-Definition lbl := nat_eqType.
+Definition role:=nat.
+Definition lbl := nat.
 
 (* Supported messages *)
 Inductive mty : Type :=
