@@ -316,7 +316,7 @@ Definition seller_proc : wt_proc twob_seller_lt :=
   )).
 
 Parameter print_quote : forall L, coq_ty T_nat -> wt_proc L -> wt_proc L.
-Parameter read_proposal : coq_ty T_nat.
+Parameter read_proposal : unit -> coq_ty T_nat.
 
 Extract Constant print_quote => "TwoBuyerLib.Implementation.print_quote".
 Extract Constant read_proposal => "TwoBuyerLib.Implementation.read_proposal".
@@ -325,7 +325,7 @@ Definition buyerA : wt_proc twob_buyA_lt :=
      \send Seller BookId (T:=T_nat) read_item (
      \recv Seller \lbl Quote, x : T_nat;
        print_quote x (
-         \send BuyerB ProposeA (T:=T_nat) read_proposal
+         \send BuyerB ProposeA (T:=T_nat) (read_proposal tt)
           finish
       )
   ).

@@ -8,4 +8,4 @@ let print_quote _ x cont =
   cont
 
 
-let read_proposal :int = 3
+let read_proposal () = 3
