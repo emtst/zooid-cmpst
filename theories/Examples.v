@@ -7,9 +7,7 @@ Require Import Extraction.
 
 From Paco Require Import paco paco2.
 
-Require Import MPST.Actions.
-Require Import MPST.AtomSets.
-Require Import MPST.Forall.
+Require Import MPST.Common.
 Require Import MPST.Global.
 Require Import MPST.Projection.
 Require Import MPST.Local.
