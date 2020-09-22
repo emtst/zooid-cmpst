@@ -11,9 +11,7 @@ Require Import MPST.Common.
 Require Import MPST.Global.
 Require Import MPST.Local.
 
-Section CProject.
-  Definition Merge (F : lbl -> option (mty * rl_ty)) (L : rl_ty) : Prop :=
-    forall Lb Ty L', F Lb = Some (Ty, L') -> EqL L' L.
+Section CProject_defs.
 
   Inductive WF_ (r : rg_ty -> Prop) : rg_ty -> Prop :=
   | WF_end : WF_ r rg_end
@@ -30,6 +28,8 @@ Section CProject.
     - by move=> _; apply/WF_end.
     - by move=> F T C FT ALL NE H; apply/WF_msg=>// l Ty {}G Cl; apply/H/ALL/Cl.
   Qed.
+
+  Variable co_merge : (lbl -> option (mty * rl_ty)) -> rl_ty -> Prop.
 
   Definition proj_rel := rg_ty -> rl_ty -> Prop.
   Inductive Proj_ (p : role) (r : proj_rel) : proj_rel :=
@@ -52,7 +52,7 @@ Section CProject.
       P_all (part_of_all p) KsG ->
       same_dom KsG KsL ->
       R_all r KsG KsL ->
-      Merge KsL L ->
+      co_merge KsL L ->
       Proj_ p r (rg_msg q s KsG) L
   .
   Hint Constructors Proj_.
@@ -89,7 +89,7 @@ Section CProject.
         rg_msg q s CG = G -> L0 = L ->
         (exists l Ty G, CG l = Some (Ty, G)) ->
         P_all (part_of_all p) CG -> same_dom CG CL -> R_all (Project p) CG CL ->
-        Merge CL L -> P p (rg_msg q s CG) L) ->
+        co_merge CL L -> P p (rg_msg q s CG) L) ->
     Project p G L -> P p G L.
   Proof.
     move=> Hend Hsnd Hrcv Hmrg /(paco2_unfold (Proj_monotone (p:=p))).
@@ -102,51 +102,6 @@ Section CProject.
     + move=> q s CG CL L0 qs pq ps NE Part DOM ALL MRG EQ1 EQ2; apply/Hmrg=>//.
       by move=>l Ty G0 G1 CGl CLl; move: (ALL l Ty G0 G1 CGl CLl)=>[|//].
   Qed.
-
-  Lemma samed_eql C0 C :
-    R_all EqL C0 C ->
-    same_dom C0 C ->
-    forall l Ty L,
-      C l = Some (Ty, L) -> exists L', C0 l = Some (Ty, L') /\ EqL L' L.
-  Proof.
-    move=> ALL DOM l Ty L Cl; move: (dom' DOM Cl)=>[L' C0l].
-    by move: (ALL l Ty L' L C0l Cl)=> EQ; exists L'; split.
-  Qed.
-
-  Lemma EqL_Project p G lT lT':
-    EqL lT lT' -> Project p G lT -> Project p G lT'.
-  Proof.
-  move=> eql prj; move: (conj eql prj) => {eql prj}.
-  move=> /(ex_intro (fun lT=> _) lT) {lT}.
-  move: G lT'; apply /paco2_acc; move=> r0 _ CIH G lT'.
-  move: CIH=>/(_ _ _ (ex_intro _ _ (conj _ _)))-CIH.
-  elim=> lT; elim; case lT'.
-  + move=> eql; move: (EqL_r_end_inv eql); move=>->.
-    rewrite /Project; move=> pro; move: paco2_mon; rewrite /monotone2.
-    by move=> pamo; apply (pamo _ _ _ _ _ _ _ pro).
-  + move=> a q C eql; move: (EqL_r_msg_inv eql).
-    elim=> C0; elim=> samed; elim=> rall lTeq; rewrite lTeq.
-    move=>PRJ; move: PRJ eql; elim/Project_inv=>//.
-    * move=> q0 CG CL _ [<-->->] NE1 DOM ALL EQ_L {G q0}.
-      apply/paco2_fold; constructor=>//; first by apply: (same_dom_trans DOM).
-      move=>l Ty G G' CGl Cl; move: (samed_eql rall samed Cl)=>[L' [C0l EQ_L']].
-      right; apply/CIH; first by apply/EQ_L'.
-      by apply/(ALL _ _ _ _ CGl C0l).
-    * move=> q0 CG CL _ [<-->->] NE1 DOM ALL EQ_L {G q0}.
-      apply/paco2_fold; constructor=>//; first by apply: (same_dom_trans DOM).
-      move=>l Ty G G' CGl Cl; move: (samed_eql rall samed Cl)=>[L' [C0l EQ_L']].
-      right; apply/CIH; first by apply/EQ_L'.
-      by apply/(ALL _ _ _ _ CGl C0l).
-    * move=> r s CG CL L0 NE1 NE2 NE3 _ _  NE part DOM ALL MRG.
-      move=> _ {G L0 lTeq lT}; apply/paco2_fold/prj_mrg=>//.
-      - move=>l Ty G G' CGl Cl; right; apply/CIH; first by apply/EqL_refl.
-        by apply/ALL; first by apply/CGl.
-      - move=> l Ty L' CLl; move: (MRG l Ty  L' CLl).
-        move=>/EqL_trans-H; apply: H; apply/paco2_fold; constructor=>//.
-        by move=> l0 Ty0 L0 L1 C0l0 Cl0; left; apply/(rall _ _ _ _ C0l0 Cl0).
-  Qed.
-
-  (* FIXME: abstract all g_closed && guarded ... as "wf" to simplify statements*)
 
   Inductive IProj (p : role) : ig_ty -> rl_ty -> Prop :=
   | iprj_end CG CL :
@@ -178,12 +133,9 @@ Section CProject.
       (exists l Ty G, KsG l = Some (Ty, G)) ->
       same_dom KsG KsL ->
       R_all (IProj p) KsG KsL ->
-      Merge KsL L ->
+      co_merge KsL L ->
       IProj p (ig_msg None q s KsG) L
   .
-
-
-
 
 
   Lemma IProj_end_inv_aux p GG CG CL:
@@ -273,7 +225,7 @@ Section CProject.
     (exists l Ty G, C l = Some (Ty, G)) /\
     (exists lC, same_dom C lC /\
       R_all (IProj p) C lC /\
-      Merge lC CL).
+      co_merge lC CL).
   Proof.
   case =>//.
   + move=> q gC lC neq samedom rall neqF neqT [eq1 eq2 eq3].
@@ -295,13 +247,77 @@ Section CProject.
     (exists l Ty G, C l = Some (Ty, G)) /\
     (exists lC, same_dom C lC /\
       R_all (IProj p) C lC /\
-      Merge lC CL).
+      co_merge lC CL).
   Proof.
   by move=> hp neq1 neq2; apply: (IProj_mrg_inv_aux hp neq1 neq2).
   Qed.
 
+  Definition eProject (G: ig_ty) (E : {fmap role -> rl_ty}) : Prop :=
+    forall p, IProj p G (look E p).
+
+End CProject_defs.
+
+Section SimpleCoMerge.
+
+  Definition simple_co_merge (F : lbl -> option (mty * rl_ty)) (L : rl_ty) : Prop :=
+    forall Lb Ty L', F Lb = Some (Ty, L') -> EqL L' L.
+
+  Lemma samed_eql C0 C :
+    R_all EqL C0 C ->
+    same_dom C0 C ->
+    forall l Ty L,
+      C l = Some (Ty, L) -> exists L', C0 l = Some (Ty, L') /\ EqL L' L.
+  Proof.
+    move=> ALL DOM l Ty L Cl; move: (dom' DOM Cl)=>[L' C0l].
+    by move: (ALL l Ty L' L C0l Cl)=> EQ; exists L'; split.
+  Qed.
+
+(*NMC: the next two lemmas rely on the extensional equality of continuation
+       in the definition of simple_co_merge, however we could ask
+       as an axiom that if two local trees are extensionally equal and one
+       is the merge for a continuation, then also the other is. With this
+       the lemmas will hold.
+*)
+
+  Lemma EqL_Project p G lT lT':
+    EqL lT lT' -> Project simple_co_merge p G lT -> Project simple_co_merge p G lT'.
+  Proof.
+  move=> eql prj; move: (conj eql prj) => {eql prj}.
+  move=> /(ex_intro (fun lT=> _) lT) {lT}.
+  move: G lT'; apply /paco2_acc; move=> r0 _ CIH G lT'.
+  move: CIH=>/(_ _ _ (ex_intro _ _ (conj _ _)))-CIH.
+  elim=> lT; elim; case lT'.
+  + move=> eql; move: (EqL_r_end_inv eql); move=>->.
+    rewrite /Project; move=> pro; move: paco2_mon; rewrite /monotone2.
+    by move=> pamo; apply (pamo _ _ _ _ _ _ _ pro).
+  + move=> a q C eql; move: (EqL_r_msg_inv eql).
+    elim=> C0; elim=> samed; elim=> rall lTeq; rewrite lTeq.
+    move=>PRJ; move: PRJ eql; elim/Project_inv=>//.
+    * move=> q0 CG CL _ [<-->->] NE1 DOM ALL EQ_L {G q0}.
+      apply/paco2_fold; constructor=>//; first by apply: (same_dom_trans DOM).
+      move=>l Ty G G' CGl Cl; move: (samed_eql rall samed Cl)=>[L' [C0l EQ_L']].
+      right; apply/CIH; first by apply/EQ_L'.
+      by apply/(ALL _ _ _ _ CGl C0l).
+    * move=> q0 CG CL _ [<-->->] NE1 DOM ALL EQ_L {G q0}.
+      apply/paco2_fold; constructor=>//; first by apply: (same_dom_trans DOM).
+      move=>l Ty G G' CGl Cl; move: (samed_eql rall samed Cl)=>[L' [C0l EQ_L']].
+      right; apply/CIH; first by apply/EQ_L'.
+      by apply/(ALL _ _ _ _ CGl C0l).
+    * move=> r s CG CL L0 NE1 NE2 NE3 _ _  NE part DOM ALL MRG.
+      move=> _ {G L0 lTeq lT}; apply/paco2_fold/prj_mrg=>//.
+      - move=>l Ty G G' CGl Cl; right; apply/CIH; first by apply/EqL_refl.
+        by apply/ALL; first by apply/CGl.
+      - move=> l Ty L' CLl; move: (MRG l Ty  L' CLl).
+        move=>/EqL_trans-H; apply: H; apply/paco2_fold; constructor=>//.
+        by move=> l0 Ty0 L0 L1 C0l0 Cl0; left; apply/(rall _ _ _ _ C0l0 Cl0).
+  Qed.
+
+  (* FIXME: abstract all g_closed && guarded ... as "wf" to simplify statements*)
+
+
+
   Lemma EqL_IProj p G lT lT':
-    IProj p G lT -> EqL lT lT' -> IProj p G lT'.
+    IProj simple_co_merge p G lT -> EqL lT lT' -> IProj simple_co_merge p G lT'.
   Proof.
   move=> hp; move: hp lT'; elim.
   + move=> CG {}lT Pro lT' eqL; apply: iprj_end.
@@ -317,7 +333,7 @@ Section CProject.
       by apply: (rall' _ _ _ _ lCL lCL').
   + move=> L Ty q r C lC lT0 neq1 neq2 samed rall Ih lCL lT0' eqL.
     move:(samed L Ty);elim=> _;elim;[move=> G0 CL|by exists lT0].
-    apply: (@iprj_send2 p L Ty q r C (extend L (Ty, lT0') lC) _ neq1 neq2).
+    apply: (@iprj_send2 simple_co_merge p L Ty q r C (extend L (Ty, lT0') lC) _ neq1 neq2).
     * apply: (same_dom_extend_some_l _ samed CL).
     * move=> LL TTy GG lTT CLL; rewrite /extend; case: ifP.
       - rewrite -(rwP eqP); move=> eqLL [eqTy eqlT0'].
@@ -336,7 +352,7 @@ Section CProject.
       apply: (Ih _ _ _ _ CL lCL).
       by apply: (rall' _ _ _ _ lCL lCL').
   + move=> q s C lC lT0 neqqs neqpq neqps NE samed rall Ih mer lT' eqL.
-    apply: (@iprj_mrg _ _ _ _
+    apply: (@iprj_mrg simple_co_merge _ _ _ _
           (same_dom_const C lT') _ neqqs neqpq neqps)=>//.
     * by apply: same_dom_const_same_dom.
     * move=> L Ty G0 lTT' CL sdLa.
@@ -347,7 +363,6 @@ Section CProject.
     * by move=> Ln Tn lTn sdc; move: (same_dom_const_some sdc) =>->.
   Qed.
 
-  Definition eProject (G: ig_ty) (E : {fmap role -> rl_ty}) : Prop :=
-    forall p, IProj p G (look E p).
 
-End CProject.
+
+End SimpleCoMerge.
