@@ -9,4 +9,4 @@ Require Export MPST.Projection.CProject.
 Require Export MPST.Projection.QProject.
 Require Export MPST.Projection.Correctness.
 
-Definition Projection G P := eProject G P.1 /\ qProject G P.2.
+Definition Projection G P := eProject simple_co_merge G P.1 /\ qProject G P.2.

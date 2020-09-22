@@ -129,7 +129,7 @@ Lemma lunroll_merge r L CL CONT Ks
       (PRJ : prj_all simple_merge CONT r = Some Ks)
       (MRG : simple_merge L [seq K.2.2 | K <- Ks] = Some L)
   : exists CCL,
-      same_dom (find_cont Ks) CCL /\ Merge CCL CL.
+      same_dom (find_cont Ks) CCL /\ simple_co_merge CCL CL.
 Proof.
   set CCL := fun l =>
                match find_cont Ks l with
@@ -160,7 +160,7 @@ Lemma project_nonrec (r0 : proj_rel ) r CL CG L G
       (iPrj : project simple_merge G r = Some L)
       (GU : GUnroll G CG)
       (LU : LUnroll L CL)
-  : paco2 (Proj_ r) r0 CG CL.
+  : paco2 (Proj_ simple_co_merge r) r0 CG CL.
 Proof.
   move: (closed_not_var cG).
   case: (boolP (r \notin participants G)); [| rewrite negbK].
@@ -250,7 +250,7 @@ Theorem ic_proj r :
     project simple_merge iG r == Some iL ->
     GUnroll iG cG ->
     LUnroll iL cL ->
-    Project r cG cL.
+    Project simple_co_merge r cG cL.
 Proof.
   move=> iG iL cG cL CG GG NE Prj GU LU.
   move: (conj CG (conj GG (conj NE (conj Prj (conj GU LU)))))
@@ -278,7 +278,7 @@ Qed.
 Theorem coind_proj r G L :
   g_precond G ->
   project simple_merge G r == Some L ->
-  Project r (g_expand G) (l_expand L).
+  Project simple_co_merge r (g_expand G) (l_expand L).
 Proof.
   rewrite/g_precond=>/andP-[/andP-[cG gG] NE] P.
   move: (proj_lclosed cG P) (project_guarded P) (proj_lne NE P)=>cL gL NEl.
@@ -288,7 +288,7 @@ Qed.
 
 Theorem expand_eProject (g : g_ty) (e : seq (role * l_ty))
   : eproject simple_merge g = Some e ->
-    eProject (ig_end (g_expand g)) (expand_env e).
+    eProject simple_co_merge (ig_end (g_expand g)) (expand_env e).
 Proof.
   move=>EPRJ p; constructor.
   have PRE: g_precond g by move: EPRJ;rewrite/eproject;case:ifP.
