@@ -11,7 +11,7 @@ Require Import MPST.Common.
 Require Import MPST.Global.
 Require Import MPST.Local.
 
-Section CProject_defs. (*prova*)
+Section CProject_defs.
 
   Inductive WF_ (r : rg_ty -> Prop) : rg_ty -> Prop :=
   | WF_end : WF_ r rg_end
