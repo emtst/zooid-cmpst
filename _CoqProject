@@ -27,8 +27,8 @@ theories/Projection/PartialProj.v
 theories/Projection/Correctness.v
 theories/Projection/Compat.v
 theories/Projection.v
-#theories/TraceEquiv.v
-#theories/Proc.v
-#theories/Zooid.v
-#theories/Examples.v
-#theories/Code.v
+theories/TraceEquiv.v
+theories/Proc.v
+theories/Zooid.v
+theories/Examples.v
+theories/Code.v

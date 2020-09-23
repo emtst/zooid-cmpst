@@ -38,10 +38,10 @@ Section TraceEquiv.
   Qed.
 
   Lemma Proj_Some_next l F T C P :
-    Projection (ig_msg (Some l) F T C) P ->
+    Projection simple_co_merge (ig_msg (Some l) F T C) P ->
     forall Ty G,
       C l = Some (Ty, G) ->
-      Projection G (run_step (mk_act l_recv T F l Ty) P).
+      Projection simple_co_merge G (run_step (mk_act l_recv T F l Ty) P).
   Proof.
     move=>[H qPRJ] Ty G Cl; move: (H T)=>PRJ.
     move: PRJ=>/IProj_recv_inv=>[[FT [CL [L_msg [DOM PRJ]]]]].
@@ -64,10 +64,10 @@ Section TraceEquiv.
 
 
   Lemma Proj_None_next F T C P :
-    Projection (ig_msg None F T C) P ->
+    Projection simple_co_merge (ig_msg None F T C) P ->
     forall l Ty G,
       C l = Some (Ty, G) ->
-      Projection G (run_step (mk_act l_recv T F l Ty)
+      Projection simple_co_merge G (run_step (mk_act l_recv T F l Ty)
                              (run_step (mk_act l_send F T l Ty) P)).
   Proof.
     move=>[H qPRJ] l Ty G Cl; move: (H F)=>PRJF.
@@ -180,7 +180,7 @@ Section TraceEquiv.
           by move: E=>[->].
   Qed.
 
-  Lemma iproj_end p cG : ~ part_of p cG -> WF cG -> IProj p (rg_unr cG) rl_end.
+  Lemma iproj_end p cG : ~ part_of p cG -> WF cG -> IProj simple_co_merge p (rg_unr cG) rl_end.
   Proof.
     move=>POF /(paco1_unfold WF_mon)-H; move: H POF; case=>/=.
     - move=> P; constructor; apply/paco2_fold; constructor=>//.
@@ -227,7 +227,7 @@ Section TraceEquiv.
   Qed.
 
   Lemma IProj_unr p CG L:
-    IProj p (ig_end CG) L -> IProj p (rg_unr CG) L.
+    IProj simple_co_merge p (ig_end CG) L -> IProj simple_co_merge p (rg_unr CG) L.
   Proof.
     move=>/IProj_end_inv; elim/Project_inv=>/=.
     - by move=> G0 -> _ {G0 L}; apply/iproj_end.
@@ -262,7 +262,7 @@ Section TraceEquiv.
   Qed.
 
   Lemma local_runnable G P A G' :
-    step A G G' -> Projection G P -> runnable A P.
+    step A G G' -> Projection simple_co_merge G P -> runnable A P.
   Proof.
   move=> ST PRJ.
   (* case: P => [E Q] ST PART [/=EPrj QPrj]. *)
@@ -313,8 +313,8 @@ Section TraceEquiv.
   Lemma Projection_send C l Ty G :
     C l = Some (Ty, G) ->
     forall F T P,
-      Projection (ig_msg None F T C) P ->
-      Projection (ig_msg (Some l) F T C) (run_step (mk_act l_send F T l Ty) P).
+      Projection simple_co_merge (ig_msg None F T C) P ->
+      Projection simple_co_merge (ig_msg (Some l) F T C) (run_step (mk_act l_send F T l Ty) P).
   Proof.
     move=>Cl F T P PRJ.
     move: (IProj_send1_inv (PRJ.1 F))=>[FT] [lCF] [EF] [DOMF] ALLF.
@@ -340,8 +340,8 @@ Section TraceEquiv.
   Lemma Projection_recv C l Ty G :
     C l = Some (Ty, G) ->
     forall F T P,
-      Projection (ig_msg (Some l) F T C) P ->
-      Projection G (run_step (mk_act l_recv T F l Ty) P).
+      Projection simple_co_merge (ig_msg (Some l) F T C) P ->
+      Projection simple_co_merge G (run_step (mk_act l_recv T F l Ty) P).
   Proof.
     move=>Cl F T P PRJ.
     move: (qProject_Some_inv PRJ.2)=>[TyQ] [GQ] [Q'].
@@ -542,7 +542,7 @@ Section TraceEquiv.
 
   Lemma Projection_runnable l Ty G F T C P :
     C l = Some (Ty, G) ->
-    Projection (ig_msg (Some l) F T C) P ->
+    Projection simple_co_merge (ig_msg (Some l) F T C) P ->
     runnable (mk_act l_recv T F l Ty) P.
   Proof.
     move=> Cl [EPROJ QPROJ].
@@ -555,7 +555,7 @@ Section TraceEquiv.
   Qed.
 
   Lemma Projection_unr G P :
-    Projection (ig_end G) P -> Projection (rg_unr G) P.
+    Projection simple_co_merge (ig_end G) P -> Projection simple_co_merge (rg_unr G) P.
   Proof.
     move=>[EPRJ QPRJ]; split.
     - move=>p; move: (EPRJ p)=>{}EPRJ.
@@ -564,8 +564,8 @@ Section TraceEquiv.
   Qed.
 
 
-  Definition PAll (C : lbl -> option (mty * ig_ty)) P
-    := forall l Ty G, C l = Some (Ty, G) -> Projection G (P l Ty).
+  Definition PAll co_merge (C : lbl -> option (mty * ig_ty)) P
+    := forall l Ty G, C l = Some (Ty, G) -> Projection co_merge G (P l Ty).
 
   Definition send_recv F T L Ty P :=
     run_step (mk_act l_recv T F L Ty) (run_step (mk_act l_send F T L Ty) P).
@@ -605,7 +605,7 @@ Section TraceEquiv.
     - by exists G.
   Qed.
 
-  Lemma mrg_buildC C E p : Merge (buildC C E p) (look E p).
+  Lemma mrg_buildC C E p : simple_co_merge (buildC C E p) (look E p).
   Proof.
     move=> l Ty L'; rewrite /buildC; case: (C l)=>[[Ty' G]|]// [_->].
     by apply: EqL_refl.
@@ -614,10 +614,10 @@ Section TraceEquiv.
 
   Lemma proj_all P C Cl :
     same_dom C Cl ->
-    PAll C P ->
+    PAll simple_co_merge C P ->
     forall p,
       (forall l Ty L, Cl l = Some (Ty, L) -> look (P l Ty).1 p = L) ->
-      R_all (IProj p) C Cl.
+      R_all (IProj simple_co_merge p) C Cl.
   Proof.
     move=> DOM All p H l Ty G L /All-[ePRJ qPRJ] Cll.
     by move: (H l Ty L Cll) (ePRJ p) =>->.
@@ -636,9 +636,9 @@ Section TraceEquiv.
     same_dom C lCT ->
     look P.1 F = rl_msg l_send T lCF ->
     look P.1 T = rl_msg l_recv F lCT ->
-    PAll C (fun L : lbl => (send_recv F T L)^~ P) ->
+    PAll simple_co_merge C (fun L : lbl => (send_recv F T L)^~ P) ->
     (P.2).[? (F, T)] = None ->
-    Projection (ig_msg None F T C) P.
+    Projection simple_co_merge (ig_msg None F T C) P.
   Proof.
     move=> FT Cl DOMF DOMT EF ET PRJ QPRJ.
     have DOM: same_dom lCF lCT by move: DOMT; apply/same_dom_trans/same_dom_sym.
@@ -739,11 +739,11 @@ Section TraceEquiv.
     C l = Some (Ty, G) ->
     look P.1 T = rl_msg l_recv F lCT ->
     same_dom C lCT ->
-    R_all_except l (IProj T) C lCT ->
+    R_all_except l (IProj simple_co_merge T) C lCT ->
     deq P.2 (F, T) = Some (l, Ty, Q') ->
-    (forall p, exists lC, same_dom C lC /\ R_all_except l (IProj p) C lC)  ->
-    Projection G (run_step (mk_act l_recv T F l Ty) P) ->
-    Projection (ig_msg (Some l) F T C) P.
+    (forall p, exists lC, same_dom C lC /\ R_all_except l (IProj simple_co_merge p) C lC)  ->
+    Projection simple_co_merge G (run_step (mk_act l_recv T F l Ty) P) ->
+    Projection simple_co_merge (ig_msg (Some l) F T C) P.
   Proof.
     move=> FT Cl ET DOM ALLT PFT PRJ0 PRJ1; split.
     - move=>p; case: (boolP (p == T))=>[/eqP->|pT].
@@ -775,14 +775,14 @@ Section TraceEquiv.
   Lemma  proj_same l C0 C1 F T E :
     same_dom C0 C1 ->
     (forall l' K, l != l' -> C0 l' = Some K <-> C1 l' = Some K) ->
-    eProject (ig_msg (Some l) F T C0) E ->
+    eProject simple_co_merge (ig_msg (Some l) F T C0) E ->
     forall p, exists lC,
         same_dom C1 lC /\
         forall l' Ty' G' L',
           l != l' ->
           C1 l' = Some (Ty', G') ->
           lC l' = Some (Ty', L') ->
-          IProj p G' L'.
+          IProj simple_co_merge p G' L'.
   Proof.
     move=> DOM SAME_C PRJ p.
     move: (IProj_recv_inv (PRJ T))=>[FT] [lC] [ET] [DOMT] ALLC.
@@ -797,7 +797,7 @@ Section TraceEquiv.
   Qed.
 
   Lemma runstep_proj G P : forall A G',
-    step A G G' -> Projection G P -> Projection G' (run_step A P).
+    step A G G' -> Projection simple_co_merge G P -> Projection simple_co_merge G' (run_step A P).
   Proof.
     move=> A G' ST PRJ; elim: ST=>
     [ l F T C Ty G0 Cl
@@ -816,7 +816,7 @@ Section TraceEquiv.
       move: (same_dom_trans DOM1 DOMF) (same_dom_trans DOM1 DOMT)=>{}DOMF {}DOMT.
       move: NE=>[Ty] [Gl] /(dom DOM)-[G1] C1l.
       move: PRJ.2=>/qProject_None_inv-[QPRJ] _.
-      suff Ih': PAll C1 (fun L Ty => send_recv F T L Ty (run_step A P))
+      suff Ih': PAll simple_co_merge C1 (fun L Ty => send_recv F T L Ty (run_step A P))
         by apply: (Proj_send_undo FT C1l DOMF DOMT) =>//; rewrite queue_act.
       move=>l0 Ty0 {}G1 {}C1l; move: (dom' DOM C1l)=>[G0 C0l].
       move: (Proj_None_next PRJ C0l)=>PRJ0; rewrite /send_recv.
@@ -891,15 +891,15 @@ Section TraceEquiv.
   Lemma Project_gstep_proj G P A P' G' :
     lstep A P P' ->
     step A G G' ->
-    Projection G P ->
-    Projection G' P'.
+    Projection simple_co_merge G P ->
+    Projection simple_co_merge G' P'.
   Proof.
     move=> ST; move: (run_step_compl ST)=>E; move: E ST=>->_.
     by apply/runstep_proj.
   Qed.
 
   Lemma project_pall F G L a T C :
-    Project F G L ->
+    Project simple_co_merge F G L ->
     L = rl_msg a T C ->
     part_of_all F G.
   Proof.
@@ -923,7 +923,7 @@ Section TraceEquiv.
 
   Lemma CProj_step l Ty L1 F G L0 T C :
     C l = Some (Ty, L1) ->
-    Project F G L0 ->
+    Project simple_co_merge F G L0 ->
     L0 = rl_msg l_send T C ->
     { G' | step (mk_act l_send F T l Ty) (ig_end G) G' }.
   Proof.
@@ -960,7 +960,7 @@ Section TraceEquiv.
         by move: (dom' DOM Cl)=>[G'] Cl'; apply/st_unr/st_send; rewrite Cl'.
       + move=> pF PRJ.
         have [{}PRJ [NE pT']]: (forall l Ty G, C' l = Some (Ty, G) ->
-                                               Project p G (rl_msg l_send T C))
+                                               Project simple_co_merge p G (rl_msg l_send T C))
                                /\ (exists l' Ty' G', C' l' = Some (Ty', G'))
                                /\ p != T'.
         { move: PRJ; elim/Project_inv=>//.
@@ -1002,7 +1002,7 @@ Section TraceEquiv.
 
   Lemma Project_gstep G P A P' :
     lstep A P P' ->
-    Projection G P ->
+    Projection simple_co_merge G P ->
     {G' | step A G G'}.
   Proof.
     case: A=>a F T l Ty ST PRJ.
@@ -1016,7 +1016,7 @@ Section TraceEquiv.
     - move: PRJ QPRJ DEQ; case: (boolP (F == T'))=>[|FT'].
       { move=>/eqP<- PRJ; move: (IProj_recv_inv PRJ)=>[FF']PRJ' QPRJ DEQ{Ih}.
         have [a_rcv [TF'][DOM]{}PRJ]:
-          a = l_recv /\ T = F' /\ same_dom C' C /\ R_all (IProj F) C' C
+          a = l_recv /\ T = F' /\ same_dom C' C /\ R_all (IProj simple_co_merge F) C' C
           by move: PRJ'=>[lC][][->->->][DOM] PRJ0; do 2 split=>//.
         move: a_rcv TF' DEQ=>->->/= DEQ {a PRJ' T}.
         have OL: o = Some l.
@@ -1058,7 +1058,7 @@ Section TraceEquiv.
         case C'l': (C' l')=>[[Ty0 G']|]//; rewrite /match_fst=>/eqP-ETy.
         move: ETy C'l'=>-> C'l' {Ty0}.
         move: Ih=>/(_ _ _ _ C'l' Q' _ DEQ)-Ih.
-        have {}PRJ: IProj F G' (rl_msg a T C).
+        have {}PRJ: IProj simple_co_merge F G' (rl_msg a T C).
         { move: PRJ=>[lC][Ty0][lCl'][DOM] PRJ.
           move: (dom DOM C'l')=>[L]; rewrite lCl'=>[][ETy0] _.
           move: ETy0 lCl' =>-> lCl' {Ty0}.
@@ -1081,7 +1081,7 @@ Section TraceEquiv.
       case: (boolP (F == F'))=>[/eqP<-|].
       {move=>PRJ; move: (IProj_send1_inv PRJ)=>[_] PRJ' QPRJ DEQ{Ih}.
         have [a_snd [TF'][DOM]{}PRJ]:
-          a = l_send /\ T = T' /\ same_dom C' C /\ R_all (IProj F) C' C
+          a = l_send /\ T = T' /\ same_dom C' C /\ R_all (IProj simple_co_merge F) C' C
           by move: PRJ'=>[lC][][->->->][DOM] PRJ0; do 2 split=>//.
         move: a_snd TF' FT' DEQ QPRJ=>-><- FT _ QPRJ {a PRJ' T'}.
         exists (ig_msg (Some l) F T C').
@@ -1090,7 +1090,7 @@ Section TraceEquiv.
       }
       { move=> FF' PRJ.
         have [{}PRJ [NE pT']]: (forall l Ty G, C' l = Some (Ty, G) ->
-                                               IProj F G (rl_msg a T C))
+                                               IProj simple_co_merge F G (rl_msg a T C))
                                /\ (exists l Ty' G', C' l = Some (Ty', G'))
                                /\ F' != T'.
         { move: (IProj_mrg_inv PRJ FF' FT')=>[F'T'][NE][lC][DOM][{}PRJ]MRG; split.
@@ -1121,8 +1121,8 @@ Section TraceEquiv.
 
   Theorem Project_step G P : forall A G',
     step A G G' ->
-    Projection G P ->
-    exists P', Projection G' P' /\ lstep A P P'.
+    Projection simple_co_merge G P ->
+    exists P', Projection simple_co_merge G' P' /\ lstep A P P'.
   Proof.
   move=> A G' ST Prj; exists (run_step A P); split.
   - apply/(runstep_proj ST Prj).
@@ -1131,8 +1131,8 @@ Section TraceEquiv.
 
   Theorem Project_lstep G P A P' :
     lstep A P P' ->
-    Projection G P ->
-    exists G', Projection G' P' /\ step A G G'.
+    Projection simple_co_merge G P ->
+    exists G', Projection simple_co_merge G' P' /\ step A G G'.
   Proof.
     move=> ST PRJ; move: (Project_gstep ST PRJ)=>[G' GST].
     exists G'; split=>//.
@@ -1140,7 +1140,7 @@ Section TraceEquiv.
   Qed.
 
   Theorem TraceEquivalence G P :
-    Projection G P -> forall TRACE, g_lts TRACE G <-> l_lts TRACE P.
+    Projection simple_co_merge G P -> forall TRACE, g_lts TRACE G <-> l_lts TRACE P.
   Proof.
     move=> PRJ TRC; split => STEPS.
     - move: (ex_intro (fun=>_) G (conj PRJ STEPS)) =>{PRJ STEPS G}.
@@ -1162,7 +1162,7 @@ Section TraceEquiv.
       case: LLTS PRJ.
       + move=> E EMPTY PRJ; apply/paco2_fold.
         move: PRJ.1; rewrite /eProject/==>EPRJ.
-        have GEND: forall p, IProj p G rl_end
+        have GEND: forall p, IProj simple_co_merge p G rl_end
             by move=>p; move: (EPRJ p); rewrite EMPTY.
         suff: G = ig_end rg_end by move=>->; constructor.
         move=>{PRJ EPRJ}; case: G GEND=>[[]|]//.
