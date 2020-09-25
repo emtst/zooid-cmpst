@@ -45,6 +45,7 @@ Makefile.conf
 
 *.vo
 *.vo?
+*.vio
 *.glob
 .coqdeps.d
 
