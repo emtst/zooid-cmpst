@@ -14,6 +14,8 @@ Require Import MPST.Local.
 Require Import MPST.Projection.IProject.
 Require Import MPST.Projection.CProject.
 
+Section Correctness.
+
 Lemma partof_all_unroll G CG p L n :
   g_closed G ->
   GUnroll G CG -> project simple_merge G p == Some L ->
@@ -124,10 +126,10 @@ Proof.
         by move=>DOM; move: (dom DOM FND)=> CCl; exists l, Ty.
 Qed.
 
-Lemma lunroll_merge r L CL CONT Ks
-      (LU : LUnroll L CL)
-      (PRJ : prj_all simple_merge CONT r = Some Ks)
-      (MRG : simple_merge L [seq K.2.2 | K <- Ks] = Some L)
+Lemma lunroll_merge (*r L*) (CL: rl_ty) (*CONT*) (Ks: seq (lbl * (mty * l_ty)))
+      (*LU : LUnroll L CL*)
+      (*PRJ : prj_all simple_merge CONT r = Some Ks*)
+      (*MRG : simple_merge L [seq K.2.2 | K <- Ks] = Some L*)
   : exists CCL,
       same_dom (find_cont Ks) CCL /\ simple_co_merge CCL CL.
 Proof.
@@ -143,6 +145,14 @@ Proof.
   - rewrite /CCL=>l Ty L'; case: find_cont=>//[][Ty' G'][_]->.
     by apply/EqL_refl.
 Qed.
+
+(*NMC: the following should be the core synchronisation axiom
+  for merge and co_merge. I stated it with the simple merge and co_merge for now,
+  so that I can see whether the proof goes through.*)
+Axiom merge_correct: forall Ks L,
+  (forall K, member K Ks -> l_precond K.2.2) ->
+  merge_all simple_merge [seq K.2.2 | K <- Ks] = Some L ->
+  simple_co_merge (find_cont (map (fun K=> (K.1,(K.2.1, l_expand K.2.2)) ) Ks) ) (l_expand L).
 
 Lemma project_nonrec (r0 : proj_rel ) r CL CG L G
       (CIH : forall cG cL iG iL,
@@ -209,18 +219,21 @@ Proof.
           move: (find_member FND)=>M.
           by apply: (CIH _ _ _ _ (cG _ M) (gG _ M) (NE _ M) PRJ GU LU).
       * move=> MRG.
-        have M: simple_merge L [seq K.2.2 | K <- KsL] = Some L
+        (*have M: simple_merge L [seq K.2.2 | K <- KsL] = Some L
           by move: MRG=>{E}; case: KsL=>//=K Ks /eqP-M;
              move: (simple_merge_some M)=>E; move: E M=>->; rewrite eq_refl=>/eqP.
-        move: (lunroll_merge LU E M)=>[CCL [DL cMRG]].
+        move: (lunroll_merge CL KsL (*LU E M*))=>[CCL [DL cMRG]].*)
         move: F_ne_r T_ne_r; rewrite eq_sym=>F_ne_r; rewrite eq_sym=>T_ne_r.
-        apply: prj_mrg;rewrite ?F_ne_r ?T_ne_r ?F_neq_T//; last by apply:cMRG.
+        (*apply: prj_mrg ; rewrite ?F_ne_r ?T_ne_r ?F_neq_T//; last by apply:cMRG.*)
+        apply: (@prj_mrg _ _ _ _ _ _
+                         (find_cont (map (fun K=> (K.1,(K.2.1, l_expand K.2.2)) ) KsL) ));
+          rewrite ?F_ne_r ?T_ne_r ?F_neq_T//.
         - case: CONT NE_C DOM {cG gG NE PARTS GU E}=>// K Ks _ DOM.
           case: K DOM=>[l [Ty G] DOM]/=.
           have: (find_cont ((l, (Ty, G)) :: Ks) l = Some (Ty, G))
             by rewrite /find_cont/extend !eq_refl.
           by move=>/(dom DOM)=>[G']; exists l, Ty.
-        - move: E MRG=>/eqP-E /eqP-MRG; move: (prjall_merge E MRG)=> ALL_EQ.
+        - (*move: E MRG=>/eqP-E /eqP-MRG; move: (prjall_merge E MRG)=> ALL_EQ.
           move=> l Ty G CCl; move: (dom' DOM CCl)=>[iG iFND].
           move: (find_member iFND)=>MEM; move: (GU _ _ _ _ iFND CCl)=>[GU'|//].
           move: (ALL_EQ _ MEM) (cG _ MEM)=>PK cK.
@@ -228,10 +241,11 @@ Proof.
           move: PARTS=> /flatten_mapP-[K] /memberP-K_CONT r_in_K.
           move: ((project_parts_in (cG _ K_CONT) (ALL_EQ _ K_CONT)).2 r_in_K).
           rewrite (project_depth cK PK)=>[][m] H.
-          by apply/(partof_all_unroll cK GU' PK)/H.
+          by apply/(partof_all_unroll cK GU' PK)/H.*) admit.
         - move:DOM=>/same_dom_sym-DOM; apply/(same_dom_trans DOM).
-          by apply/(same_dom_trans _ DL)/(prjall_dom E).
-        - move=> l Ty G cL CCl CCLl; right.
+          (*by apply/(same_dom_trans _ DL)/(prjall_dom E).*)
+          apply (@same_dom_trans _ _ _ _ (find_cont KsL)); [admit|admit].
+        - (*move=> l Ty G cL CCl CCLl; right.
           move: (dom' DOM CCl)=>[iG iFND]; move: (find_member iFND)=>MEM.
           move: (cG _ MEM) (gG _ MEM) (NE _ MEM)=>/= {}cG {}gG {}NE.
           move: E MRG=>/eqP-E /eqP-MRG; move: (prjall_merge E MRG).
@@ -239,8 +253,12 @@ Proof.
           move: (GU _ _ _ _ iFND CCl)=>[{}GU|//].
           apply: (CIH _ _ _ _ cG gG NE PRJ GU).
           apply/(LUnroll_EqL LU).
-          by move: (cMRG _ _ _ CCLl)=>/EqL_sym.
-Qed.
+          by move: (cMRG _ _ _ CCLl)=>/EqL_sym.*)
+          rewrite /R_all. move=> l Ty cG0 cL0 CCl CCLl; right.
+          move: (dom' DOM CCl)=>[iG iFND]; move: (find_member iFND)=>MEM.
+          move: (cG _ MEM) (gG _ MEM) (NE _ MEM)=>/= {}cG {}gG {}NE.
+        - admit.
+Admitted.
 
 Theorem ic_proj r :
   forall iG iL cG cL,
@@ -318,3 +336,5 @@ Proof.
     rewrite /look -in_expanded_env (fnd_not_part EPRJ PARTS)/=.
       by apply/paco2_fold/prj_end.
 Qed.
+
+End Correctness.
