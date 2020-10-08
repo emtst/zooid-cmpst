@@ -883,6 +883,23 @@ Section SimpleMerge.
       + by move=>NEQ FND1 /=; rewrite /extend NEQ; apply/Ih.
   Qed.
 
+  Lemma prj_all_find_strong  C p Ks l Ty G :
+    prj_all simple_merge C p = Some Ks -> find_cont C l = Some (Ty, G) ->
+    exists L,
+      member (l, (Ty, L)) Ks /\
+      project simple_merge G p = Some L /\
+      find_cont Ks l = Some (Ty, L).
+  Proof.
+    elim: C Ks=>// [][l'][Ty']G' Ks Ih Ks' /=; rewrite /extend.
+    case PRJ: project=>[L|]//; case PRJA: prj_all=>[KsL|]//= [<-]/=.
+    case: ifP=>[/eqP->|].
+    - move=>[-><-]; exists L; split=>//; [by left|split; [by []|]].
+      by rewrite /extend; case: ifP=>//; rewrite eq_refl.
+    - move=> ll' /(Ih _ PRJA)-[L' [M [PRJ' FND']]]; exists L'.
+      split=>//; [by right|split; [by []|]].
+      by rewrite /extend; case: ifP; [rewrite ll'| move=> _].
+  Qed.
+
   Lemma simple_merge_equal L Ks :
     simple_merge L [seq K.2.2 | K <- Ks] = Some L ->
     forall (K : (lbl * (mty  * l_ty))), member K Ks -> K.2.2 = L.

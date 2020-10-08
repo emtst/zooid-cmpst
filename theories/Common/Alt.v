@@ -40,6 +40,15 @@ Fixpoint get_v B (ls : seq (lbl * B)) x
      | None => fun P => match not_false_is_true P with end
      end.
 
+
+(*NMC: lemma needed now, but  maybe will not be anymore after we improve axioms*)
+Lemma find_cont_map A B Ks l (a:A) (f: A-> B):
+  find_cont Ks l = Some a -> find_cont (map (fun K=> (K.1, f K.2)) Ks) l = Some (f a).
+Proof.
+  elim: Ks=>//= [[k v]] ks Ih; rewrite /extend.
+  by case: ifP; [move=> _ []=>->| move=> _].
+Qed.
+
 Definition same_dom T T'
            (C : lbl -> option (mty * T)) (C' : lbl -> option (mty * T'))
   := forall L Ty,
