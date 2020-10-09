@@ -245,7 +245,9 @@ Proof.
           by apply/(partof_all_unroll cK GU' PK)/H.*)  admit.
         - move:DOM=>/same_dom_sym-DOM; apply/(same_dom_trans DOM).
           (*by apply/(same_dom_trans _ DL)/(prjall_dom E).*)
-          apply (@same_dom_trans _ _ _ _ (find_cont KsL)); [admit|admit].
+          apply (@same_dom_trans _ _ _ _ (find_cont KsL)).
+          + by apply: (prjall_dom E).
+          + by apply find_cont_map_dom.
         - (*move=> l Ty G cL CCl CCLl; right.
           move: (dom' DOM CCl)=>[iG iFND]; move: (find_member iFND)=>MEM.
           move: (cG _ MEM) (gG _ MEM) (NE _ MEM)=>/= {}cG {}gG {}NE.

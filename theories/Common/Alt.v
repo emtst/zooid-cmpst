@@ -151,3 +151,12 @@ Definition R_all T T' (R : T -> T' -> Prop)
            (C : lbl -> option (mty * T)) (C' : lbl -> option (mty * T')) :=
     forall L Ty G G',
     C L = Some (Ty, G) -> C' L = Some (Ty, G') -> R G G'.
+
+(*NMC: lemma needed now, but  maybe will not be anymore after we improve axioms*)
+Lemma find_cont_map_dom A B Ks (f: A-> B):
+  same_dom (find_cont Ks) ( find_cont ( map ( fun K=> (K.1,(K.2.1,f K.2.2)) ) Ks ) ).
+Proof.
+  elim: Ks=>//=.
+  + by  move=> l Ty; split;move => []G.
+  + by move=> [l [Ty a]] Ks=> Ih //=; apply: (same_dom_extend ).
+Qed.
