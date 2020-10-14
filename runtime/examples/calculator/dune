@@ -1,0 +1,17 @@
+; this is a bit of a hack, but it takes the implementation of comm to
+; this directory in the build system
+(copy_files ../../lib/comm.ml)
+(copy_files ../../lib/log.ml)
+(copy_files ../../lib/log.mli)
+
+(executables
+ (names calcsvr calcc calcc2)
+ (libraries lwt lwt.unix unix generatedLib))
+
+(install
+ (section bin)
+ (files
+  (calcsvr.exe as calcsvr)
+  (calcc.exe as calcc)
+  (calcc2.exe as calcc2))
+ (package zooidrt))

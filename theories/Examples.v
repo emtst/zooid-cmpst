@@ -379,4 +379,133 @@ Definition carol : wt_proc pp_carol_lt :=
      ).
 
 
+(* Calculator example from FluidSession/blob/dev/Adder/Adder.scr *)
+
+(* roles for calculator's client and server *)
+Definition AC := 0. Opaque AC.
+Definition AS := 1. Opaque AS.
+
+(* labels *)
+Definition AHello := 1. Opaque AHello.
+Definition AAdd := 2. Opaque AAdd.
+Definition ARes := 3. Opaque ARes.
+Definition ABye := 4. Opaque ABye.
+
+(* the global type for the calculator *)
+Definition calculator :=
+  g_rec
+    (g_msg AC AS
+           [:: (AHello, (T_unit,
+                        g_msg AC AS
+                              [:: (AAdd, (T_nat,
+                                         g_msg AC AS [:: (AAdd, (T_nat,
+                                                                g_msg AS AC [:: (ARes, (T_nat, g_var 0))]))]));
+                                  (ABye, (T_unit, g_msg AS AC [:: (ABye, (T_unit, g_end))]))]))]).
+
+(* project all the roles *)
+
+(* note that if the definition typechecks then it is well formed.
+There's no need for option types or error checking above what Coq
+provides *)
+Definition calculator_env := \project calculator.
+
+Definition calculator_client_lt := \get calculator_env AC.
+Definition calculator_server_lt := \get calculator_env AS.
+
+(* non-interactive implementation *)
+
+Definition AServer0 : wt_proc calculator_server_lt :=
+  loop (
+      \recv AC \lbl AHello, _ : T_unit ;
+      \branch AC
+       [alts
+       | \lbl AAdd, x : T_nat ;
+         \recv AC \lbl AAdd, y : T_nat ; \send AC ARes (T := T_nat) (x + y) (jump 0)
+       | \lbl ABye, _ : T_unit ; \send AC ABye (T := T_unit) tt finish
+       ]
+    ).
+
+Definition AClient0 : wt_proc calculator_client_lt :=
+  loop (
+      \send AS AHello (T := T_unit) tt
+    \select AS
+     [sel
+     | \otherwise => AAdd, 2 \as T_nat ! \send AS AAdd (T := T_nat) 2 (\recv AS \lbl ARes, _ : T_nat ; jump 0)
+     | \skip => ABye, _ ! _
+     ]
+    )
+.
+
+(* interactive implementation *)
+
+
+
+Definition user_interaction := coq_ty (T_sum (T_prod T_nat T_nat) T_unit).
+
+Parameter ask_user : unit -> user_interaction.
+Parameter print_nat : coq_ty T_nat -> unit.
+
+Extract Constant ask_user => "Calculator.ask_user".
+Extract Constant print_nat => "Calculator.print_nat".
+
+
+Definition quit (ui : user_interaction) :  bool :=
+  match ui with
+  | inl _ => false
+  | inr _ => true
+  end.
+
+Definition adding (ui : user_interaction) :  bool := negb (quit ui).
+Definition get_fst(ui : user_interaction) : nat :=
+  match ui with
+  | inl (x, _) => x
+  | inr _ => 0
+  end.
+Definition get_snd(ui : user_interaction) : nat :=
+  match ui with
+  | inl (_, x) => x
+  | inr _ => 0
+  end.
+
+Definition AServer : wt_proc calculator_server_lt :=
+  loop (
+      \recv AC \lbl AHello, _ : T_unit ;
+      \branch AC
+       [alts
+       | \lbl AAdd, x : T_nat ;
+         \recv AC \lbl AAdd, y : T_nat ; \send AC ARes (T := T_nat) (x + y) (jump 0)
+       | \lbl ABye, _ : T_unit ; \send AC ABye (T := T_unit) tt finish
+       ]
+    ).
+
+Definition AClient : wt_proc calculator_client_lt :=
+  loop (
+      \send AS AHello (T := T_unit) tt
+       (fromCtx ask_user
+                (fun au =>
+                   \select AS
+                    [sel
+                    | \case (adding au) => AAdd, (get_fst au) \as T_nat ! \send AS AAdd (T := T_nat) (get_snd au) (\recv AS \lbl ARes, n : T_nat ; toCtx print_nat n (jump 0))
+                    | \otherwise => ABye, tt \as T_unit ! \recv AS \lbl ABye, _ : T_unit ; finish
+                    ]
+                )
+       )
+    )
+.
+
+Definition AClient' : wt_proc calculator_client_lt :=
+  loop (
+      \send AS AHello (T := T_unit) tt
+       (fromCtx ask_user
+                (fun aoe =>
+                   \select AS
+                    [sel
+                    | \case (adding aoe) => AAdd, aoe \as T_nat ! \send AS AAdd (T := T_nat) 2 (\recv AS \lbl ARes, n : T_nat ; toCtx print_nat n (jump 0))
+                    | \otherwise => ABye, tt \as T_unit ! \recv AS \lbl ABye, _ : T_unit ; finish
+                    ]
+                )
+       )
+    )
+.
+
 Close Scope proc_scope.

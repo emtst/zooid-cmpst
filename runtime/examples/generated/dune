@@ -2,6 +2,8 @@
 (copy_files ../../bin/log.mli)
 
 
+(copy_files ../calculator/calculatorlib/calculator.ml)
+
 (library
         (libraries unix twoBuyerLib)
  (flags

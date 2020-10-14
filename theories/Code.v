@@ -118,11 +118,35 @@ Module  BUYERB (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
 End BUYERB.
 
 
+(* the calculator example *)
+
+Module AServer (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
+  Module PE := ProcExtraction(MP).
+  Module PM := MP.
+  Definition proc := Eval compute in PE.extract_proc 0 (get_proc AServer).
+End AServer.
+
+Module AClient (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
+  Module PE := ProcExtraction(MP).
+  Module PM := MP.
+  Definition proc := Eval compute in PE.extract_proc 0 (get_proc AClient).
+End AClient.
+
+Module AClient' (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
+  Module PE := ProcExtraction(MP).
+  Module PM := MP.
+  Definition proc := Eval compute in PE.extract_proc 0 (get_proc AClient').
+End AClient'.
+
+
+
 (* code extraction from all the examples *)
 
 Separate Extraction
          ALICE BOB CAROL (* pipeline *)
          PPSERVER PPCLIENT0 PPCLIENT1 PPCLIENT2 PPCLIENT3 PPCLIENT4 (* ping pong *)
-         SELLER BUYERA BUYERB. (* two buyers *)
+         SELLER BUYERA BUYERB (* two buyers *)
+         AServer AClient AClient'. (* calculator *)
+
 (* leave this at the end, it needs to stay in the same directory it started *)
 Cd "../../..".
