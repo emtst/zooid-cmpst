@@ -155,6 +155,23 @@ Axiom merge_correct: forall Ks L CL,
   merge_all simple_merge [seq K.2.2 | K <- Ks] = Some L ->
   simple_co_merge (find_cont (map (fun K=> (K.1,(K.2.1, l_expand K.2.2)) ) Ks) ) CL(*l_expand L*).
 
+(*
+  NMC: lemmas about participants.
+  1) If the projections of the continuations merge, the participant is in all of them.
+  2) If r is a participant of a projectable type, then r is in all branches of its unravelling;
+     this is the lemma partof_all_unroll for simple merge.
+*)
+Axiom merge_participants: forall CONT r Ks L K1 K2,
+    prj_all simple_merge CONT r == Some Ks ->
+    merge_all simple_merge [seq K.2.2 | K <- Ks] = Some L ->
+    member K1 CONT -> member K2 CONT -> r \in participants K1.2.2 ->
+    r \in participants K2.2.2.
+Axiom partof_all_proj_unroll:
+  forall G CG r L n,
+    g_closed G -> GUnroll G CG ->
+    project simple_merge G r == Some L -> depth_part n r G ->
+    part_of_all r CG.
+
 Lemma project_nonrec (r0 : proj_rel ) r CL CG L G
       (CIH : forall cG cL iG iL,
           g_closed iG ->
@@ -220,12 +237,7 @@ Proof.
           move: (find_member FND)=>M.
           by apply: (CIH _ _ _ _ (cG _ M) (gG _ M) (NE _ M) PRJ GU LU).
       * move=> MRG.
-        (*have M: simple_merge L [seq K.2.2 | K <- KsL] = Some L
-          by move: MRG=>{E}; case: KsL=>//=K Ks /eqP-M;
-             move: (simple_merge_some M)=>E; move: E M=>->; rewrite eq_refl=>/eqP.
-        move: (lunroll_merge CL KsL (*LU E M*))=>[CCL [DL cMRG]].*)
         move: F_ne_r T_ne_r; rewrite eq_sym=>F_ne_r; rewrite eq_sym=>T_ne_r.
-        (*apply: prj_mrg ; rewrite ?F_ne_r ?T_ne_r ?F_neq_T//; last by apply:cMRG.*)
         apply: (@prj_mrg _ _ _ _ _ _
                          (find_cont (map (fun K=> (K.1,(K.2.1, l_expand K.2.2)) ) KsL) ));
           rewrite ?F_ne_r ?T_ne_r ?F_neq_T//.
@@ -234,30 +246,21 @@ Proof.
           have: (find_cont ((l, (Ty, G)) :: Ks) l = Some (Ty, G))
             by rewrite /find_cont/extend !eq_refl.
           by move=>/(dom DOM)=>[G']; exists l, Ty.
-        - (*move: E MRG=>/eqP-E /eqP-MRG; move: (prjall_merge E MRG)=> ALL_EQ.
-          move=> l Ty G CCl; move: (dom' DOM CCl)=>[iG iFND].
+        - move=> l Ty G CCl; move: (dom' DOM CCl)=>[iG iFND].
           move: (find_member iFND)=>MEM; move: (GU _ _ _ _ iFND CCl)=>[GU'|//].
-          move: (ALL_EQ _ MEM) (cG _ MEM)=>PK cK.
+          move: E =>/eqP-E; move: (prjall_some E MEM)=>[iL []] /= => lMEM /eqP-PK.
+          move: (cG _ MEM)=>cK.
           move: PARTS; rewrite !in_cons F_ne_r T_ne_r /= => PARTS.
-          move: PARTS=> /flatten_mapP-[K] /memberP-K_CONT r_in_K.
-          move: ((project_parts_in (cG _ K_CONT) (ALL_EQ _ K_CONT)).2 r_in_K).
+          move: PARTS=> /flatten_mapP-[K] /memberP-K_CONT r_in_K'.
+          move: (merge_participants E MRG K_CONT MEM r_in_K')=>/= r_in_K.
+          move: ((project_parts_in cK PK).2 r_in_K).
           rewrite (project_depth cK PK)=>[][m] H.
-          by apply/(partof_all_unroll cK GU' PK)/H.*)  admit.
+          by apply/(partof_all_proj_unroll cK GU' PK)/H.
         - move:DOM=>/same_dom_sym-DOM; apply/(same_dom_trans DOM).
-          (*by apply/(same_dom_trans _ DL)/(prjall_dom E).*)
           apply (@same_dom_trans _ _ _ _ (find_cont KsL)).
           + by apply: (prjall_dom E).
           + by apply find_cont_map_dom.
-        - (*move=> l Ty G cL CCl CCLl; right.
-          move: (dom' DOM CCl)=>[iG iFND]; move: (find_member iFND)=>MEM.
-          move: (cG _ MEM) (gG _ MEM) (NE _ MEM)=>/= {}cG {}gG {}NE.
-          move: E MRG=>/eqP-E /eqP-MRG; move: (prjall_merge E MRG).
-          move=>/(_ _ MEM)=>/=PRJ.
-          move: (GU _ _ _ _ iFND CCl)=>[{}GU|//].
-          apply: (CIH _ _ _ _ cG gG NE PRJ GU).
-          apply/(LUnroll_EqL LU).
-          by move: (cMRG _ _ _ CCLl)=>/EqL_sym.*)
-          move=> l Ty cG0 cL0 CCl CCLl; right.
+        - move=> l Ty cG0 cL0 CCl CCLl; right.
           move: (dom' DOM CCl)=>[iG iFND]; move: (find_member iFND)=>MEM.
           move: (cG _ MEM) (gG _ MEM) (NE _ MEM)=>/= {}cG {}gG {}NE.
           move: (prj_all_find_strong E iFND) =>[iL [memiL [/eqP-iPRJ KsLl]]].
@@ -271,7 +274,7 @@ Proof.
           move: E=>/eqP-E; move: (prjall_some2 E memlK)=>[gK [memgK /eqP-prjK]].
           apply/andP; split; [apply /andP| by apply: (proj_lne (NE _ memgK) prjK)].
           by split; [apply (proj_lclosed (cG _ memgK) prjK)| apply (project_guarded prjK)].
-Admitted.
+Qed.
 
 Theorem ic_proj r :
   forall iG iL cG cL,
