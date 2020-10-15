@@ -123,19 +123,19 @@ End BUYERB.
 Module AServer (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
   Module PE := ProcExtraction(MP).
   Module PM := MP.
-  Definition proc := Eval compute in PE.extract_proc 0 (get_proc AServer).
+  Definition proc := Eval simpl in PE.extract_proc 0 (get_proc AServer).
 End AServer.
 
 Module AClient (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
   Module PE := ProcExtraction(MP).
   Module PM := MP.
-  Definition proc := Eval compute in PE.extract_proc 0 (get_proc AClient).
+  Definition proc := Eval simpl in PE.extract_proc 0 (get_proc AClient).
 End AClient.
 
 Module AClient' (MP : ProcessMonad) : PROCESS_FUNCTOR(MP).
   Module PE := ProcExtraction(MP).
   Module PM := MP.
-  Definition proc := Eval compute in PE.extract_proc 0 (get_proc AClient').
+  Definition proc := Eval simpl in PE.extract_proc 0 (get_proc AClient').
 End AClient'.
 
 

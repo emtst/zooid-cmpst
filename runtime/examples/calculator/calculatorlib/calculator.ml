@@ -13,4 +13,4 @@ let ask_user () =
     Coq_inr ()
 
 let print_nat n =
-  print_string @@ "Resultad: " ^ string_of_int n ^ "\n"
+  print_string @@ "Result: " ^ string_of_int n ^ "\n"
