@@ -323,7 +323,7 @@ Definition buyerA : wt_proc twob_buyA_lt :=
      \send Seller BookId (T:=T_nat) read_item (
      \recv Seller \lbl Quote, x : T_nat;
        toCtx print_quote x (
-               fromCtx read_proposal (fun proposal =>
+               readFromEnv read_proposal (fun proposal =>
                \send BuyerB ProposeA (T:=T_nat) proposal
           finish)
       )
@@ -481,7 +481,7 @@ Definition AServer : wt_proc calculator_server_lt :=
 Definition AClient : wt_proc calculator_client_lt :=
   loop (
       \send AS AHello (T := T_unit) tt
-       (fromCtx ask_user
+       (readFromEnv ask_user
                 (fun au =>
                    \select AS
                     [sel
@@ -496,7 +496,7 @@ Definition AClient : wt_proc calculator_client_lt :=
 Definition AClient' : wt_proc calculator_client_lt :=
   loop (
       \send AS AHello (T := T_unit) tt
-       (fromCtx ask_user
+       (readFromEnv ask_user
                 (fun aoe =>
                    \select AS
                     [sel

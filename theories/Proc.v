@@ -25,9 +25,9 @@ Inductive Proc :=
 
 (* external actions *)
 (* reads from the "context" and then passes it from the continuation *)
-| FromCtx T : (unit -> coq_ty T) -> (coq_ty T -> Proc) -> Proc
+| ReadFromEnv T : (unit -> coq_ty T) -> (coq_ty T -> Proc) -> Proc
 (* the continuation gets the value and passes it to the "context" *)
-| ToCtx T : (coq_ty T -> unit) -> coq_ty T -> Proc -> Proc
+| WriteToEnv T : (coq_ty T -> unit) -> coq_ty T -> Proc -> Proc
 
 
 with Alts :=
@@ -63,8 +63,8 @@ Fixpoint p_shift (n d : nat) (P : Proc) : Proc :=
   | Recv p alts => Recv p (alt_shift n d alts)
   | Send p _ l t P => Send p l t (p_shift n d P)
 
-  | FromCtx _ act dproc => FromCtx act (fun t => p_shift n d (dproc t))
-  | ToCtx _ act t P => ToCtx act t (p_shift n d P)
+  | ReadFromEnv _ act dproc => ReadFromEnv act (fun t => p_shift n d (dproc t))
+  | WriteToEnv _ act t P => WriteToEnv act t (p_shift n d P)
   end
 with alt_shift (n d : nat) (alts : Alts) : Alts :=
        match alts with
@@ -83,8 +83,8 @@ Fixpoint p_open (d : nat) (P2 P1 : Proc) : Proc :=
   | Loop P => Loop (p_open d.+1 P2 P)
   | Recv p alts => Recv p (alt_open d P2 alts)
   | Send p _ l t P => Send p l t (p_open d P2 P)
-  | FromCtx _ act dproc => FromCtx act (fun t => p_open d P2 (dproc t))
-  | ToCtx _ act t P => ToCtx act t (p_open d P2 P)
+  | ReadFromEnv _ act dproc => ReadFromEnv act (fun t => p_open d P2 (dproc t))
+  | WriteToEnv _ act t P => WriteToEnv act t (p_open d P2 P)
   end
 with alt_open (d : nat) (P2 : Proc) (alts : Alts) : Alts :=
        match alts with
@@ -101,8 +101,8 @@ with alt_open (d : nat) (P2 : Proc) (alts : Alts) : Alts :=
 Fixpoint prec_depth P :=
   match P with
   | Loop P => (prec_depth P).+1
-  | FromCtx _ act dproc => prec_depth (dproc (act tt))
-  | ToCtx _ act t P => prec_depth P
+  | ReadFromEnv _ act dproc => prec_depth (dproc (act tt))
+  | WriteToEnv _ act t P => prec_depth P
   | _ => 0
   end.
 
@@ -156,14 +156,14 @@ Inductive of_lt : Proc -> l_ty -> Prop :=
     find_cont a l == Some (T, L) ->
     of_lt (Send p l payload K) (l_msg l_send p a)
 
-| t_FromCtx T (act: unit -> coq_ty T) L dproc:
+| t_ReadFromEnv T (act: unit -> coq_ty T) L dproc:
     (* (forall pl, of_lt (dproc pl) L) -> *)
     of_lt (dproc (act tt)) L -> (* is this the right typing rule? *)
-    of_lt (FromCtx act dproc) L
+    of_lt (ReadFromEnv act dproc) L
 
-| t_ToCtx T (act : coq_ty T -> unit) t L P:
+| t_WriteToEnv T (act : coq_ty T -> unit) t L P:
     of_lt P L ->
-    of_lt (ToCtx act t P) L
+    of_lt (WriteToEnv act t P) L
 .
 
 Section OperationalSemantics.
@@ -225,8 +225,8 @@ Section OperationalSemantics.
     | Jump _ => None (* open process, it can't step *)
     | Finish => None
 
-    | FromCtx _ act dproc => Some (dproc (act tt))
-    | ToCtx _ _ _ P => Some P (* the action is irrelevant to the trace, so it's ignored here *)
+    | ReadFromEnv _ act dproc => Some (dproc (act tt))
+    | WriteToEnv _ _ _ P => Some P (* the action is irrelevant to the trace, so it's ignored here *)
     end
   .
 
@@ -1034,7 +1034,7 @@ Module ProcExtraction (MP : ProcessMonad).
     | Send p T l v k =>
       MP.bind (MP.send p l v) (fun=>extract_proc d k)
 
-    | FromCtx _ act dproc => MP.bind (MP.pure (act tt)) (fun x => extract_proc d (dproc x))
-    | ToCtx _ act t P => MP.bind (MP.pure (act t)) (fun _ => extract_proc d P)
+    | ReadFromEnv _ act dproc => MP.bind (MP.pure (act tt)) (fun x => extract_proc d (dproc x))
+    | WriteToEnv _ act t P => MP.bind (MP.pure (act t)) (fun _ => extract_proc d P)
     end.
 End ProcExtraction.

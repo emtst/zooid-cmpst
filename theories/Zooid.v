@@ -36,15 +36,15 @@ Notation loop := wt_loop.
 
 Definition wt_toCtx T L (act : coq_ty T -> unit) t (P : wt_proc L)
   : wt_proc L
-  := exist _ _ (t_ToCtx act t (of_wt_proc P)).
+  := exist _ _ (t_WriteToEnv act t (of_wt_proc P)).
 
 Notation toCtx := wt_toCtx.
 
-Definition wt_fromCtx T L (act : unit -> coq_ty T) (dproc : (coq_ty T -> wt_proc L))
+Definition wt_readFromEnv T L (act : unit -> coq_ty T) (dproc : (coq_ty T -> wt_proc L))
   : wt_proc L
-  := exist _ _ (@t_FromCtx _ act _ (fun t => (get_proc (dproc t))) (of_wt_proc (dproc (act tt)))).
+  := exist _ _ (@t_ReadFromEnv _ act _ (fun t => (get_proc (dproc t))) (of_wt_proc (dproc (act tt)))).
 
-Notation fromCtx := wt_fromCtx.
+Notation readFromEnv := wt_readFromEnv.
 
 (* Smart constructor and helpers for recv *)
 Inductive wt_alt : lbl * (mty * l_ty) -> Type
