@@ -34,11 +34,11 @@ Notation loop := wt_loop.
 
 (* Well-typed effects *)
 
-Definition wt_toCtx T L (act : coq_ty T -> unit) t (P : wt_proc L)
+Definition wt_writeToEnv T L (act : coq_ty T -> unit) t (P : wt_proc L)
   : wt_proc L
   := exist _ _ (t_WriteToEnv act t (of_wt_proc P)).
 
-Notation toCtx := wt_toCtx.
+Notation writeToEnv := wt_writeToEnv.
 
 Definition wt_readFromEnv T L (act : unit -> coq_ty T) (dproc : (coq_ty T -> wt_proc L))
   : wt_proc L

@@ -322,7 +322,7 @@ Extract Constant read_proposal => "TwoBuyerLib.Implementation.read_proposal".
 Definition buyerA : wt_proc twob_buyA_lt :=
      \send Seller BookId (T:=T_nat) read_item (
      \recv Seller \lbl Quote, x : T_nat;
-       toCtx print_quote x (
+       writeToEnv print_quote x (
                readFromEnv read_proposal (fun proposal =>
                \send BuyerB ProposeA (T:=T_nat) proposal
           finish)
@@ -349,6 +349,13 @@ Definition Carol := 2. Opaque Carol.
 
 Definition Lbl := 1. Opaque Lbl.
 
+
+
+Parameter get_input : unit -> coq_ty T_nat.
+Parameter set_input : coq_ty T_nat -> unit.
+Parameter compute : unit -> coq_ty T_nat.
+Parameter print : coq_ty T_nat -> unit.
+
 Definition pipe :=
   g_rec
     (g_msg Alice Bob
@@ -363,18 +370,21 @@ Definition pp_carol_lt := \get pipe_env Carol.
 
 Definition alice : wt_proc pp_alice_lt :=
      loop (
-          \send Bob Lbl (T:=T_nat) 3 (jump 0)
+         readFromEnv get_input (fun n => \send Bob Lbl (T:=T_nat) n (jump 0))
        ).
 
 Definition bob : wt_proc pp_bob_lt :=
      loop (
        \recv Alice \lbl Lbl, x : T_nat;
-       \send Carol Lbl (T:= T_nat) (x * 2) (jump 0)
-     ).
+       writeToEnv set_input x
+             (readFromEnv compute
+                          (fun res =>
+                             (\send Carol Lbl (T:= T_nat) res (jump 0)))
+       )).
 
 Definition carol : wt_proc pp_carol_lt :=
      loop (
-       \recv Bob \lbl Lbl, x : T_nat;
+       \recv Bob \lbl Lbl, x : T_nat; writeToEnv print x
         (jump 0)
      ).
 
@@ -485,7 +495,7 @@ Definition AClient : wt_proc calculator_client_lt :=
                 (fun au =>
                    \select AS
                     [sel
-                    | \case (adding au) => AAdd, (get_fst au) \as T_nat ! \send AS AAdd (T := T_nat) (get_snd au) (\recv AS \lbl ARes, n : T_nat ; toCtx print_nat n (jump 0))
+                    | \case (adding au) => AAdd, (get_fst au) \as T_nat ! \send AS AAdd (T := T_nat) (get_snd au) (\recv AS \lbl ARes, n : T_nat ; writeToEnv print_nat n (jump 0))
                     | \otherwise => ABye, tt \as T_unit ! \recv AS \lbl ABye, _ : T_unit ; finish
                     ]
                 )
@@ -500,7 +510,7 @@ Definition AClient' : wt_proc calculator_client_lt :=
                 (fun aoe =>
                    \select AS
                     [sel
-                    | \case (adding aoe) => AAdd, aoe \as T_nat ! \send AS AAdd (T := T_nat) 2 (\recv AS \lbl ARes, n : T_nat ; toCtx print_nat n (jump 0))
+                    | \case (adding aoe) => AAdd, aoe \as T_nat ! \send AS AAdd (T := T_nat) 2 (\recv AS \lbl ARes, n : T_nat ; writeToEnv print_nat n (jump 0))
                     | \otherwise => ABye, tt \as T_unit ! \recv AS \lbl ABye, _ : T_unit ; finish
                     ]
                 )
