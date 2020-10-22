@@ -5,7 +5,7 @@
 (copy_files ../calculator/calculatorlib/calculator.ml)
 
 (library
-        (libraries unix twoBuyerLib)
+        (libraries unix twoBuyerLib pipelineLib)
  (flags
   (:standard -w +A-39-4-42-33))
  (name generatedLib))

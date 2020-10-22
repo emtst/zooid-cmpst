@@ -356,6 +356,11 @@ Parameter set_input : coq_ty T_nat -> unit.
 Parameter compute : unit -> coq_ty T_nat.
 Parameter print : coq_ty T_nat -> unit.
 
+Extract Constant get_input => "PipelineLib.Implementation.get_input".
+Extract Constant set_input => "PipelineLib.Implementation.set_input".
+Extract Constant compute => "PipelineLib.Implementation.compute".
+Extract Constant print => "PipelineLib.Implementation.print".
+
 Definition pipe :=
   g_rec
     (g_msg Alice Bob
@@ -447,8 +452,6 @@ Definition AClient0 : wt_proc calculator_client_lt :=
 .
 
 (* interactive implementation *)
-
-
 
 Definition user_interaction := coq_ty (T_sum (T_prod T_nat T_nat) T_unit).
 
