@@ -28,6 +28,7 @@ Inductive Proc :=
 | ReadFromEnv T : (unit -> coq_ty T) -> (coq_ty T -> Proc) -> Proc
 (* the continuation gets the value and passes it to the "context" *)
 | WriteToEnv T : (coq_ty T -> unit) -> coq_ty T -> Proc -> Proc
+| InteractWithEnv Tw Tr : (coq_ty Tw -> coq_ty Tr) -> coq_ty Tw -> (coq_ty Tr -> Proc) -> Proc
 
 
 with Alts :=
@@ -65,6 +66,7 @@ Fixpoint p_shift (n d : nat) (P : Proc) : Proc :=
 
   | ReadFromEnv _ act dproc => ReadFromEnv act (fun t => p_shift n d (dproc t))
   | WriteToEnv _ act t P => WriteToEnv act t (p_shift n d P)
+  | InteractWithEnv _ _ act t dproc => InteractWithEnv act t (fun t => p_shift n d (dproc t))
   end
 with alt_shift (n d : nat) (alts : Alts) : Alts :=
        match alts with
@@ -85,6 +87,7 @@ Fixpoint p_open (d : nat) (P2 P1 : Proc) : Proc :=
   | Send p _ l t P => Send p l t (p_open d P2 P)
   | ReadFromEnv _ act dproc => ReadFromEnv act (fun t => p_open d P2 (dproc t))
   | WriteToEnv _ act t P => WriteToEnv act t (p_open d P2 P)
+  | InteractWithEnv _ _ act t dproc => InteractWithEnv act t (fun t => p_open d P2 (dproc t))
   end
 with alt_open (d : nat) (P2 : Proc) (alts : Alts) : Alts :=
        match alts with
@@ -103,6 +106,7 @@ Fixpoint prec_depth P :=
   | Loop P => (prec_depth P).+1
   | ReadFromEnv _ act dproc => prec_depth (dproc (act tt))
   | WriteToEnv _ act t P => prec_depth P
+  | InteractWithEnv _ _ act t dproc => prec_depth (dproc (act t))
   | _ => 0
   end.
 
@@ -157,13 +161,16 @@ Inductive of_lt : Proc -> l_ty -> Prop :=
     of_lt (Send p l payload K) (l_msg l_send p a)
 
 | t_ReadFromEnv T (act: unit -> coq_ty T) L dproc:
-    (* (forall pl, of_lt (dproc pl) L) -> *)
-    of_lt (dproc (act tt)) L -> (* is this the right typing rule? *)
+    of_lt (dproc (act tt)) L ->
     of_lt (ReadFromEnv act dproc) L
 
 | t_WriteToEnv T (act : coq_ty T -> unit) t L P:
     of_lt P L ->
     of_lt (WriteToEnv act t P) L
+
+| t_InteractWithEnv Tr Tw (act : coq_ty Tw -> coq_ty Tr) t L dproc:
+    of_lt (dproc (act t)) L ->
+    of_lt (InteractWithEnv act t dproc) L
 .
 
 Section OperationalSemantics.
@@ -227,6 +234,7 @@ Section OperationalSemantics.
 
     | ReadFromEnv _ act dproc => Some (dproc (act tt))
     | WriteToEnv _ _ _ P => Some P (* the action is irrelevant to the trace, so it's ignored here *)
+    | InteractWithEnv _ _ act t dproc => Some (dproc (act t))
     end
   .
 
@@ -1036,5 +1044,6 @@ Module ProcExtraction (MP : ProcessMonad).
 
     | ReadFromEnv _ act dproc => MP.bind (MP.pure (act tt)) (fun x => extract_proc d (dproc x))
     | WriteToEnv _ act t P => MP.bind (MP.pure (act t)) (fun _ => extract_proc d P)
+    | InteractWithEnv _ _ act t dproc => MP.bind (MP.pure (act t)) (fun x => extract_proc d (dproc x))
     end.
 End ProcExtraction.

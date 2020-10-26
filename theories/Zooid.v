@@ -38,13 +38,19 @@ Definition wt_writeToEnv T L (act : coq_ty T -> unit) t (P : wt_proc L)
   : wt_proc L
   := exist _ _ (t_WriteToEnv act t (of_wt_proc P)).
 
-Notation writeToEnv := wt_writeToEnv.
+Notation write := wt_writeToEnv.
 
 Definition wt_readFromEnv T L (act : unit -> coq_ty T) (dproc : (coq_ty T -> wt_proc L))
   : wt_proc L
   := exist _ _ (@t_ReadFromEnv _ act _ (fun t => (get_proc (dproc t))) (of_wt_proc (dproc (act tt)))).
 
-Notation readFromEnv := wt_readFromEnv.
+Notation read := wt_readFromEnv.
+
+Definition wt_interactWithEnv Tr Tw L (act : coq_ty Tw -> coq_ty Tr) t (dproc : (coq_ty Tr -> wt_proc L))
+  : wt_proc L
+  := exist _ _ (@t_InteractWithEnv _ _ act t _ (fun t' => (get_proc (dproc t'))) (of_wt_proc (dproc (act t)))).
+
+Notation interact := wt_interactWithEnv.
 
 (* Smart constructor and helpers for recv *)
 Inductive wt_alt : lbl * (mty * l_ty) -> Type
