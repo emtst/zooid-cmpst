@@ -208,21 +208,53 @@ Lemma skipL_wt p a1 a2 (P2 : wt_proc (l_msg l_send p a2))
       (H : unique_labels (a1 ++ a2))
   : of_lt (proj1_sig P2) (l_msg l_send p (a1 ++ a2)).
 Proof.
-(*   case: P2=>//= x; case EQ: _ / => [||||q L a Ty l pl P o fnd] //. *)
-(*   move: EQ fnd=>[<-<-] /eqP-FND {q a}; apply/(t_Send p pl o)/eqP. *)
-(*   by move: FND=>/eqP; apply/fnd_app_r. *)
-(* Qed. *)
-Admitted.
+  case: P2=>//= x; move EQ: (l_msg _ _ a2) => L0 Hoft; move: Hoft EQ.
+  elim => [|||
+          | q L a Ty l pl P o _ fnd
+          | T act L dproc o Ih
+          | T act t L P Hoft Ih
+          | T0 T1 act t L dproc Hoft Ih
+          ] // EQ.
+  { (* Send *)
+    move: EQ fnd=>[<-<-] /eqP-FND {q a}; apply/(t_Send p pl o)/eqP.
+    by move: FND=>/eqP; apply/fnd_app_r.
+  }
+  { (* ReadFromEnv *)
+    by move: Ih=>/(_ EQ)-Ih {EQ}; apply/t_ReadFromEnv.
+  }
+  { (* ReadFromEnv *)
+    by move: Ih=>/(_ EQ)-Ih {EQ}; apply/t_WriteToEnv.
+  }
+  { (* InteractWithEnv *)
+    by move: Ih=>/(_ EQ)-Ih {EQ}; apply/t_InteractWithEnv.
+  }
+Qed.
 
 Lemma skipR_wt p a1 a2 (P1 : wt_proc (l_msg l_send p a1))
       (H : unique_labels (a1 ++ a2))
   : of_lt (proj1_sig P1) (l_msg l_send p (a1 ++ a2)).
 Proof.
-(*   case: P1=>//= x; case EQ: _ / => [||||q L a Ty l pl P o fnd] //. *)
-(*   move: EQ fnd=>[<-<-] /eqP-FND {q a}; apply (t_Send p pl o). *)
-(*   by rewrite fnd_app FND. *)
-(* Qed. *)
-Admitted.
+  case: P1=>//= x; move EQ: (l_msg _ _ a1) => L0 Hoft; move: Hoft EQ.
+  elim => [|||
+          | q L a Ty l pl P o _ fnd
+          | T act L dproc o Ih
+          | T act t L P Hoft Ih
+          | T0 T1 act t L dproc Hoft Ih
+          ] // EQ.
+  { (* Send *)
+    move: EQ fnd=>[<-<-] /eqP-FND {q a}; apply/(t_Send p pl o)/eqP.
+    by rewrite fnd_app FND.
+  }
+  { (* ReadFromEnv *)
+    by move: Ih=>/(_ EQ)-Ih {EQ}; apply/t_ReadFromEnv.
+  }
+  { (* ReadFromEnv *)
+    by move: Ih=>/(_ EQ)-Ih {EQ}; apply/t_WriteToEnv.
+  }
+  { (* InteractWithEnv *)
+    by move: Ih=>/(_ EQ)-Ih {EQ}; apply/t_InteractWithEnv.
+  }
+Qed.
 
 Lemma sel_wt b p a1 a2
       (P1 : wt_proc (l_msg l_send p a1)) (P2 : wt_proc (l_msg l_send p a2))
