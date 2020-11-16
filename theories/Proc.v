@@ -321,26 +321,26 @@ Section OperationalSemantics.
     of_lt P L ->
     of_lt (p_shift d n P) (l_shift d n L).
   Proof.
-  (*   move=>H ; elim: H => *)
-  (*   [ *)
-  (*   | v *)
-  (*   | {}L {}P  H Ih *)
-  (*   | K p alts DOM _ Ih *)
-  (*   | p {}L K Ty l payload {}P H0 Ih fnd *)
-  (*   | xx *)
-  (*   | xx *)
-  (*   | xx *)
-  (*   ]//= in n *; try by (try (case: ifP); constructor). *)
-  (*   - constructor; *)
-  (*       first by apply/(same_dom_trans _ (same_dom_map _ _)) *)
-  (*                     /(same_dom_trans _ DOM)/find_alt_ty_shift. *)
-  (*     move=>l Ty rK L0 /find_alt_shift-[rK'] [EQ0->] /find_cont_map-[L1][EQ1->]. *)
-  (*     by move=> pl; apply/(Ih _ _ _ _ EQ0 EQ1). *)
-  (*   - apply/t_Send; first by apply/Ih. *)
-  (*     elim: K fnd=>//= [][k v] t {}Ih; rewrite /extend/=. *)
-  (*     by case: ifP=>// _ /eqP-[->]/=. *)
-  (* Qed. *)
-  Admitted.
+    move=>H; elim: H n =>
+    [
+    | v
+    | {}L {}P  H Ih
+    | K p alts DOM _ Ih
+    | p {}L K Ty l payload {}P H0 Ih fnd
+    | T act {}L {}P H Ih
+    | T act t {}L {}P H Ih
+    | T0 T1 act t {}L {}P H Ih
+    ] //= n;  (* Why does the [in n *] not work? *)
+      try by (try (case: ifP); constructor).
+    - constructor;
+        first by apply/(same_dom_trans _ (same_dom_map _ _))
+                      /(same_dom_trans _ DOM)/find_alt_ty_shift.
+      move=>l Ty rK L0 /find_alt_shift-[rK'] [EQ0->] /find_cont_map-[L1][EQ1->].
+      by move=> pl; apply/(Ih _ _ _ _ EQ0 EQ1).
+    - apply/t_Send; first by apply/Ih.
+      elim: K fnd=>//= [][k v] t {}Ih; rewrite /extend/=.
+      by case: ifP=>// _ /eqP-[->]/=.
+  Qed.
 
   (* TODO: can we generalise: of_lt (f P) (f' L) relate f f' in some way? *)
   Lemma open_preserves_type P P' L L' :
