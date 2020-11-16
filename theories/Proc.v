@@ -115,10 +115,16 @@ Fixpoint punroll d P :=
   match d with
   | 0 => P
   | d.+1 =>
-    match P with
-    | Loop P' => punroll d (p_open 0 P P')
-    | _ => P
-    end
+    (fix go_unr P {struct P} :=
+       match P with
+       | Loop P' => punroll d (p_open 0 P P')
+       | ReadFromEnv _ act dproc => ReadFromEnv act (fun t => go_unr (dproc t))
+       | WriteToEnv _ act t P => WriteToEnv act t (go_unr P)
+       | InteractWithEnv _ _ act t dP
+         => InteractWithEnv act t (fun t=> go_unr (dP t))
+       | _ => P
+       end
+    ) P
   end.
 (* the correctness conditions is that punroll (prec_depth P) P is
    either Finish or Send or Recv *)
@@ -371,17 +377,16 @@ Section OperationalSemantics.
   Lemma unroll_preserves_type P L n:
     of_lt P L -> of_lt (punroll n P) (lunroll n L).
   Proof.
-    elim: n P L=>// n Ih P L; case=>//=; try by constructor.
+    elim: n P L=>// n Ih P L; elim; try by constructor.
     {
-      move=>{}L {}P HP; apply: Ih.
+      move=>{}L {}P HP _; apply: Ih.
       have HP' : of_lt (Loop P) (l_rec L) by constructor.
       by apply: open_preserves_type.
     }
     {
-      by move=>p {}L a T l payload K HL Hfind ; apply: (t_Send _ _ HL).
+      by move=>p {}L a T l payload K HL _ Hfind ; apply: (t_Send _ _ HL).
     }
-  (* Qed. *)
-    Admitted.
+  Qed.
 
   Theorem preservation P Ps A L:
     of_lt P L ->
