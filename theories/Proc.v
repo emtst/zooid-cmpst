@@ -346,25 +346,27 @@ Section OperationalSemantics.
   Lemma open_preserves_type P P' L L' :
     of_lt P' L' -> of_lt P L -> of_lt (p_open 0 P' P) (l_open 0 L' L).
   Proof.
-  (*   move: 0 => n H H'; elim: H' n => *)
-  (*   [ *)
-  (*   | v *)
-  (*   | {}L {}P Ih *)
-  (*   | K p alts DOM _ Ih *)
-  (*   | p {}L K Ty l payload {}P H0 Ih fnd *)
-  (*   ]/= n; try by (constructor). *)
-  (*   - case: (ifP (v == n))=>_; try by constructor. *)
-  (*     by apply/shift_preserves_type. *)
-  (*   - apply/t_Recv; *)
-  (*       first by apply/(same_dom_trans _ (same_dom_map _ _)) *)
-  (*                     /(same_dom_trans _ DOM)/find_alt_ty_open. *)
-  (*     move=> l Ty rK L0 /find_alt_open-[rK'] [EQ0->] /find_cont_map-[L1][EQ1->]. *)
-  (*     by move=> pl; apply/(Ih _ _ _ _ EQ0 EQ1). *)
-  (*   - apply/t_Send; first by apply/Ih. *)
-  (*     elim: K fnd=>//= [][k v] t {}Ih; rewrite /extend/=. *)
-  (*     by case: ifP=>// _ /eqP-[->]/=. *)
-  (* Qed. *)
-  Admitted.
+    move: 0 => n H H'; elim: H' n =>
+    [
+    | v
+    | {}L {}P Ih
+    | K p alts DOM _ Ih
+    | p {}L K Ty l payload {}P H0 Ih fnd
+    | T act {}L {}P H0 Ih
+    | T act t {}L {}P H0 Ih
+    | T0 T1 act t {}L {}P H0 Ih
+    ]/= n; try by (constructor).
+    - case: (ifP (v == n))=>_; try by constructor.
+      by apply/shift_preserves_type.
+    - apply/t_Recv;
+        first by apply/(same_dom_trans _ (same_dom_map _ _))
+                      /(same_dom_trans _ DOM)/find_alt_ty_open.
+      move=> l Ty rK L0 /find_alt_open-[rK'] [EQ0->] /find_cont_map-[L1][EQ1->].
+      by move=> pl; apply/(Ih _ _ _ _ EQ0 EQ1).
+    - apply/t_Send; first by apply/Ih.
+      elim: K fnd=>//= [][k v] t {}Ih; rewrite /extend/=.
+      by case: ifP=>// _ /eqP-[->]/=.
+  Qed.
 
   Lemma unroll_preserves_type P L n:
     of_lt P L -> of_lt (punroll n P) (lunroll n L).
