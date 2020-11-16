@@ -110,7 +110,8 @@ Fixpoint prec_depth P :=
   | _ => 0
   end.
 
-(* Unroll d times the toplevel recursion *)
+(* Unroll d times the toplevel recursion, and drops any non-communicating action,
+to expose the first communication *)
 Fixpoint punroll d P :=
   match d with
   | 0 => P
@@ -118,10 +119,10 @@ Fixpoint punroll d P :=
     (fix go_unr P {struct P} :=
        match P with
        | Loop P' => punroll d (p_open 0 P P')
-       | ReadFromEnv _ act dproc => ReadFromEnv act (fun t => go_unr (dproc t))
-       | WriteToEnv _ act t P => WriteToEnv act t (go_unr P)
+       | ReadFromEnv _ act dproc => go_unr (dproc (act tt))
+       | WriteToEnv _ act t P => (go_unr P)
        | InteractWithEnv _ _ act t dP
-         => InteractWithEnv act t (fun t=> go_unr (dP t))
+         => go_unr (dP (act t))
        | _ => P
        end
     ) P
@@ -234,13 +235,14 @@ Section OperationalSemantics.
         end
       else
         None
-    | Loop P => None (* this cannot happen as we unrolled the process *)
     | Jump _ => None (* open process, it can't step *)
     | Finish => None
 
-    | ReadFromEnv _ act dproc => Some (dproc (act tt))
-    | WriteToEnv _ _ _ P => Some P (* the action is irrelevant to the trace, so it's ignored here *)
-    | InteractWithEnv _ _ act t dproc => Some (dproc (act t))
+    (* these below cannot happen as we unrolled the process *)
+    | Loop P => None
+    | ReadFromEnv _ _ _ => None
+    | WriteToEnv _ _ _ _ => None
+    | InteractWithEnv _ _ _ _ _ => None
     end
   .
 
@@ -386,6 +388,15 @@ Section OperationalSemantics.
     {
       by move=>p {}L a T l payload K HL _ Hfind ; apply: (t_Send _ _ HL).
     }
+    {
+      by move=> T act {}L {}P _ {}Ih; rewrite /punroll -/(punroll n.+1 _).
+    }
+    {
+      by move=> T act t {}L {}P _ {}Ih; rewrite /punroll -/(punroll n.+1 _).
+    }
+    {
+      by move=> Tr Tw act t {}L {}P _ {}Ih; rewrite /punroll -/(punroll n.+1 _).
+    }
   Qed.
 
   Theorem preservation P Ps A L:
@@ -427,8 +438,7 @@ Section OperationalSemantics.
       move=>_ []<-//.
       by exists L0.
     }
-  (* Qed. *)
-  Admitted.
+  Qed.
 
   Corollary preservation' P Ps A L:
     of_lt P L ->
