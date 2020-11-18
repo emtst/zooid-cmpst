@@ -7,4 +7,4 @@ let get_input () =
 
 let compute x = x * 2
 
-let print n = print_string @@ "The result is: " ^ string_of_int n
+let print n = print_endline @@ "The result is: " ^ string_of_int n

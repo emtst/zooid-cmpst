@@ -352,12 +352,10 @@ Definition Lbl := 1. Opaque Lbl.
 
 
 Parameter get_input : unit -> coq_ty T_nat.
-(* Parameter set_input : coq_ty T_nat -> unit. *)
 Parameter compute : coq_ty T_nat -> coq_ty T_nat.
 Parameter print : coq_ty T_nat -> unit.
 
 Extract Constant get_input => "PipelineLib.Implementation.get_input".
-(* Extract Constant set_input => "PipelineLib.Implementation.set_input". *)
 Extract Constant compute => "PipelineLib.Implementation.compute".
 Extract Constant print => "PipelineLib.Implementation.print".
 

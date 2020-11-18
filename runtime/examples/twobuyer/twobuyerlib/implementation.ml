@@ -1,10 +1,10 @@
 
 
 
-let read_item : int = 7
+let read_item : int = 2
 
 let print_quote x =
-  "The offer is: " ^ string_of_int x ^ "<<<<<<<" |> print_endline
+  "The offer is: £ " ^ string_of_int x |> print_endline
 
 let read_proposal () =
   print_endline "Enter your offer (int): " ;
