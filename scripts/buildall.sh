@@ -6,6 +6,6 @@ fi
 
 if [ -d "scripts" ]; then
 
-make && ./scripts/updateDeprecated.sh && cd runtime && dune build
+./generateMakefile && make && ./scripts/updateDeprecated.sh && cd runtime && dune build
 
 fi

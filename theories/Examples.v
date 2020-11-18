@@ -49,8 +49,11 @@ Definition test : typed_proc
 Definition test_t1 := Eval compute in projT1 test.
 Definition test_t2 := Eval compute in get_proc (projT2 test).
 
-(*** PING PONG protocols
+
+(*
+ * PingPong Example
  *)
+
 Definition Bye := 0.
 Definition Ping := 1.
 Definition Pong := 1.
@@ -220,12 +223,12 @@ Goal forall Li Lc, (Li = projT1 ping_pong_client4 /\
 Qed.
 
 
-(*** Two-buyer protocol
+(*
+ * Two-buyer Example
  *)
 
-(**
- * Message labels
- *)
+
+(* Message labels *)
 Definition BookId := 0.
 Definition Quote := 1.
 Definition ProposeA := 2.
@@ -341,7 +344,11 @@ Definition buyerB : wt_proc twob_buyB_lt :=
         => Cancel, tt \as T_unit! finish
       ].
 
-(* Pipeline example *)
+
+(*
+ * Pipeline Example
+ *)
+
 
 Definition Alice := 0. Opaque Alice.
 Definition Bob := 1. Opaque Bob.
@@ -389,6 +396,11 @@ Definition carol : wt_proc pp_carol_lt :=
        \recv Bob \lbl Lbl, x : T_nat; write print x
         (jump 0)
      ).
+
+
+(*
+ * Calculator Example
+ *)
 
 
 (* Calculator example from FluidSession/blob/dev/Adder/Adder.scr *)
