@@ -153,10 +153,16 @@ let build_participant (conn : conn_desc list) : (module ProcessMonad) =
     "recv' with length:" ^ string_of_int l |> Log.log_str ;
     Marshal.from_bytes buff 0 |> Lwt.return
   in
+
+  let close_channels () =
+    let chs = Dict.to_seq part_to_ch |> List.of_seq in
+    Lwt_list.iter_s (fun (_, ch) -> Lwt_unix.close ch) chs
+
+  in
      (module struct
       type 'a t = 'a Lwt.t
 
-      let run p = Log.log_str "running main" ; Lwt_main.run p
+      let run p = Log.log_str "running main" ; Lwt_main.run (p >>= fun res -> close_channels () >>= fun _ -> Lwt.return res)
 
       (* communication primitives *)
       let send role lbl _payload =
