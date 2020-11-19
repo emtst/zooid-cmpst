@@ -82,6 +82,14 @@ section.
 
 ## Run the examples
 
+**Remark:** The underlying transport uses TCP/IP sockets. Running two
+consecutive examples that use the same port number will cause an error:
+```
+Fatal error: exception Unix.Unix_error(Unix.EADDRINUSE, "bind", "")
+```
+After the necessary waiting time, the examples will run again without an error.
+
+
 All the examples are implemented using Zooid and are in the file
 `theories/Examples.v`. Each example in that file starts with a comment
 with the same title as the following sections:
