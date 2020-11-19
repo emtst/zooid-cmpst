@@ -126,7 +126,11 @@ let build_participant (conn : conn_desc list) : (module ProcessMonad) =
 
     "sending payload" |> Log.log_str ;
     Lwt_unix.send (Dict.find role part_to_ch) buff 0 l [] >>= fun l' ->
-    assert (l = l');
+    (if l' < 0 then
+       Log.log_str @@ "send returned an error: l' = " ^ string_of_int l'
+     else
+       (if l != l' then Log.log_str @@ ">>>>>>>>>> l = " ^ string_of_int l ^ " l' = " ^ string_of_int l' else ()) ;
+       assert (l = l'));
     Lwt.return l'
   in
   let rec recv_size ch buff offset msg_size =
