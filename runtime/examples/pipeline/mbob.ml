@@ -7,10 +7,10 @@ let rcarol = 2
 
 let participants =
   [ { role_to = ralice
-    ; spec =   Client(build_addr "127.0.0.1" 10001)
+    ; spec =   Client(build_addr "127.0.0.1" 10301)
     }
   ; { role_to = rcarol
-    ; spec =   Server(build_addr "127.0.0.1" 10002)
+    ; spec =   Server(build_addr "127.0.0.1" 10302)
     }
   ]
 

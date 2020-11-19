@@ -6,7 +6,7 @@ let pp_client = 1
 
 let participants = [
     { role_to = pp_client
-    ; spec = Server(build_addr "127.0.0.1" 10001)
+    ; spec = Server(build_addr "127.0.0.1" 10201)
   }]
 
 let () = print_endline "Implementation for the role of the server in pingpong"

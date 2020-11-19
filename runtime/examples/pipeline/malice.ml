@@ -7,7 +7,7 @@ let rcarol = 2
 
 let participants = [
     { role_to = rbob
-    ; spec =   Server(build_addr "127.0.0.1" 10001)
+    ; spec =   Server(build_addr "127.0.0.1" 10301)
   }]
 
 let () = print_endline "Implementation for the role of alice in the pipeline"

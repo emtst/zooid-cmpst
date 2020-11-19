@@ -6,7 +6,7 @@ let client = 0
 
 let participants = [
     { role_to = svr
-    ; spec =   Client(build_addr "127.0.0.1" 10001)
+    ; spec =   Client(build_addr "127.0.0.1" 10101)
   }]
 
 let () = print_endline "Implementation for the role of the server in the calculator"

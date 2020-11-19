@@ -7,10 +7,10 @@ let seller = 2
 
 let participants = [
     { role_to = seller
-    ; spec = Client(build_addr "127.0.0.1" 10001)
+    ; spec = Client(build_addr "127.0.0.1" 10401)
     }
   ; { role_to = buyerB
-    ; spec = Server(build_addr "127.0.0.1" 10003)
+    ; spec = Server(build_addr "127.0.0.1" 10403)
   }]
 
 let () = print_endline "Implementation for the role of the buyer A in twobuyer"
