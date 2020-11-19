@@ -129,15 +129,22 @@ let build_participant (conn : conn_desc list) : (module ProcessMonad) =
     assert (l = l');
     Lwt.return l'
   in
+  let rec recv_size ch buff offset msg_size =
+    Lwt_unix.recv ch buff offset msg_size []
+    >>= fun l ->
+    if l < msg_size then recv_size ch buff l (msg_size - l) else Lwt.return (offset + l)
+  in
   let recv' role =
     let size_buff = Bytes.create size_buffer_len in
     let buff = Bytes.create max_message_length in
     "about to recv size" |> Log.log_str;
-    Lwt_unix.recv (Dict.find role part_to_ch) size_buff 0 size_buffer_len []
+    (* Lwt_unix.recv (Dict.find role part_to_ch) size_buff 0 size_buffer_len [] *)
+    recv_size (Dict.find role part_to_ch) size_buff 0 size_buffer_len
     >>= fun l -> assert (l = size_buffer_len) ;
     let msg_size = Bytes.get_int32_be size_buff 0 |> Int32.to_int in
     "expecting a message size: " ^ string_of_int msg_size |> Log.log_str ;
-    Lwt_unix.recv (Dict.find role part_to_ch) buff 0 msg_size []
+    (* Lwt_unix.recv (Dict.find role part_to_ch) buff 0 msg_size [] *)
+    recv_size (Dict.find role part_to_ch) buff 0 msg_size
     >>= fun l ->
     "recv' with length:" ^ string_of_int l |> Log.log_str ;
     Marshal.from_bytes buff 0 |> Lwt.return
