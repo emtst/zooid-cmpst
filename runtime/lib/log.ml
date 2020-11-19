@@ -55,9 +55,7 @@ let log_str (msg: string) : unit =
     match !log_channel with
     | Some ch ->
        let msg = !log_name ^ " : " ^ get_now() ^ " :: " ^ msg ^ "\n" in
-       output_string
-
-ch msg ; flush ch
+       output_string ch msg ; flush ch
     | _ -> ()
   with _ ->
     output_string stderr "Unable to write to the log file"
