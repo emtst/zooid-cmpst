@@ -83,7 +83,7 @@ section.
 ## Run the examples
 
 **Remark:** The underlying transport uses TCP/IP sockets. Running two
-consecutive examples that use the same port number will cause an error:
+consecutive examples that use the same port number may cause an error:
 ```
 Fatal error: exception Unix.Unix_error(Unix.EADDRINUSE, "bind", "")
 ```
