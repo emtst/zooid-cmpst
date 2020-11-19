@@ -102,7 +102,7 @@ let setup_channels (conns : conn_desc list) :
   Log.log_str ("about to start connections: " ^ show_conn_descs conns) ;
   let cs = List.map conn_desc_to_ch conns in
   List.fold_left
-    (fun dict (role, ch) -> Dict.add role (Lwt_unix.of_unix_file_descr ch) dict)
+    (fun dict (role, ch) -> Dict.add role (Lwt_unix.of_unix_file_descr ~blocking:true ch) dict)
     Dict.empty cs
 
 let build_participant (conn : conn_desc list) : (module ProcessMonad) =
