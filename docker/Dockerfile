@@ -11,9 +11,6 @@ RUN echo '[ ! -z "$TERM" -a -r /etc/welcome ] && cat /etc/welcome' \
 = Artifact: Zooid: a DSL for Certified Multiparty Computation     =\n\
 ===================================================================\n\
 \n\
-This is the artifact for the paper 'CAMP: Cost-Aware Multiparty \n\
-Session Protocols' .\n\
-\n\
 PWD=/home/artifact/Zooid \n\
 \n\
 This directory contains the source code for our tool, as well as \n\
