@@ -1,9 +1,12 @@
-FROM coqorg/coq:8.10
+FROM coqorg/coq:8.13
+
+## For some reason, coq starts with user "coq", not root
+USER root
 
 # Welcome message
 RUN echo '[ ! -z "$TERM" -a -r /etc/welcome ] && cat /etc/welcome' \
     >> /etc/bash.bashrc \
-    ; echo "\
+    ; echo -e "\
 ===================================================================\n\
 = Artifact: Zooid: a DSL for Certified Multiparty Computation     =\n\
 ===================================================================\n\
@@ -29,26 +32,25 @@ description. \n\
 ###############################################################################
 # Artifact user
 
-# Add artifact user
-RUN useradd -ms /bin/bash artifact
+USER coq
 
 ###############################################################################
 # Install dependencies
 
-RUN opam install -y coq-mathcomp-ssreflect \
-    opam install -y coq-mathcomp-finmap \
-    opam install -y coq-paco
-
+RUN opam update; \ 
+    opam install -y coq-mathcomp-ssreflect coq-mathcomp-finmap coq-paco
 
 ###############################################################################
 # Download artifact and build
 
-RUN git clone git@github.com:emtst/cmpst.git Zooid \
-    cd artifact \
-    ./generateMakefile \
+COPY --chown=coq . Zooid
+
+WORKDIR /home/coq/Zooid
+
+RUN rm -rf .git* .circleci
+
+RUN ./generateMakefile; \
     make
 
-WORKDIR /home/artifact/Zooid
 ENV TERM xterm-256color
-
 CMD ["/bin/bash", "-l"]
