@@ -37,7 +37,7 @@ RUN useradd -ms /bin/bash artifact
 
 RUN opam install -y coq-mathcomp-ssreflect \
     opam install -y coq-mathcomp-finmap \
-    opam install -y coq-paco \
+    opam install -y coq-paco
 
 
 ###############################################################################
@@ -46,7 +46,7 @@ RUN opam install -y coq-mathcomp-ssreflect \
 RUN git clone git@github.com:emtst/cmpst.git Zooid \
     cd artifact \
     ./generateMakefile \
-    make \
+    make
 
 WORKDIR /home/artifact/Zooid
 ENV TERM xterm-256color
