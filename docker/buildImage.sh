@@ -12,7 +12,6 @@ read -r input
 git clean -xdf
 
 echo "Building docker image (requires 'sudo')"
-sudo docker build -t pldi21-paper92 -f docker/Dockerfile .
+sudo docker build -t zooid-cmpst -f docker/Dockerfile .
 
 popd
-
