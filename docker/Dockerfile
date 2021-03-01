@@ -1,4 +1,4 @@
-FROM coqorg/coq:8.13
+FROM coqorg/coq:8.13.0-ocaml-4.11.1-flambda
 
 ## For some reason, coq starts with user "coq", not root
 USER root
@@ -34,8 +34,8 @@ USER coq
 ###############################################################################
 # Install dependencies
 
-RUN opam update; \ 
-    opam install -y coq-mathcomp-ssreflect coq-mathcomp-finmap coq-paco
+RUN opam update; \
+    opam install -y coq-mathcomp-ssreflect coq-mathcomp-finmap coq-paco lwt
 
 ###############################################################################
 # Download artifact and build
@@ -46,8 +46,7 @@ WORKDIR /home/coq/Zooid
 
 RUN rm -rf .git* .circleci
 
-RUN ./generateMakefile; \
-    make
+RUN ./scripts/buildall.sh
 
 ENV TERM xterm-256color
 CMD ["/bin/bash", "-l"]
