@@ -1,0 +1,130 @@
+\documentclass[11pt, a4paper,UKenglish,cleveref, autoref, thm-restate]{article}
+\usepackage{babel}
+\usepackage{varioref}
+
+\usepackage{geometry}
+%\geometry{noheadfoot, vmargin=1.0in, hmargin=0.5in}
+\usepackage[ddmmyyyy]{datetime}
+\usepackage{prerex}
+
+\usetikzlibrary{fit}
+
+\title{\bf Overview of the Structure of the Coq Libraries for Zooid}
+\author{David Castro (Imperial College London) \and Francisco Ferreira (Imperial College London) \and Lorenzo Gheri (Imperial College London)\and Nobuko Yoshida (Imperial College London)}
+\begin{document}
+
+\maketitle
+
+%\thispagestyle{empty}
+\setcounter{diagheight}{90}
+
+
+\begin{figure}
+\begin{chart}%\grid
+
+%main
+\reqhalfcourse 15,75:{}{Common.v}{}
+\reqhalfcourse 5,65:{}{Global.v}{}
+\reqhalfcourse 25,65:{}{Local.v}{}
+\reqhalfcourse 15,55:{}{Projection.v}{}
+\reqhalfcourse 15,45:{}{TraceEquiv.v}{}
+\reqhalfcourse 15,35:{}{Proc.v}{}
+\reqhalfcourse 15,25:{}{Zooid.v}{}
+\reqhalfcourse 15,15:{}{Examples.v}{}
+%Common.v
+\reqhalfcourse 45,85:{}{Common/Forall.v}{}
+\reqhalfcourse 45,77:{}{Common/Member.v}{}
+\reqhalfcourse 48,69:{}{Common/Alt.v}{}
+\reqhalfcourse 65,77:{}{Common/AtomSets.v}{}
+\reqhalfcourse 65,69:{}{Common/Actions.v}{}
+\reqhalfcourse 82,69:{}{Common/Queue.v}{}
+%Global.v
+\reqhalfcourse 47,60:{}{Global/Syntax.v}{}
+\reqhalfcourse 67,60:{}{Global/Trees.v}{}
+\reqhalfcourse 57,52:{}{Global/Unravel.v}{}
+\reqhalfcourse 77,50:{}{Global/Semantics.v}{}
+%Local.v
+\reqhalfcourse 47,41:{}{Local/Syntax.v}{}
+\reqhalfcourse 67,41:{}{Local/Trees.v}{}
+\reqhalfcourse 57,33:{}{Local/Unravel.v}{}
+\reqhalfcourse 77,31:{}{Local/Semantics.v}{}
+%Projection.v
+\reqhalfcourse 43,22:{}{Projection/IProject.v}{}
+\reqhalfcourse 63,22:{}{Projection/CProject.v}{}
+\reqhalfcourse 78,14:{}{Projection/QProject.v}{}
+\reqhalfcourse 53,5:{}{Projection/Correctness.v}{}
+%tricks
+\mini 36,88:{}
+\mini 36,66:{}
+\mini 40,63:{}
+\mini 40,47:{}
+\mini 40,44:{}
+\mini 40,28:{}
+\mini 34,25:{}
+\mini 34,02:{}
+
+%main
+\prereq 15,75,25,65:
+\prereq 15,75,5,65:
+\prereq 5,65,15,55:
+\prereq 25,65,15,55:
+\prereq 15,55,15,45:
+\prereq 15,45,15,35:
+\prereq 15,35,15,25:
+\prereq 15,25,15,15:
+%Common.v
+\prereq 45,85,45,77:
+\prereq 45,77,48,69:
+\prereq 65,77,48,69:
+\prereq 65,77,65,69:
+\prereq 65,77,82,69:
+\coreq 15,75,36,88:
+\coreq 15,75,36,66:
+%Global.v
+\prereq 47,60,57,52:
+\prereq 67,60,57,52:
+\prereq 67,60,77,50:
+\coreq 5,65,40,63:
+\coreq 5,65,40,47:
+%Local.v
+\prereq 47,41,57,33:
+\prereq 67,41,57,33:
+\prereq 67,41,77,31:
+\coreq 25,65,40,44:
+\coreq 25,65,40,28:
+%Projection.v
+\prereq 43,22,53,5:
+\prereq 63,22,53,5:
+\coreq 15,55,34,25:
+\coreq 15,55,34,02:
+
+%Common.v
+\begin{pgfonlayer}{courses}
+\draw[dashed] ([shift={(-3mm,1mm)}]x45y85.north west) rectangle ([shift={(1mm,-1mm)}]x82y69.south east);
+\end{pgfonlayer}
+%Global.v
+\begin{pgfonlayer}{courses}
+\draw[dashed] ([shift={(-1mm,1mm)}]x47y60.north west) rectangle ([shift={(1mm,-1mm)}]x77y50.south east);
+\end{pgfonlayer}
+%Local.v
+\begin{pgfonlayer}{courses}
+\draw[dashed] ([shift={(-1mm,1mm)}]x47y41.north west) rectangle ([shift={(1mm,-1mm)}]x77y31.south east);
+\end{pgfonlayer}
+%Projection.v
+\begin{pgfonlayer}{courses}
+\draw[dashed] ([shift={(-1mm,1mm)}]x43y22.north west) rectangle ([shift={(50mm,-1mm)}]x53y5.south east);
+\end{pgfonlayer}
+
+\end{chart}
+\caption{Dependency Graph for Zooid's Coq Libraries}
+\label{fig:dep}
+\end{figure}
+
+Here we give a brief overview on the structure of the Coq code in the artifact, for the paper ``Zooid: a DSL for Certified Multiparty Computation''. The\\
+
+Figure \ref{fig:dep} shows the dependency graphs of the libraries; we follow the graph on the left, which gives a structure of the main development.\\
+
+The file \texttt{Common.v} Calls
+
+
+\end{document}
