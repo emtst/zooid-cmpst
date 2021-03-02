@@ -35,7 +35,7 @@ USER coq
 # Install dependencies
 
 RUN opam update; \
-    opam install -y coq-mathcomp-ssreflect coq-mathcomp-finmap coq-paco lwt
+    opam install -y coq-mathcomp-ssreflect.1.12.0 coq-mathcomp-finmap.1.5.1 coq-paco.4.0.4 lwt.5.4.0
 
 ###############################################################################
 # Download artifact and build
