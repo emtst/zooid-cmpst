@@ -3,7 +3,7 @@
 \usepackage{varioref}
 
 \usepackage{geometry}
-%\geometry{noheadfoot, vmargin=1.0in, hmargin=0.5in}
+\geometry{noheadfoot, vmargin=1.0in, hmargin=0.5in}
 \usepackage[ddmmyyyy]{datetime}
 \usepackage{prerex}
 
@@ -120,11 +120,33 @@
 \label{fig:dep}
 \end{figure}
 
-Here we give a brief overview on the structure of the Coq code in the artifact, for the paper ``Zooid: a DSL for Certified Multiparty Computation''. The\\
+Here we give a brief overview on the structure of the Coq libraries, in the artifact for the paper ``Zooid: a DSL for Certified Multiparty Computation''; these can be found in the folder \texttt{theories}. Figure \ref{fig:dep} shows the dependency graphs of the libraries; we follow the graph on the left, which gives a structure of the main development. More detail can be found in the paper and its appendix, with pointers to the code for definitions and theorems.\\
 
-Figure \ref{fig:dep} shows the dependency graphs of the libraries; we follow the graph on the left, which gives a structure of the main development.\\
+The file \texttt{Common.v} calls the theories in the folder \texttt{Common}.
+\begin{itemize}
+\item \texttt{Forall.v} and \texttt{Member.v} provide support for lists, which will be used for continuations (branching) in inductively defined global and local types.
+\item In \texttt{AtomSets.v} \emph{payload types} for sent/received messages in Zooid are defined.
+\item \texttt{Alt.v} provides support for partial functions, as we use these for continuations (branching) in coinductively defined global and local trees.
+\item In \texttt{Actions.v} the \emph{actions} of our LTS semantics are defined, together with the codatatype of \emph{execution traces}.
+\item \emph{Queue environments} for asynchronous semantics are defined in \texttt{Queue.v}.
+\end{itemize}
 
-The file \texttt{Common.v} Calls
+The file \texttt{Global.v} calls the theories in the folder \texttt{Global}.
+\begin{itemize}
+\item In \texttt{Syntax.v} the dadatype of \emph{global types} is defined; some basic infrastructure is given.
+\item In \texttt{Tree.v} the codadatype of \emph{global trees} is defined; some basic infrastructure is given.
+\item \texttt{Unravel.v} gives the \emph{unravelling relation}, that pairs global types with their representation as trees.
+\item In \texttt{Semantics.v} we give the semantics for global types: we define a \emph{labelled transition system} for global trees (unravelling of global types) and we introduce the notion of \emph{execution trace}.
+\end{itemize}
+
+The file \texttt{Local.v} calls the theories in the folder \texttt{Local}.
+\begin{itemize}
+\item In \texttt{Syntax.v} the dadatype of \emph{local types} is defined; some basic infrastructure is given.
+\item In \texttt{Tree.v} the codadatype of \emph{local trees} is defined; some basic infrastructure is given.
+\item \texttt{Unravel.v} gives the \emph{unravelling relation}, that pairs local types with their representation as trees.
+\item In \texttt{Semantics.v} we give the semantics for local types: we define a \emph{labelled transition system} for local trees (unravelling of local types) and we introduce the notion of \emph{execution trace}.
+\end{itemize}
+
 
 
 \end{document}
