@@ -20,7 +20,7 @@ sleep 1 &&
 echo "Running Bob" &&
 cd runtime &&
 
-echo 42 | dune exec -- mbob &
+ dune exec -- mbob &
 
 sleep 2  &&
 

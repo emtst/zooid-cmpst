@@ -20,7 +20,7 @@ description. \n\
 \n\
   * README.md  ............. Description of this artifact \n\
   * LICENSE  ............... BSD-3 License for our code \n\
-  * run.sh  ................ Step-by-step execution of this artifact \n\
+  * run.sh  ................ Step-by-step tutorial/walkthrough for this artifact \n\
   * theories ............... Coq implementation and correctness proofs for Zooid \n\
   * runtime ................ OCaml runtime for executing processes \n\
 \n"\
