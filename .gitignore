@@ -72,3 +72,6 @@ theories/*.mli
 
 runtime/examples/generated/*.ml
 runtime/examples/generated/*.mli
+
+# dependency map
+!doc/Coq_dependencies/dependencies.pdf
