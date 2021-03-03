@@ -11,15 +11,23 @@ system on your own.
 
 ### Obtain the artifact (Docker image hosted on Zenodo)
 
-We provide a [Docker image](https://??) with all the necessary
-dependencies. The following steps assume a Unix environment with
-Docker properly installed. Other platforms supported by docker will
-have analogous ways to import and handle the image. For more
-information on docker itself refer to the documentation
-[here.](https://docs.docker.com/)
+We provide an artifact that contains [Docker image](https://??) with
+all the necessary dependencies and some documentation. The following
+steps assume a Unix environment with Docker properly installed. Other
+platforms supported by docker will have analogous ways to import and
+handle the image. For more information on docker itself refer to the
+documentation [here.](https://docs.docker.com/)
 
-Ensure that the docker Daemon is running. Load the image (using `sudo`
-if necessary):
+The artifact contains three items:
+1. zooid-cmpst.tar.gz         -- the docker image for the code
+2. Tutorial.html & coqdoc.css -- the Zooid tutorial
+3. guide.pdf                  -- a guide to the structure of the
+                                 mechanisation
+
+
+The first thing is to load the docker image and explore the examples
+and development. Ensure that the docker Daemon is running. Load the
+image (using `sudo` if necessary):
 
 ```bash
 $ docker load < zooid-cmpst.tar.gz
@@ -56,6 +64,11 @@ command from the top level directory of the repository.
 ```bash
 $ ./run.sh
 ```
+
+### Next steps, going deeper
+
+Read the `tutorial.html` and `guide.pdf` to learn about how to
+implement Zooid programs and how the mechanisation is structured.
 
 ## Running the code without the docker container
 
