@@ -32,3 +32,4 @@ theories/Proc.v
 theories/Zooid.v
 theories/Examples.v
 theories/Code.v
+theories/Tutorial.v

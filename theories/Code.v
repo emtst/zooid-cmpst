@@ -13,6 +13,7 @@ Require Import MPST.TraceEquiv.
 Require Import MPST.Proc.
 Require Import MPST.Zooid.
 Require Import MPST.Examples.
+Require Import MPST.Tutorial.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
