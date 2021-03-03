@@ -69,14 +69,18 @@ Finally, the three final files: \texttt{Examples.v}, \texttt{Tutorial.v}, and \t
 \begin{chart}%\grid
 
 %main
-\reqhalfcourse 15,75:{}{Common.v}{}
-\reqhalfcourse 5,65:{}{Global.v}{}
-\reqhalfcourse 25,65:{}{Local.v}{}
-\reqhalfcourse 15,55:{}{Projection.v}{}
-\reqhalfcourse 15,45:{}{TraceEquiv.v}{}
-\reqhalfcourse 15,35:{}{Proc.v}{}
-\reqhalfcourse 15,25:{}{Zooid.v}{}
-\reqhalfcourse 15,15:{}{Examples.v}{}
+\reqhalfcourse 15,80:{}{Common.v}{}
+\reqhalfcourse 5,70:{}{Global.v}{}
+\reqhalfcourse 25,70:{}{Local.v}{}
+\reqhalfcourse 15,60:{}{Projection.v}{}
+\reqhalfcourse 15,50:{}{TraceEquiv.v}{}
+\reqhalfcourse 15,40:{}{Proc.v}{}
+\reqhalfcourse 15,30:{}{Zooid.v}{}
+\reqhalfcourse 5,20:{}{Tutorial.v}{}
+\reqhalfcourse 25,20:{}{Examples.v}{}
+\reqhalfcourse 15,10:{}{Code.v}{}
+
+
 %Common.v
 \reqhalfcourse 45,85:{}{Common/Forall.v}{}
 \reqhalfcourse 45,77:{}{Common/Member.v}{}
@@ -110,39 +114,42 @@ Finally, the three final files: \texttt{Examples.v}, \texttt{Tutorial.v}, and \t
 \mini 34,02:{}
 
 %main
-\prereq 15,75,25,65:
-\prereq 15,75,5,65:
-\prereq 5,65,15,55:
-\prereq 25,65,15,55:
-\prereq 15,55,15,45:
-\prereq 15,45,15,35:
-\prereq 15,35,15,25:
-\prereq 15,25,15,15:
+\prereq 15,80,25,70:
+\prereq 15,80,5,70:
+\prereq 5,70,15,60:
+\prereq 25,70,15,60:
+\prereq 15,60,15,50:
+\prereq 15,50,15,40:
+\prereq 15,40,15,30:
+\prereq 15,30,5,20:
+\prereq 15,30,25,20:
+\prereq 5,20,15,10:
+\prereq 25,20,15,10:
 %Common.v
 \prereq 45,85,45,77:
 \prereq 45,77,48,69:
 \prereq 65,77,48,69:
 \prereq 65,77,65,69:
 \prereq 65,77,82,69:
-\coreq 15,75,36,88:
-\coreq 15,75,36,66:
+\coreq 15,80,36,88:
+\coreq 15,80,36,66:
 %Global.v
 \prereq 47,60,57,52:
 \prereq 67,60,57,52:
 \prereq 67,60,77,50:
-\coreq 5,65,40,63:
-\coreq 5,65,40,47:
+\coreq 5,70,40,63:
+\coreq 5,70,40,47:
 %Local.v
 \prereq 47,41,57,33:
 \prereq 67,41,57,33:
 \prereq 67,41,77,31:
-\coreq 25,65,40,44:
-\coreq 25,65,40,28:
+\coreq 25,70,40,44:
+\coreq 25,70,40,28:
 %Projection.v
 \prereq 43,22,53,5:
 \prereq 63,22,53,5:
-\coreq 15,55,34,25:
-\coreq 15,55,34,02:
+\coreq 15,60,34,25:
+\coreq 15,60,34,02:
 
 %Common.v
 \begin{pgfonlayer}{courses}
