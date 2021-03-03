@@ -1,0 +1,666 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<link href="coqdoc.css" rel="stylesheet" type="text/css" />
+<title>Tutorial</title>
+</head>
+
+<body>
+
+<div id="page">
+
+<div id="header">
+</div>
+
+<div id="main">
+
+<div class="code">
+</div>
+
+<div class="doc">
+<a id="lab1"></a><h1 class="section">Zooid Tutorial/walkthrough</h1>
+<a id="lab2"></a><h2 class="section">Introduction</h2>
+
+
+<div class="paragraph"> </div>
+
+This file contains a walkthrough/tutorial on how to write Zooid
+specification and processes. For succinctness this tutorial assumes
+familiarity with the Coq proof assistant, the OCaml programming
+language, and the theory of multiparty session types.
+
+<div class="paragraph"> </div>
+
+For the complete code, the source of this file is available in the
+Zooid distribution in the directory <code>theories/Tutorial.v</code>. After
+reading the HTML version of this document, we encourage you to go
+interactively over the file. This will allow you to modify and test
+things, and moreover go over the proofs step by step. <code>Tutorial.v</code>
+also contains extra theorems whose study would help the understanding
+of the more complex proofs.
+
+<div class="paragraph"> </div>
+
+
+</div>
+<div class="code">
+
+<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab3"></a><h2 class="section">The protocol definition: a global type</h2>
+
+
+<div class="paragraph"> </div>
+
+In this tutorial we will explore a binary protocol for clarity of
+presentation. The objective is to discuss progressively more complex
+implementations to motivate how one may approach programming with
+Zooid.
+
+<div class="paragraph"> </div>
+
+The Ping Pong protocol definition we use here correspond to the
+intuition of it. Let's explore it in more detail.
+
+<div class="paragraph"> </div>
+
+ First we define a pair of identifiers for the two roles, we use
+natural numbers to represent each participant.
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">pp_server</span> := 0. <span class="id" title="keyword">Definition</span> <span class="id" title="var">pp_client</span> := 1.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+In this protocol, the server will wait for messages from the
+client, the client will choose to either send a 'Ping' message and
+wait for the 'Pong' response, and repeat, or it will choose to send
+'Bye' to end the protocol.
+
+<div class="paragraph"> </div>
+
+For this purpose we define three message identifiers as labels of each
+message. Again, labels are also reprsented by natural numbers.
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">Bye</span> := 0. <span class="id" title="keyword">Definition</span> <span class="id" title="var">Ping</span> := 1. <span class="id" title="keyword">Definition</span> <span class="id" title="var">Pong</span> := 1.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+
+<div class="paragraph"> </div>
+
+At this point we are ready to specify the global type, we do explore
+in a step by step manner, and provide the full global type in the end.
+
+<div class="paragraph"> </div>
+
+This protocol is recursive, and it repeats itself from the begining,
+so the first constructor is <span class="inlinecode"><span class="id" title="var">g_rec</span></span> insicating that the fix point
+starts here.
+
+<div class="paragraph"> </div>
+
+<span class="inlinecode"><span class="id" title="keyword">Definition</span></span> <span class="inlinecode"><span class="id" title="var">ping_pong</span></span> <span class="inlinecode">:=</span> <span class="inlinecode"><span class="id" title="var">g_rec</span></span> <span class="inlinecode">...</span>
+
+<div class="paragraph"> </div>
+
+Then the client has the choice of finishing the interaction or
+requesting a ping. The constructor <span class="inlinecode"><span class="id" title="var">g_msg</span></span> allows one to express this,
+it takes the source and target of the message and a list of messages
+and their payload type and continuations. In this case we leave the
+continuations as ellipsis for now. The payload for the message <span class="inlinecode"><span class="id" title="var">Bye</span></span>
+is just unit since the interaction has finished and no more
+information is required and the payload for <span class="inlinecode"><span class="id" title="var">Ping</span></span> is a natural number
+for the server.
+
+<div class="paragraph"> </div>
+
+<span class="inlinecode"><span class="id" title="keyword">Definition</span></span> <span class="inlinecode"><span class="id" title="var">ping_pong</span></span> <span class="inlinecode">:=</span> <span class="inlinecode"><span class="id" title="var">g_rec</span></span> <span class="inlinecode">(<span class="id" title="var">g_msg</span></span> <span class="inlinecode"><span class="id" title="var">pp_client</span></span> <span class="inlinecode"><span class="id" title="var">pp_server</span></span> <span class="inlinecode">[::</span> <span class="inlinecode">(<span class="id" title="var">Bye</span>,</span>
+  <span class="inlinecode">(<span class="id" title="var">T_unit</span>,</span> <span class="inlinecode">...)</span> <span class="inlinecode">(<span class="id" title="var">Ping</span>,</span> <span class="inlinecode">(<span class="id" title="var">T_nat</span>,</span> <span class="inlinecode">...))]</span>)]
+
+<div class="paragraph"> </div>
+
+When the client sends the <span class="inlinecode"><span class="id" title="var">Bye</span></span> label then the continuation is simply
+to end (<span class="inlinecode"><span class="id" title="var">g_end</span></span>):
+
+<div class="paragraph"> </div>
+
+<span class="inlinecode"><span class="id" title="keyword">Definition</span></span> <span class="inlinecode"><span class="id" title="var">ping_pong</span></span> <span class="inlinecode">:=</span> <span class="inlinecode"><span class="id" title="var">g_rec</span></span> <span class="inlinecode">(</span> <span class="inlinecode"><span class="id" title="var">g_msg</span></span> <span class="inlinecode"><span class="id" title="var">pp_client</span></span> <span class="inlinecode"><span class="id" title="var">pp_server</span></span> <span class="inlinecode">[::</span> <span class="inlinecode">(<span class="id" title="var">Bye</span>,</span>
+  <span class="inlinecode">(<span class="id" title="var">T_unit</span>,</span> <span class="inlinecode"><span class="id" title="var">g_end</span>));</span> <span class="inlinecode">(<span class="id" title="var">Ping</span>,</span> <span class="inlinecode">(<span class="id" title="var">T_nat</span>,</span> <span class="inlinecode">...</span> <span class="inlinecode">).]</span>)]
+
+<div class="paragraph"> </div>
+
+On the case of the <span class="inlinecode"><span class="id" title="var">Ping</span></span> label the behaviour is to let the server
+respond with the <span class="inlinecode"><span class="id" title="var">Pong</span></span> label and another natural number <span class="inlinecode"></span> <span class="inlinecode"><span class="id" title="var">g_msg</span></span>
+<span class="inlinecode"><span class="id" title="var">pp_server</span></span> <span class="inlinecode"><span class="id" title="var">pp_client</span></span> <span class="inlinecode">[::</span> <span class="inlinecode">(<span class="id" title="var">Pong</span>,</span> <span class="inlinecode">(<span class="id" title="var">T_nat</span>,</span> <span class="inlinecode">...))]))</span> <span class="inlinecode"></span>]
+
+<div class="paragraph"> </div>
+
+So far our still incomplete definition looks like this:
+
+<div class="paragraph"> </div>
+
+<span class="inlinecode"><span class="id" title="keyword">Definition</span></span> <span class="inlinecode"><span class="id" title="var">ping_pong</span></span> <span class="inlinecode">:=</span> <span class="inlinecode"><span class="id" title="var">g_rec</span></span> <span class="inlinecode">(</span> <span class="inlinecode"><span class="id" title="var">g_msg</span></span> <span class="inlinecode"><span class="id" title="var">pp_client</span></span> <span class="inlinecode"><span class="id" title="var">pp_server</span></span> <span class="inlinecode">[::</span> <span class="inlinecode">(<span class="id" title="var">Bye</span>,</span>
+  <span class="inlinecode">(<span class="id" title="var">T_unit</span>,</span> <span class="inlinecode"><span class="id" title="var">g_end</span>));</span> <span class="inlinecode">(<span class="id" title="var">Ping</span>,</span> <span class="inlinecode">(<span class="id" title="var">T_nat</span>,</span> <span class="inlinecode"><span class="id" title="var">g_msg</span></span> <span class="inlinecode"><span class="id" title="var">pp_server</span></span> <span class="inlinecode"><span class="id" title="var">pp_client</span></span> <span class="inlinecode">[::</span>
+  <span class="inlinecode">(<span class="id" title="var">Pong</span>,</span> <span class="inlinecode">(<span class="id" title="var">T_nat</span>,</span> <span class="inlinecode">...))]))</span> <span class="inlinecode">]</span> <span class="inlinecode">).</span>])]
+
+<div class="paragraph"> </div>
+
+After the <span class="inlinecode"><span class="id" title="var">Pong</span></span> label, both the client and the server are ready to do
+another run of the protocol. Zooid uses de-Bruijn indices for its
+recursion variables (introduced by the <span class="inlinecode"><span class="id" title="var">g_rec</span></span> constructor). Since
+there is only one recursion constructor, we invke it with <span class="inlinecode"><span class="id" title="var">g_var</span></span> <span class="inlinecode">0</span>.
+
+<div class="paragraph"> </div>
+
+With this we have completely specified the communication protocol for
+this example.
+
+<div class="paragraph"> </div>
+
+The global type for this protocol is:
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">ping_pong</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="var">g_rec</span> ( <span class="id" title="var">g_msg</span> <span class="id" title="var">pp_client</span> <span class="id" title="var">pp_server</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;[:: (<span class="id" title="var">Bye</span>,  (<span class="id" title="var">T_unit</span>, <span class="id" title="var">g_end</span>));<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="var">Ping</span>, (<span class="id" title="var">T_nat</span>, <span class="id" title="var">g_msg</span> <span class="id" title="var">pp_server</span> <span class="id" title="var">pp_client</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[:: (<span class="id" title="var">Pong</span>, (<span class="id" title="var">T_nat</span>, <span class="id" title="var">g_var</span> 0))]))]).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+
+<div class="paragraph"> </div>
+
+Note: the global type specifies all the acceptable behaviours by the
+client and server, yet implementations get to choose which labels to
+send, and the policies regarding the payloads (in this case the
+numbers sent back and forth in the ping pongs.
+<hr/>
+
+
+<div class="paragraph"> </div>
+
+<a id="lab4"></a><h2 class="section">The local types of the participants</h2>
+
+
+<div class="paragraph"> </div>
+
+The local types for each participants are derived automatically by the
+certified implementations.
+
+<div class="paragraph"> </div>
+
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">pp_env</span> := \<span class="id" title="var">project</span> <span class="id" title="var">ping_pong</span>.<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">pp_server_lt</span> := \<span class="id" title="var">get</span> <span class="id" title="var">pp_env</span> <span class="id" title="var">pp_server</span>.<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">pp_client_lt</span> := \<span class="id" title="var">get</span> <span class="id" title="var">pp_env</span> <span class="id" title="var">pp_client</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">pp_env</span></span> contains the types for all participants from which we get
+the types of each role.
+<hr/>
+
+<div class="paragraph"> </div>
+
+<a id="lab5"></a><h2 class="section">The process implementations</h2>
+
+
+<div class="paragraph"> </div>
+
+<a id="lab6"></a><h3 class="section">The implementation of the server</h3>
+
+
+<div class="paragraph"> </div>
+
+First, we will implement the server. The server is in a sense simpler
+because it will implement all the behaviours since in this protocol
+only the client has meaningful choices (i.e.: to ping or quit). As a
+policy for the payloads this server will simple echo back the payload
+of the <span class="inlinecode"><span class="id" title="var">Ping</span></span> message.
+
+<div class="paragraph"> </div>
+
+First start with a definition of an intrinsically typed process
+<span class="inlinecode"><span class="id" title="var">wt_proc</span></span> of type <span class="inlinecode"><span class="id" title="var">pp_server_lt</span></span>.
+
+<div class="paragraph"> </div>
+
+<span class="inlinecode"><span class="id" title="keyword">Definition</span></span> <span class="inlinecode"><span class="id" title="var">ping_pong_server</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">wt_proc</span></span> <span class="inlinecode"><span class="id" title="var">pp_server_lt</span></span> <span class="inlinecode">:=..</span>
+
+<div class="paragraph"> </div>
+
+The protocol starts with a fix point, so the first (smart) constructor
+should be <span class="inlinecode"><span class="id" title="var">loop</span></span> to allow for the recursion to happen.
+
+<div class="paragraph"> </div>
+
+<span class="inlinecode"><span class="id" title="keyword">Definition</span></span> <span class="inlinecode"><span class="id" title="var">ping_pong_server</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">wt_proc</span></span> <span class="inlinecode"><span class="id" title="var">pp_server_lt</span></span> <span class="inlinecode">:=</span> <span class="inlinecode"><span class="id" title="var">loop</span></span> <span class="inlinecode">..</span>
+
+<div class="paragraph"> </div>
+
+Following the protocol, the server has to respond to the client's
+choice, we do this with <span class="inlinecode">\<span class="id" title="var">branch</span></span> <span class="inlinecode"><span class="id" title="var">pp_client</span></span> <span class="inlinecode">[<span class="id" title="var">alts</span></span> <span class="inlinecode">|</span> <span class="inlinecode">...</span> <span class="inlinecode">]</span> where the
+alternatives are either <span class="inlinecode"><span class="id" title="var">Bye</span></span> carrying a unit or <span class="inlinecode"><span class="id" title="var">Ping</span></span> carrying a
+natural number: <span class="inlinecode"></span> <span class="inlinecode">[<span class="id" title="var">alts</span></span> <span class="inlinecode">|</span> <span class="inlinecode">\<span class="id" title="var">lbl</span></span> <span class="inlinecode"><span class="id" title="var">Bye</span>,</span> <span class="inlinecode"><span class="id" title="var">_</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">T_unit</span>;</span> <span class="inlinecode">...</span> <span class="inlinecode">|</span> <span class="inlinecode">\<span class="id" title="var">lbl</span></span> <span class="inlinecode"><span class="id" title="var">Ping</span>,</span> <span class="inlinecode"><span class="id" title="var">x</span></span> <span class="inlinecode">:</span>
+<span class="inlinecode"><span class="id" title="var">T_nat</span>;</span> <span class="inlinecode">...]</span> <span class="inlinecode"></span>
+
+<div class="paragraph"> </div>
+
+The server quits if it receives <span class="inlinecode"><span class="id" title="var">Bye</span></span> with the process smart
+constructor <span class="inlinecode"><span class="id" title="var">finish</span></span> and otherwise it sends back <span class="inlinecode"><span class="id" title="var">Pong</span></span> with the same
+value it received in variable <span class="inlinecode"><span class="id" title="var">x</span></span>.
+
+<div class="paragraph"> </div>
+
+<span class="inlinecode">\<span class="id" title="var">send</span></span> <span class="inlinecode"><span class="id" title="var">pp_client</span></span> <span class="inlinecode"><span class="id" title="var">Pong</span></span> <span class="inlinecode"><span class="id" title="var">x</span></span> <span class="inlinecode">...</span>
+
+<div class="paragraph"> </div>
+
+To repeat the loop, we use again de-bruijn indices and we jump back
+with <span class="inlinecode"><span class="id" title="var">jump</span></span> <span class="inlinecode">0</span>.
+
+<div class="paragraph"> </div>
+
+The complete definition of the server is thus:
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">ping_pong_server</span> : <span class="id" title="var">wt_proc</span> <span class="id" title="var">pp_server_lt</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="var">loop</span> ( \<span class="id" title="var">branch</span> <span class="id" title="var">pp_client</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[<span class="id" title="var">alts</span> | \<span class="id" title="var">lbl</span> <span class="id" title="var">Bye</span>, <span class="id" title="var">_</span> : <span class="id" title="var">T_unit</span>; <span class="id" title="var">finish</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| \<span class="id" title="var">lbl</span> <span class="id" title="var">Ping</span>, <span class="id" title="var">x</span> : <span class="id" title="var">T_nat</span>; (\<span class="id" title="var">send</span> <span class="id" title="var">pp_client</span> <span class="id" title="var">Pong</span> <span class="id" title="var">x</span> (<span class="id" title="var">jump</span> 0))] ).<br/>
+
+<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab7"></a><h3 class="section">The first client -- Always be saying goodbye</h3>
+
+
+<div class="paragraph"> </div>
+
+This first client is the simplest possible one. I just always asks the
+server to finish the interaction by sending <span class="inlinecode"><span class="id" title="var">Bye</span></span>.
+
+<div class="paragraph"> </div>
+
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">ping_pong_client0</span> : <span class="id" title="var">wt_proc</span> <span class="id" title="var">pp_client_lt</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="var">loop</span> (\<span class="id" title="var">select</span> <span class="id" title="var">pp_server</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[<span class="id" title="var">sel</span> | \<span class="id" title="var">otherwise</span> =&gt; <span class="id" title="var">Bye</span>, <span class="id" title="var">tt</span> \<span class="id" title="keyword">as</span> <span class="id" title="var">T_unit</span> ! <span class="id" title="var">finish</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| \<span class="id" title="var">skip</span> =&gt; <span class="id" title="var">Ping</span>, <span class="id" title="var">T_nat</span> !<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">l_msg</span> <span class="id" title="var">l_recv</span> <span class="id" title="var">pp_server</span> [:: (<span class="id" title="var">Pong</span>, (<span class="id" title="var">T_nat</span>, <span class="id" title="var">l_var</span> 0))]<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+In this client we use the <span class="inlinecode">\<span class="id" title="var">select</span></span> <span class="inlinecode"><span class="id" title="var">pp_server</span></span> <span class="inlinecode">...</span> construct to
+make a choice, for this we need to offer a series of conditions that
+if met they are executed, or skipping some parts of the protocol. The
+skips are necessary to simplify arguing that the local type of the
+process corresponds to the one inferred from the terms (i.e.: avoiding
+this would lead to more proof obligations).
+
+<div class="paragraph"> </div>
+
+The selection arguments:
+<span class="inlinecode"></span> <span class="inlinecode">[<span class="id" title="var">sel</span></span> <span class="inlinecode">|</span> <span class="inlinecode">\<span class="id" title="var">otherwise</span></span> <span class="inlinecode">=&gt;</span> <span class="inlinecode"><span class="id" title="var">Bye</span>,</span> <span class="inlinecode"><span class="id" title="var">tt</span></span> <span class="inlinecode">\<span class="id" title="keyword">as</span></span> <span class="inlinecode"><span class="id" title="var">T_unit</span></span> <span class="inlinecode">!...|</span> <span class="inlinecode">\<span class="id" title="var">skip</span></span> <span class="inlinecode">=&gt;</span> <span class="inlinecode"><span class="id" title="var">Ping</span>,</span> <span class="inlinecode"><span class="id" title="var">T_nat</span></span> <span class="inlinecode">!...]</span> <span class="inlinecode"></span>
+has two branches <span class="inlinecode">\<span class="id" title="var">otherwise</span></span> that is
+always taken and <span class="inlinecode">\<span class="id" title="var">skip</span></span> that says that this branch is never taken,
+note that <span class="inlinecode">\<span class="id" title="var">skip</span></span> is annotated with the type of the continuation that
+is skipped.
+
+</div>
+<div class="code">
+
+<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab8"></a><h3 class="section">The second client -- Always be pinging</h3>
+
+
+<div class="paragraph"> </div>
+
+This client is more interesting than the previous one, by always
+choosing to ping and never terminating.
+
+<div class="paragraph"> </div>
+
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">ping_pong_client1</span> : <span class="id" title="var">wt_proc</span> <span class="id" title="var">pp_client_lt</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="var">loop</span> ( \<span class="id" title="var">select</span> <span class="id" title="var">pp_server</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[<span class="id" title="var">sel</span> | \<span class="id" title="var">skip</span> =&gt; <span class="id" title="var">Bye</span> , <span class="id" title="var">T_unit</span> ! <span class="id" title="var">l_end</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| \<span class="id" title="var">otherwise</span> =&gt; <span class="id" title="var">Ping</span>, 1 \<span class="id" title="keyword">as</span> <span class="id" title="var">T_nat</span> !<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(\<span class="id" title="var">recv</span> <span class="id" title="var">pp_server</span> \<span class="id" title="var">lbl</span> <span class="id" title="var">Pong</span>, <span class="id" title="var">x</span> : <span class="id" title="var">T_nat</span>; (<span class="id" title="var">jump</span> 0)) ] ).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The implementation of this client does not use new elements, it
+simply uses the elements that we knew of in a different way.
+</div>
+<div class="code">
+
+<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab9"></a><h3 class="section">The third client -- Always be pinging just one time</h3>
+
+
+<div class="paragraph"> </div>
+
+This client behaves by sending one ping and then terminating. Also,
+until now, all the clients followed the structure of the type step by
+step. What we mean, is that they all do first the <span class="inlinecode"><span class="id" title="var">loop</span></span>, and then
+<span class="inlinecode">\<span class="id" title="var">select</span></span>, and so and so. In this case, since we only want to send one
+<span class="inlinecode"><span class="id" title="var">Ping</span></span> and then terminate with <span class="inlinecode"><span class="id" title="var">Bye</span></span> we have avoided the <span class="inlinecode"><span class="id" title="var">loop</span></span>
+construct.
+
+<div class="paragraph"> </div>
+
+Here is the definition of the process:
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">ping_pong_client2</span> :=<br/>
+&nbsp;&nbsp;[<span class="id" title="var">proc</span> \<span class="id" title="var">select</span> <span class="id" title="var">pp_server</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[<span class="id" title="var">sel</span> | \<span class="id" title="var">otherwise</span> =&gt; <span class="id" title="var">Bye</span>, <span class="id" title="var">tt</span> \<span class="id" title="keyword">as</span> <span class="id" title="var">T_unit</span> ! <span class="id" title="var">finish</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| \<span class="id" title="var">skip</span> =&gt; <span class="id" title="var">Ping</span>, <span class="id" title="var">T_nat</span> !<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">l_msg</span> <span class="id" title="var">l_recv</span> <span class="id" title="var">pp_server</span> [:: (<span class="id" title="var">Pong</span>, (<span class="id" title="var">T_nat</span>, <span class="id" title="var">pp_client_lt</span>))] ] ].<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+
+<div class="paragraph"> </div>
+
+Things to notice:
+
+<div class="paragraph"> </div>
+
+<ul class="doclist">
+<li> no type annotation, we use Coq's type inference to get the type of
+  this Zooid program.
+
+<div class="paragraph"> </div>
+
+
+</li>
+<li> instead of starting with <span class="inlinecode"><span class="id" title="var">loop</span></span> we start the process with <span class="inlinecode">[<span class="id" title="var">proc</span></span>
+  <span class="inlinecode">...]</span> to signal to Coq that this is a Zooid implicitely typed
+  process.
+
+<div class="paragraph"> </div>
+
+
+</li>
+<li> instead of sending <span class="inlinecode"><span class="id" title="var">Bye</span></span> after receiving <span class="inlinecode"><span class="id" title="var">Pong</span></span> we call
+  <span class="inlinecode"><span class="id" title="var">pp_client_lt</span></span> (the process that always says bye) to terminate the
+  execution of the protocol and not have to implement it again.
+
+</li>
+</ul>
+
+<div class="paragraph"> </div>
+
+This implementation strategy is more versatile, allowing us to write
+process that are not structurally folloing their type's shape.
+However, the inferred type is not 'obviously' the same as expected,
+because of some unfoldings. In order to fill that gap the following
+lemma fills that gap by showing that the process admits the right type
+(<span class="inlinecode"><span class="id" title="var">to_proc</span></span> extracts the untyped process from the intrinsically typed
+one).
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">pp_c2</span> : <span class="id" title="var">of_lt_unr</span> <span class="id" title="var">pp_client</span> (<span class="id" title="var">to_proc</span> <span class="id" title="var">ping_pong_client2</span>) <span class="id" title="var">pp_env</span>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">exists</span> (<span class="id" title="var">projT1</span> <span class="id" title="var">ping_pong_client2</span>); <span class="id" title="tactic">split</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">by</span> <span class="id" title="tactic">apply</span>: (<span class="id" title="var">projT2</span> (<span class="id" title="var">projT2</span> <span class="id" title="var">ping_pong_client2</span>)).<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> -[<span class="id" title="var">projT1</span> <span class="id" title="var">ping_pong_client2</span>]/(<span class="id" title="var">lunroll</span> 1 <span class="id" title="var">pp_client_lt</span>).<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">by</span> <span class="id" title="tactic">rewrite</span> -<span class="id" title="var">LUnroll_ind</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span>: <span class="id" title="var">l_expand_unr</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The proof should be simple enough as it resorts unroll and unravel
+the coinductive types.
+<div class="paragraph"> </div>
+
+<a id="lab10"></a><h3 class="section">The fourth client -- Always be useful</h3>
+
+
+<div class="paragraph"> </div>
+
+This client shows how to use Coq infrastructure in Zooid code taking
+advantage of Zooid's nature a shallow embedding in Coq.
+
+<div class="paragraph"> </div>
+
+This version of the client is the n-ary version of the previous one,
+and we compute that using Coq's <span class="inlinecode"><span class="id" title="keyword">Fixpoint</span></span>
+
+<div class="paragraph"> </div>
+
+The first definition is a recursive function that computes the process
+that sends <span class="inlinecode"><span class="id" title="var">n</span></span> times <span class="inlinecode"><span class="id" title="var">Ping</span></span>.
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Fixpoint</span> <span class="id" title="var">ping_pong_client3</span> <span class="id" title="var">n</span> {<span class="id" title="keyword">struct</span> <span class="id" title="var">n</span>}:=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">n</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| 0 =&gt; [<span class="id" title="var">proc</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<span class="id" title="var">select</span> <span class="id" title="var">pp_server</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[<span class="id" title="var">sel</span> | \<span class="id" title="var">otherwise</span> =&gt; <span class="id" title="var">Bye</span>, <span class="id" title="var">tt</span> \<span class="id" title="keyword">as</span> <span class="id" title="var">T_unit</span> ! <span class="id" title="var">finish</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| \<span class="id" title="var">skip</span> =&gt; <span class="id" title="var">Ping</span>, <span class="id" title="var">T_nat</span> !<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">l_msg</span> <span class="id" title="var">l_recv</span> <span class="id" title="var">pp_server</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[:: (<span class="id" title="var">Pong</span>, (<span class="id" title="var">T_nat</span>, <span class="id" title="var">pp_client_lt</span>))]] ]<br/>
+&nbsp;&nbsp;| <span class="id" title="var">m</span>.+1 =&gt; [<span class="id" title="var">proc</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<span class="id" title="var">select</span> <span class="id" title="var">pp_server</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[<span class="id" title="var">sel</span> | \<span class="id" title="var">skip</span> =&gt;<br/>
+&nbsp;&nbsp;<span class="id" title="var">Bye</span>, <span class="id" title="var">T_unit</span> ! <span class="id" title="var">l_end</span> | \<span class="id" title="var">otherwise</span> =&gt; <span class="id" title="var">Ping</span>, <span class="id" title="var">n</span> \<span class="id" title="keyword">as</span> <span class="id" title="var">T_nat</span> ! (\<span class="id" title="var">recv</span><br/>
+&nbsp;&nbsp;<span class="id" title="var">pp_server</span> \<span class="id" title="var">lbl</span> <span class="id" title="var">Pong</span>, <span class="id" title="var">x</span> : <span class="id" title="var">T_nat</span>; <span class="id" title="var">projT2</span> (<span class="id" title="var">ping_pong_client3</span> <span class="id" title="var">m</span>)) ] ]<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+This unravels the local type n times.
+</div>
+<div class="code">
+<span class="id" title="keyword">Fixpoint</span> <span class="id" title="var">l_unravel_n</span> <span class="id" title="var">n</span> <span class="id" title="var">L</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">n</span>, <span class="id" title="var">lunroll</span> (<span class="id" title="var">lrec_depth</span> <span class="id" title="var">L</span>) <span class="id" title="var">L</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">n</span>.+1, <span class="id" title="var">l_msg</span> <span class="id" title="var">p</span> <span class="id" title="var">q</span> <span class="id" title="var">Ks</span> =&gt; <span class="id" title="var">l_msg</span> <span class="id" title="var">p</span> <span class="id" title="var">q</span> [<span class="id" title="var">seq</span> (<span class="id" title="var">K</span>.1, (<span class="id" title="var">K</span>.2.1, <span class="id" title="var">l_unravel_n</span> <span class="id" title="var">n</span> <span class="id" title="var">K</span>.2.2)) | <span class="id" title="var">K</span> &lt;- <span class="id" title="var">Ks</span>]<br/>
+&nbsp;&nbsp;| <span class="id" title="var">_</span>, <span class="id" title="var">_</span> =&gt; <span class="id" title="var">L</span> <span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+This shows that it works for one unravelling. The general proof is
+left as an excercise.
+</div>
+<div class="code">
+<span class="id" title="keyword">Goal</span> <span class="id" title="var">projT1</span> (<span class="id" title="var">ping_pong_client3</span> 0) = <span class="id" title="var">l_unravel_n</span> 1 <span class="id" title="var">pp_client_lt</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">by</span> [].<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab11"></a><h3 class="section">The fifth client -- Always be willing to stop</h3>
+
+
+<div class="paragraph"> </div>
+
+This version of the process sends <span class="inlinecode"><span class="id" title="var">Ping</span></span> until the <span class="inlinecode"><span class="id" title="var">Pong</span></span> payload is
+larger than 3.
+
+<div class="paragraph"> </div>
+
+The only new construct in this client is the the <span class="inlinecode">\<span class="id" title="tactic">case</span></span> clause in
+<span class="inlinecode">\<span class="id" title="var">select</span></span> that allows for a condition to be specified to continue with
+this branch or continue with the rest.
+
+<div class="paragraph"> </div>
+
+Spend some time convincing yourself that the implementatio behaves
+like the previous description.
+
+<div class="paragraph"> </div>
+
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">ping_pong_client4</span> :=<br/>
+&nbsp;&nbsp;[<span class="id" title="var">proc</span> \<span class="id" title="var">select</span> <span class="id" title="var">pp_server</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[<span class="id" title="var">sel</span> | \<span class="id" title="var">skip</span> =&gt; <span class="id" title="var">Bye</span>, <span class="id" title="var">T_unit</span> ! <span class="id" title="var">l_end</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| \<span class="id" title="var">otherwise</span> =&gt; <span class="id" title="var">Ping</span>, 1 \<span class="id" title="keyword">as</span> <span class="id" title="var">T_nat</span> !<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">loop</span>(\<span class="id" title="var">recv</span> <span class="id" title="var">pp_server</span> \<span class="id" title="var">lbl</span> <span class="id" title="var">Pong</span>, <span class="id" title="var">x</span> : <span class="id" title="var">T_nat</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<span class="id" title="var">select</span> <span class="id" title="var">pp_server</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[<span class="id" title="var">sel</span> | \<span class="id" title="tactic">case</span> (<span class="id" title="var">x</span> &gt; 3) =&gt; <span class="id" title="var">Bye</span>, <span class="id" title="var">tt</span> \<span class="id" title="keyword">as</span> <span class="id" title="var">T_unit</span> ! <span class="id" title="var">finish</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| \<span class="id" title="var">otherwise</span> =&gt; <span class="id" title="var">Ping</span>, <span class="id" title="var">x</span> + 1 \<span class="id" title="keyword">as</span> <span class="id" title="var">T_nat</span> ! <span class="id" title="var">jump</span> 0])]].<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+By now you have read <span class="inlinecode"><span class="id" title="var">ping_pong_client4</span></span> and you may be convinced
+that it follows the protocol. However, given that the process is not
+constructed to follow the exact structure of the local type, Coq is
+also not convinced.
+
+<div class="paragraph"> </div>
+
+The following theorem shows that the inferred type <span class="inlinecode"><span class="id" title="var">projT1</span></span>
+<span class="inlinecode"><span class="id" title="var">ping_pong_client4</span></span> <span class="inlinecode"></span> and <span class="inlinecode"><span class="id" title="var">pp_client_lt</span></span> are unrollings of eachother.
+
+</div>
+<div class="code">
+<span class="id" title="keyword">Goal</span> <span class="id" title="keyword">forall</span> <span class="id" title="var">Li</span> <span class="id" title="var">Lc</span>, (<span class="id" title="var">Li</span> = <span class="id" title="var">projT1</span> <span class="id" title="var">ping_pong_client4</span> /\<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">Lc</span> = <span class="id" title="var">l_expand</span> <span class="id" title="var">pp_client_lt</span>) -&gt; <span class="id" title="var">LUnroll</span> <span class="id" title="var">Li</span> <span class="id" title="var">Lc</span>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span>/<span class="id" title="var">paco2_acc</span>=&gt; <span class="id" title="var">r</span> <span class="id" title="var">_</span> /(<span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<span class="id" title="var">conj</span> <span class="id" title="var">erefl</span> <span class="id" title="var">erefl</span>))/=-<span class="id" title="var">CIH</span> <span class="id" title="var">Li</span> <span class="id" title="var">Lr</span> [-&gt;-&gt;].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span>: <span class="id" title="var">paco2_fold</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> <span class="id" title="var">l_expand_once</span>/=; <span class="id" title="tactic">constructor</span>=&gt;/=; <span class="id" title="tactic">first</span> <span class="id" title="tactic">by</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span>/<span class="id" title="var">same_dom_eta</span>/<span class="id" title="var">same_dom_extend</span>/<span class="id" title="var">same_dom_extend</span>/<span class="id" title="var">same_dom_refl</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">move</span>=&gt; <span class="id" title="var">l</span> <span class="id" title="var">Ty</span> <span class="id" title="var">G</span> <span class="id" title="var">G'</span>; <span class="id" title="tactic">rewrite</span> /<span class="id" title="var">extend</span>/<span class="id" title="var">empty</span>/=.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">case</span>:<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">ifP</span>=&gt;//; <span class="id" title="tactic">first</span> <span class="id" title="tactic">by</span> <span class="id" title="tactic">move</span>=&gt;<span class="id" title="var">_</span> [&lt;-&lt;-] [&lt;-]; <span class="id" title="tactic">left</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span>/<span class="id" title="var">paco2_fold</span>; <span class="id" title="tactic">rewrite</span> <span class="id" title="var">l_expand_once</span>; <span class="id" title="tactic">constructor</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">case</span>: <span class="id" title="var">ifP</span>=&gt;//; <span class="id" title="tactic">move</span>=&gt; <span class="id" title="var">_</span> <span class="id" title="var">_</span> [&lt;-&lt;-] [&lt;-]; <span class="id" title="tactic">left</span>; <span class="id" title="tactic">apply</span>/<span class="id" title="var">paco2_fold</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">constructor</span>=&gt;/=; <span class="id" title="tactic">left</span>; <span class="id" title="tactic">rewrite</span> <span class="id" title="var">l_expand_once</span>/=.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span>: <span class="id" title="var">paco2_fold</span>; <span class="id" title="tactic">constructor</span>; <span class="id" title="tactic">first</span> <span class="id" title="tactic">by</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span>/<span class="id" title="var">same_dom_eta</span>/<span class="id" title="var">same_dom_extend</span>/<span class="id" title="var">same_dom_refl</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">move</span>=&gt; {}<span class="id" title="var">l</span> {}<span class="id" title="var">Ty</span> {}<span class="id" title="var">G</span> {}<span class="id" title="var">G'</span>/=; <span class="id" title="tactic">rewrite</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/<span class="id" title="var">extend</span>/<span class="id" title="var">empty</span>/=.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">by</span> <span class="id" title="tactic">case</span>: <span class="id" title="var">ifP</span>=&gt;// <span class="id" title="var">_</span> [&lt;-&lt;-] [&lt;-];<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">right</span>; <span class="id" title="tactic">apply</span>/<span class="id" title="var">CIH</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+This proof is also about unfoling and aligning the two types, and
+while it is a bit frutrating to do, it does not require great
+insights. In the future, Zooid will provide tools to automate these
+proofs as much as possible.
+<hr/>
+
+<div class="paragraph"> </div>
+
+<a id="lab12"></a><h2 class="section">Final words</h2>
+
+
+<div class="paragraph"> </div>
+
+This tutorial explores how to implement processes using Zooid. The
+remaining aspects are how to extract the code, and for that we invite
+you to check the <code>theories/Code.v</code> file where all the examples are
+extracted. Finally, to connect to the OCaml, first use the interactive
+example walkthrough by running <code>./run.sh</code> from the root directory of
+the Zooid distribution/docker container that contains pointers and
+explanation of all the important details.
+
+<div class="paragraph"> </div>
+
+<i>Thank you very much</i> for your attention.
+
+<div class="paragraph"> </div>
+
+The Zooid team.
+
+</div>
+<div class="code">
+</div>
+<hr/>This page has been generated by <a href="http://coq.inria.fr/">coqdoc</a>
+</div>
+
+</div>
+
+</body>
+</html>
