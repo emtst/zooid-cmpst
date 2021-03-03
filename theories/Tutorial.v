@@ -432,13 +432,15 @@ while it is a bit frutrating to do, it does not require great
 insights. In the future, Zooid will provide tools to automate these
 proofs as much as possible.
 
----- ** Final words
+---- *)
+
+(** ** Final words
 
 This tutorial explores how to implement processes using Zooid. The
 remaining aspects are how to extract the code, and for that we invite
 you to check the <<theories/Code.v>> file where all the examples are
 extracted. Finally, to connect to the OCaml, first use the interactive
-example walkthrough by running <./run.sh> from the root directory of
+example walkthrough by running <<./run.sh>> from the root directory of
 the Zooid distribution/docker container that contains pointers and
 explanation of all the important details.
 
