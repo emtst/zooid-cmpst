@@ -57,10 +57,9 @@ The file \texttt{TraceEquiv.v} concludes the metatheory of multiparty session ty
 
 In \texttt{Proc.v} the \emph{syntax and semantics of Zooid processes} are defined, together with the \emph{typing system}, as a relation between processes and local types. The file contains the two central theorems on which Zooid's DSL is built: \emph{type preservation} (\texttt{preservation}) and \emph{protocol compliance}, in terms of obedience of execution traces of processes obeying the discipline of a global type  (\texttt{process\_traces\_are\_global\_types}). Also, in the file \texttt{Proc.v}, the infrastructure for code extraction is given.\\
 
-In \texttt{Zooid.v} we set up our DSL: \emph{Zooid terms} are dependent pairs of a process and a proof that it is well-typed with respect to a given local type. The library provides smart constructors, helper functions and notations, in order to enable building these well-typed-by-construction terms.\\
+In \texttt{Zooid.v} we set up our DSL: \emph{Zooid terms} are dependent pairs of a process and a proof that it is well-typed with respect to a given local type. The library provides smart constructors, helper functions and notations, in order to enable building these well-typed-by-construction terms. \\
 
-Finally, in \texttt{Examples.v}, we display, through examples, the applicability of Zooid. We implement recursive pipeline, recursive ping-pong, simple calculator service, and  the two buyer-protocol, a common benchmark of multiparty session types.
-
+Finally, the three final files: \texttt{Examples.v}, \texttt{Tutorial.v}, and \texttt{Code.v} display, through examples, the applicability of Zooid. As examples, we implement recursive pipeline, simple calculator service, and the two buyer-protocol, a common benchmark of multiparty session types. As tutorial, we implement recursive ping-pong, the server and several clients that illustrate how to program using Zooid. While \texttt{Code.v} performs the code extraction to get OCaml implementations of all the examples and tutorials and connects it to the OCaml runtime.
 
 
 \setcounter{diagheight}{90}
