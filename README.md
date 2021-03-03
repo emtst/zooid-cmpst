@@ -3,6 +3,59 @@
 This is the repo for MPST metatheory and Zooid a certified process descrition language.
 It's implemented in the Coq proof assistant.
 
+## Getting Started
+
+In this section, we outline how to access and run the artifact. We
+also introduce to the layout of the development and how to build the
+system on your own.
+
+### Obtain the artifact (Docker image hosted on Zenodo)
+
+We provide a [Docker image](https://??) with all the necessary
+dependencies. The following steps assume a Unix environment with
+Docker properly installed. Other platforms supported by docker will
+have analogous ways to import and handle the image. For more
+information on docker itself refer to the documentation
+[here.](https://docs.docker.com/)
+
+Ensure that the docker Daemon is running. Load the image (using `sudo`
+if necessary):
+
+```bash
+$ docker load < zooid-cmpst.tar.gz
+````
+
+You should see the following as output after the last operation:
+
+```bash
+Loaded image: zooid-cmpst
+```
+
+***Alternatively***, you can build the Docker image from source:
+
+```bash
+$ git clone --recursive \
+	https://github.com/emtst/cmpst
+$ cd cmpst/docker
+$ ./buildimage.sh
+```
+
+### Running the examples
+
+This repository contains an 'interactive' demo for some of the
+examples implemented in Zooid. To execute the tutorial just run the
+following command from the top level directory of the repository.
+
+```bash
+$ ./run.sh
+```
+
+## Running the code without the docker container
+
+This sectiond describes the requirements to configure your environment
+to run Zooid and the Coq developement natively without using docker.
+
+
 ## Requirements
 
 We recommend installing coq and its dependencies using OPAM, please
@@ -14,13 +67,13 @@ This development requires the following libraries:
 
 | Dependency         | OPAM package Name      | Version |
 |--------------------|------------------------|--------:|
-| Coq                | coq                    |  8.11.2 |
-| PaCo               | coq-paco               |   4.0.0 |
-| MathComp/ssreflect | coq-mathcomp-ssreflect |  1.11.0 |
-| MathComp/finmap    | coq-mathcomp-finmap    |   1.5.0 |
+| Coq                | coq                    |    8.13 |
+| PaCo               | coq-paco               |   4.0.4 |
+| MathComp/ssreflect | coq-mathcomp-ssreflect |  1.12.0 |
+| MathComp/finmap    | coq-mathcomp-finmap    |   1.5.1 |
 | Ocaml              | ocaml                  |  4.11.1 |
-| LWT                | lwt                    |   5.3.0 |
-| Dune               | dune                   |   2.7.1 |
+| LWT                | lwt                    |   5.4.0 |
+| Dune               | dune                   |   2.8.2 |
 
 
 ## Running the code

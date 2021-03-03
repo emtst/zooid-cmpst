@@ -4,8 +4,6 @@ if [ ! -d "scripts" ]; then
     cd ..
 fi
 
-./scripts/buildAll.sh > /dev/null
-
 cat <<WELCOME
 
 Zooid tutoria & code walk-through
