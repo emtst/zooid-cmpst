@@ -35,16 +35,23 @@ Loaded image: zooid-cmpst
 
 ```bash
 $ git clone --recursive \
-	https://github.com/emtst/cmpst
+	https://github.com/emtst/zooid-cmpst
 $ cd cmpst/docker
 $ ./buildimage.sh
 ```
 
 ### Running the examples
 
-This repository contains an 'interactive' demo for some of the
-examples implemented in Zooid. To execute the tutorial just run the
-following command from the top level directory of the repository.
+Once the Docker image has been loaded in your computer you can run it
+with the following command:
+
+```bash
+$ docker run --rm -it zooid-cmpst
+```
+
+This contains an 'interactive' demo for some of the examples
+implemented in Zooid. To execute the tutorial just run the following
+command from the top level directory of the repository.
 
 ```bash
 $ ./run.sh
