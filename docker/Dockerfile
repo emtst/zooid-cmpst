@@ -35,8 +35,6 @@ description. \n\
 \n"\
     > /etc/welcome
 
-_CoqProject  doc  generateMakefile  run.sh  runtime  scripts  theories
-
 ###############################################################################
 # Artifact user
 
