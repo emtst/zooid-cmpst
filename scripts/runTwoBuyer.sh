@@ -16,7 +16,7 @@ sleep 1 &&
 echo "Running buyer A" &&
 cd runtime &&
 
-echo 30 | dune exec -- buyerA &
+dune exec -- buyerA &
 
 sleep 2 &&
 

@@ -130,6 +130,10 @@ Definition AvailableDate i :=
 
 Parameter read_item : coq_ty T_nat.
 Extract Constant read_item => "TwoBuyerLib.Implementation.read_item".
+Parameter sold : coq_ty T_unit -> unit.
+Extract Constant sold => "TwoBuyerLib.Implementation.sold".
+Parameter notsold : coq_ty T_unit -> unit.
+Extract Constant notsold => "TwoBuyerLib.Implementation.notsold".
 
 Definition seller_proc : wt_proc twob_seller_lt :=
      \recv BuyerA \lbl BookId, x : T_nat;
@@ -137,8 +141,9 @@ Definition seller_proc : wt_proc twob_seller_lt :=
      \send BuyerB Quote (T:=T_nat) (ItemTable x) (
      \branch BuyerB
       [alts
-      | \lbl Buy, y : T_nat; \send BuyerB Date (T:=T_nat )(AvailableDate x) finish
-      | \lbl Cancel, x : T_unit; finish
+      | \lbl Buy, y : T_nat; \send BuyerB Date (T:=T_nat )(AvailableDate x)
+                              (write sold tt finish)
+      | \lbl Cancel, x : T_unit; write notsold tt finish
       ]
   )).
 

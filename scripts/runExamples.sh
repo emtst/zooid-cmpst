@@ -301,8 +301,10 @@ As before, the following definitions in 'Examples.v' specify this protocol:
 | twob_buyB_lt   |                                                           |
 +----------------+-----------------------------------------------------------+
 | read_item      | the external functions for querying the seller's database |
-| print_quote    | and printing and reading the quote and proposal.          |
-| read_proposal  |                                                           |
+| print_quote    | and printing and reading the quote and proposal. And      |
+| read_proposal  | finally, printing the transaction result.                 |
+| sold           |                                                           |
+| notsold        |                                                           |
 +----------------+-----------------------------------------------------------+
 | seller_proc    | the process implementation for the seller, and the two    |
 | buyerA         | buyers.                                                   |
@@ -323,9 +325,9 @@ read -r input ; clear
 
 cat<<TBRUN
 
-To finish, lets observe a run of the protocol where the book is £75
-and the split is just £30 for buyerA and £45 for buyerB. Perhaps they
-were not really good friends. Note that is **not interactive**.
+To finish, lets run the protocol. As buyerA you will get to say how
+much you are ready to pay. BuyerB is a very generous friend, they will
+accept any split where you pay at least a third of the price.
 
 (press enter to continue)
 
