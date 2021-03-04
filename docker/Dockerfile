@@ -22,14 +22,20 @@ examples of protocols and certified processes. We scripts to guide \n\
 running this artifact. Please find in README.md a more detailed  \n\
 description. \n\
 \n\
-  * README.md  ............. Description of this artifact \n\
-  * LICENSE  ............... MIT License \n\
-  * run.sh  ................ Step-by-step tutorial/walkthrough for this artifact \n\
-  * theories ............... Coq implementation and correctness proofs for Zooid \n\
-  * theories/Tutorial.v .... A short tutorial on how to implement processes in Zooid \n\
-  * runtime ................ OCaml runtime for executing processes \n\
+  * README.md  ............... Description of this artifact \n\
+  * LICENSE  ................. MIT License \n\
+  * run.sh  .................. Step-by-step tutorial/walkthrough \n\
+  * theories ................. Zooid implementation and correctness proofs \n\
+    |- theories/Tutorial.v ... Short tutorial on implementing Zooid procs \n\
+  * runtime .................. OCaml runtime for executing processes \n\
+  * scripts .................. Scripts for running the examples \n\
+  * _CoqProject .............. Coq Project file for generating Makefile \n\
+  * generateMakefile ......... Script to generate Makefile from _CoqProject \n\
+  * doc ...................... Documentation for this project \n\
 \n"\
     > /etc/welcome
+
+_CoqProject  doc  generateMakefile  run.sh  runtime  scripts  theories
 
 ###############################################################################
 # Artifact user
@@ -49,7 +55,7 @@ COPY --chown=coq . Zooid
 
 WORKDIR /home/coq/Zooid
 
-RUN rm -rf .git* .circleci
+RUN rm -rf .git* .circleci notes dist docker
 
 # RUN ./scripts/buildall.sh
 
