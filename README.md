@@ -148,7 +148,7 @@ depend on axioms or admitted lemmas.
 
 To compile all the Coq and runtime OCaml code simply run:
 ```
-./scripts/buildAll.sh
+./scripts/buildall.sh
 ```
 
 This command builds the whole system, once it is successfully compiled

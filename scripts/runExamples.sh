@@ -11,7 +11,7 @@ We are running 'scripts/buildAll.sh' to compile everything.
 
 PREREQ
 
-./scripts/buildAll.sh
+./scripts/buildall.sh
 
 
 cat <<WELCOME
