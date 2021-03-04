@@ -245,8 +245,11 @@ read -r input ; clear
 cat<<PIPERUN
 
 Now to execute the pipeline multiple times, instead of Alice asking
-for number each iteration, we feed Alice with random numbers.
-
+for number each iteration, we feed Alice with random numbers. Notice
+that the pipeline runs asynchronously, so when Bob prints the value it
+will compute with and Carol prints the result the lines are not
+necessarily one after the other. This show cases Zooid's asynchronous
+semantics.
 
 PIPERUN
 
