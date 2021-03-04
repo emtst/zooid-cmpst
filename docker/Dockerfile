@@ -51,7 +51,7 @@ WORKDIR /home/coq/Zooid
 
 RUN rm -rf .git* .circleci
 
-RUN ./scripts/buildall.sh
+# RUN ./scripts/buildall.sh
 
 ENV TERM xterm-256color
 CMD ["/bin/bash", "-l"]

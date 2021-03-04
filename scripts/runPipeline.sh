@@ -10,7 +10,7 @@ echo "Warning: this is a non-terminating protocol, stop it with Ctrl+C"
 read -p "Press [Enter] key to start..."
 
 
-echo "Running the Alice" &&
+echo "Running Alice" &&
 
 cd runtime &&
 

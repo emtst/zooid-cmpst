@@ -137,6 +137,7 @@ Closed under the global context
 COQC theories/Proc.v
 COQC theories/Zooid.v
 COQC theories/Examples.v
+COQC theories/Tutorial.v
 COQC theories/Code.v
 ```
 

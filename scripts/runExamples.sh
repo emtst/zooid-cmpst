@@ -4,6 +4,16 @@ if [ ! -d "scripts" ]; then
     cd ..
 fi
 
+cat<<PREREQ
+Let's make sure the system is built before we start!!
+
+We are running 'scripts/buildAll.sh' to compile everything.
+
+PREREQ
+
+./scripts/buildAll.sh
+
+
 cat <<WELCOME
 
 Zooid tutorial & code walk-through
@@ -82,7 +92,7 @@ are in:
 
   runtime/examples/calculator/calcsvr.ml
   runtime/examples/calculator/calcc.ml
-  runtime/examples/caclculator/calculatorlib/calculator.ml
+  runtime/examples/calculator/calculatorlib/calculator.ml
 
 In the next section we will discuss the implementation of the server
 entry point (the client is analogous) and the UI library.
@@ -312,7 +322,7 @@ cat<<TBRUN
 
 To finish, lets observe a run of the protocol where the book is £75
 and the split is just £30 for buyerA and £45 for buyerB. Perhaps they
-were not really good friends.
+were not really good friends. Note that is **not interactive**.
 
 (press enter to continue)
 
