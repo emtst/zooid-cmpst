@@ -6,7 +6,7 @@ fi
 
 cat <<WELCOME
 
-Zooid tutoria & code walk-through
+Zooid tutorial & code walk-through
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To make the most of this tutorial please follow along with a copy of
@@ -44,7 +44,7 @@ is done in Coq. In this case the code is present in the file:
 
 in the Zooid repository.
 
-We will refer to the main Coq definitions used to implemet the server and in the client.
+We will refer to the main Coq definitions used to implement the server and in the client.
 
 | Definition           | Description                                      |
 +----------------------+--------------------------------------------------+
@@ -71,7 +71,7 @@ read -r input ; clear
 cat<<RUNTIME
 
 Zooid programs are transport agnostic, the implementation of the
-proper transport in OCAml is deferred to the user. In our examples, we
+proper transport in OCaml is deferred to the user. In our examples, we
 provide a TCP/IP implementation built on top of the LWT library
 (https://ocsigen.org/lwt). This code is all in the file:
 
@@ -151,7 +151,7 @@ This concludes the walkthrough the code, we will now execute the
 described code.
 
 For simplicity we run them locally, but a distributed session can be
-specified using the 'participants' datastructure in the process entry
+specified using the 'participants' data structure in the process entry
 points as described above.
 
 Now you can have fun interacting with the calculator.
@@ -182,7 +182,7 @@ arbitrarily complex value and sends the result to 'Carol'. Then whole
 pipeline repeats itself.
 
 Again, the protocol definition and process implementation is done in
-Zooid embeded in the 'Examples.v' Coq file.
+Zooid embedded in the 'Examples.v' Coq file.
 
 | Definition  | Description.                                              |
 +-------------+-----------------------------------------------------------+
@@ -218,7 +218,7 @@ functions.
 
 Where the the first three are the executables for the roles, and the
 last one defines the UI (asking and printing for numbers in the
-standard input and the complex computation taht bob does (in this
+standard input and the complex computation that bob does (in this
 examples it doubles the number it gets as input).
 
 'mbob.ml' is the first time in this tutorial that we see a participant
@@ -277,7 +277,7 @@ read -r input ; clear
 
 cat<<TBCODE
 
-As before, the following defintions in 'Examples.v' specify this protocol:
+As before, the following definitions in 'Examples.v' specify this protocol:
 
 | Definition.    | Description.                                              |
 +----------------+-----------------------------------------------------------+
@@ -296,7 +296,7 @@ As before, the following defintions in 'Examples.v' specify this protocol:
 | buyerB         |                                                           |
 +----------------+-----------------------------------------------------------+
 
-And, similar as before, the ocaml code supporting them is in the
+And, similar as before, the OCaml code supporting them is in the
 files:
 
   runtime/examples/twobuyer/seller.ml

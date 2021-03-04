@@ -3,6 +3,10 @@ FROM coqorg/coq:8.13.0-ocaml-4.11.1-flambda
 ## For some reason, coq starts with user "coq", not root
 USER root
 
+# Utilities
+RUN apt-get update; \
+    apt-get install -y vim less nano
+
 # Welcome message
 RUN echo '[ ! -z "$TERM" -a -r /etc/welcome ] && cat /etc/welcome' \
     >> /etc/bash.bashrc \
@@ -22,6 +26,7 @@ description. \n\
   * LICENSE  ............... MIT License \n\
   * run.sh  ................ Step-by-step tutorial/walkthrough for this artifact \n\
   * theories ............... Coq implementation and correctness proofs for Zooid \n\
+  * theories/Tutorial.v .... A short tutorial on how to implement processes in Zooid \n\
   * runtime ................ OCaml runtime for executing processes \n\
 \n"\
     > /etc/welcome
