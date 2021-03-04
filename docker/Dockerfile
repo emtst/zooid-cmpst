@@ -24,7 +24,8 @@ description. \n\
 \n\
   * README.md  ............... Description of this artifact \n\
   * LICENSE  ................. MIT License \n\
-  * run.sh  .................. Step-by-step tutorial/walkthrough \n\
+  * ./scripts/buildall.sh .... Command to build the project \n\
+  * ./run.sh  ................ Step-by-step tutorial/walkthrough \n\
   * theories ................. Zooid implementation and correctness proofs \n\
     |- theories/Tutorial.v ... Short tutorial on implementing Zooid procs \n\
   * runtime .................. OCaml runtime for executing processes \n\

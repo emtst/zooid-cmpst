@@ -59,9 +59,12 @@ $ docker run --rm -it zooid-cmpst
 
 This contains an 'interactive' demo for some of the examples
 implemented in Zooid. To execute the tutorial just run the following
-command from the top level directory of the repository.
+command from the top level directory of the repository. You have to
+build the system before running the examples. You can do it manually,
+or it will be done automatically otherwise.
 
 ```bash
+$ ./scripts/buildall.sh
 $ ./run.sh
 ```
 
