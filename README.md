@@ -11,7 +11,7 @@ system on your own.
 
 ### Obtain the artifact (Docker image hosted on Zenodo)
 
-We provide an artifact that contains [Docker image](https://??) with
+We provide an artifact that contains [Docker image](https://doi.org/10.5281/zenodo.4581294) with
 all the necessary dependencies and some documentation. The following
 steps assume a Unix environment with Docker properly installed. Other
 platforms supported by docker will have analogous ways to import and
