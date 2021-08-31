@@ -1,0 +1,130 @@
+(*****************************
+
+Idea: an 'OAuth'-like protocol.
+
+*****************************)
+
+
+(*
+
+Loosly inspired by Keigo's example at: https://github.com/keigoi/ocaml-mpst/blob/master/examples/oauth/oauth.ml
+
+The idea is to have an 'OAuth'-like protocol between three parties:
+  U: for a user
+  S: for a server
+  A: for an authenticator.
+
+The flow of the protocol is as follows:
+
+1- the user asks the server to be logged (message 'hi').
+2- the server asks to authenticate the user by sending the name to the
+   authenticator (message 'validate').
+3- the authenticator issues a challenge and the user responds it it
+  (messages 'challenge'/'response').
+4- if the user has the correct answer the authenticator tells everyone
+  that it worked (message 'ok').
+5- if it failed everyone is notified and the user is asked to try
+  again (message 'fail').
+6- if the authenticators thinks there were too many attempts it
+  notifies everyone, and finishes (message 'too_many_attempts').
+
+Possible theorems to prove about implementations:
+
+1. There exists a value 'max_number_of_attempts' and the authenticator
+  will ask at most that many times for the user to retry the
+  authentication.
+
+2. The server always forwards the name the user provided to the
+  authenticator.
+
+3. Some property about the authentication ignoring any cryptography.
+  Something like assuming the user and the authenticator share some
+  secret that allows the authenticator to produce challenges that only
+  the user can meet then if the protocols finishes with 'ok' it means
+  the user provided the right response. Then, if someone intantiates
+  the challenge and response functions with proper cryptographic
+  primitives it all works. For this the proof obligation would result
+  in something like a function for the user to produce challenges that
+  the authenticator accepts. The fact that these functions are
+  cryptographically safe are for a different conference.
+
+Theorem 3 is the only one of some minimal interest, but really it
+boils down to say all the traces that include 'ok' have 'response'
+before (so there was a successfully answered challenge before). And
+this property is beyond obvious.
+
+All these protocols are projectable by nuScr, however I am not sure
+Zooid can do any of them.
+
+Also Keigo's example suggests that he can log in to Facebook. It'd be
+quite cool if we could extract code that interacts with some 'real'
+service out there.
+*)
+
+(* the protocol as described above *)
+
+global protocol ThreePartyAuthorisationRec(role U, role S, role A) {
+  hi(name : string) from U to S ;
+
+  rec X {
+    validate(name : string) from S to A ;
+
+    challenge(ch : string) from A to U ;
+    response(rsp : string) from U to A ;
+
+    choice at A {
+      ok from A to S;
+      ok from S to U ;
+    } or {
+      fail from A to S ;
+      fail from S to U ;
+      continue X ;
+    } or {
+      too_many_attempts from A to S;
+      too_many_attempts from S to U ;
+    }
+  }
+}
+
+
+(* simplified to allow infinite retries *)
+
+global protocol ThreePartyAuthorisationNoCount(role U, role S, role A) {
+  hi(name : string) from U to S ;
+
+  rec X {
+    validate(name : string) from S to A ;
+    challenge(ch : string) from A to U ;
+
+    response(rsp : string) from U to A ;
+
+    choice at A {
+      ok from A to S;
+      ok from S to U ;
+    } or {
+      fail from A to S ;
+      fail from S to U ;
+      continue X ;
+    }
+  }
+}
+
+(* simplified to not use recursion *)
+
+global protocol ThreePartyAuthorisationNoRecNoCount(role U, role S, role A) {
+  hi(name : string) from U to S ;
+
+  validate(name : string) from S to A ;
+
+  challenge(ch : string) from A to U ;
+
+  response(rsp : string) from U to A ;
+
+  choice at A {
+    ok from A to S;
+    ok from S to U ;
+  } or {
+    fail from A to S ;
+    fail from S to U ;
+  }
+}
